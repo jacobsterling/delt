@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 export default function DesignFeed({ designs, admin }) {
+    console.log(designs)
     return designs ? designs.map((design) => <showcase design={design} key={design.slug} admin={admin} />) :null;
 }
 

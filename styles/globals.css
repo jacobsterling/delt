@@ -171,10 +171,11 @@ button.btn-logo {
 
 /* Flex Contianer */
 .flex-container {
-  justify-content: space-between;
-  gap:0.2rem;
+  justify-content: center;
+  gap:1rem;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 /* Cards */

@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider, } from "firebase/auth";
-import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import { Timestamp, getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 
 const firebaseConfig = {
 
@@ -25,6 +25,8 @@ export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const provider = new GoogleAuthProvider();
 export const auth = getAuth();
+export const fromMillis = Timestamp.fromMillis
+
 
 /**`
  * Gets a users/{uid} document with username

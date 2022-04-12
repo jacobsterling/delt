@@ -1,7 +1,7 @@
 import UserProfile from '../../components/UserProfile';
 import DesignFeed from '../../components/DesignFeed'
 import { getUserWithUsername, designToJSON, db } from '../../lib/firebase';
-import { query as q, getDocs, collection, where } from "firebase/firestore";
+import { query as q, getDocs, collection, where, orderBy, limit } from "firebase/firestore";
 
 
 
@@ -26,12 +26,9 @@ export async function getServerSideProps({ query }) {
   if (userDoc) {
     // user = userDoc;
     user = userDoc.docs[0].data();
-    //! cant orderby createdAt and limit to 5 posts per page, prob not needed
-    //! nor can i get more than 1 design on design feed
     
     const colRef = collection(userDoc.docs[0].ref,'designs')
-    const designsQuery = q(colRef,where('published', '==', true))
-    // .orderBy('createdAt', 'desc')
+    const designsQuery = q(colRef,where('published', '==', true), orderBy("createdAt","desc"))
     // .limit(5)
 
     const querySnapshot = await getDocs(designsQuery)

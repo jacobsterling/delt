@@ -26,20 +26,16 @@ export async function getServerSideProps({ query }) {
   if (userDoc) {
     // user = userDoc;
     user = userDoc.docs[0].data();
-    console.log(user)
-
+    //! cant orderby createdAt and limit to 5 posts per page, prob not needed
+    //! nor can i get more than 1 design on design feed
+    
     const colRef = collection(userDoc.docs[0].ref,'designs')
-
     const designsQuery = q(colRef,where('published', '==', true))
     // .orderBy('createdAt', 'desc')
     // .limit(5)
 
-    console.log(designsQuery)
-
     const querySnapshot = await getDocs(designsQuery)
     designs = querySnapshot.docs.map(designToJSON);
-
-    console.log(designs)
   }
   
   return {
@@ -51,7 +47,9 @@ export default function UserProfilePage({ user, designs }) {
   return (
     <main>
       <UserProfile user={user} />
-      <DesignFeed designs={designs} />
+      <div className="flex-container">
+        <DesignFeed designs={designs} />
+      </div>
     </main>
   )
 }

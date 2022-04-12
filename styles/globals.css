@@ -169,9 +169,17 @@ button.btn-logo {
   padding: 0.5rem 1rem;
 }
 
+/* Flex Contianer */
+.flex-container {
+  justify-content: space-between;
+  gap:0.2rem;
+  display: flex;
+  align-items: center;
+}
+
 /* Cards */
 
-.card {
+.card {   
   padding: 2rem;
   margin: 1rem 0;
   background-color: white;

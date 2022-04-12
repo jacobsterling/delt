@@ -1,17 +1,21 @@
 import Link from 'next/link';
+import {getDoc, collection} from "firebase/firestore";
+import { useContext } from 'react';
+import { UserContext } from '../lib/context';
 
 export default function DesignFeed({ designs, admin }) {
-    console.log(designs)
-    return designs ? designs.map((design) => <showcase design={design} key={design.slug} admin={admin} />) :null;
+    return designs ? designs.map((design) => <Showcase design={design} key={design.slug} admin={admin} />) :null;
 }
 
-function showcase({ design }) {
+function Showcase({ design, admin = false }) {
+
+  const { user, username } = useContext(UserContext)
 
     return(
         <div className="card">
-            <Link href={`/${design.username}`}>
+            <Link href={`/${username}`}>
                 <a>
-                    <strong>By @{design.username}</strong>
+                    <strong>By @{username}</strong>
                 </a>
             </Link>
 
@@ -37,7 +41,7 @@ function showcase({ design }) {
           {design.published ? <p className="text-success">Live</p> : <p className="text-danger">Unpublished</p>}
         </>
       )}
-
         </div>
     );
 }
+

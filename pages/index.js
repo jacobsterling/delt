@@ -9,7 +9,7 @@ import { collection, query, where, getDocs, orderBy, limit, startAfter, collecti
 import { useState } from 'react';
 
 // Max post to query per page
-const LIMIT = 2;
+const LIMIT = 1;
 
 export async function getServerSideProps(context) {
   var colRef = collectionGroup(db,'designs')
@@ -32,7 +32,7 @@ export default function Home(props) {
     console.log("last",last.createdAt)
     const cursor = typeof last.createdAt == 'number' ? fromMillis(last.createdAt) : last.createdAt;
     console.log("cursor",cursor)
-    const colRef = collection(db,'designs')
+    const colRef = collectionGroup(db,'designs')
     const designsQuery = query(colRef,where('published', '==', true), orderBy("createdAt","desc"),startAfter(cursor), limit(LIMIT))
 
     const querySnapshot = await getDocs(designsQuery)

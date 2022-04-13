@@ -10,8 +10,6 @@ export async function getServerSideProps({ query }) {
   const { username } = query;
   const userDoc = await getUserWithUsername(username);
 
-  console.log(userDoc);
-
   if (!userDoc) {
     return {
       notFound: true,

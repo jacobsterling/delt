@@ -3,8 +3,6 @@ import DesignFeed from '../../components/DesignFeed'
 import { getUserWithUsername, designToJSON, db } from '../../lib/firebase';
 import { query as q, getDocs, collection, where, orderBy, limit } from "firebase/firestore";
 
-
-
 export async function getServerSideProps({ query }) {
 
   const { username } = query;
@@ -18,8 +16,6 @@ export async function getServerSideProps({ query }) {
 
   let user = null;
   let designs = null;
-
- 
 
   if (userDoc) {
     // user = userDoc;

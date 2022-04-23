@@ -10,7 +10,8 @@ import { useRouter } from 'next/router';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import kebabCase from 'lodash.kebabcase';
 import toast from 'react-hot-toast';
-import { doc, collection, orderBy, query, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, collection, orderBy, query, serverTimestamp, setDoc, getDocs,collectionGroup, where } from "firebase/firestore";
+import { useForm } from 'react-hook-form';
 
 export default function AdminPage({ props }) {
   return (
@@ -43,12 +44,23 @@ function CreateNewDesign() {
   const { username } = useContext(UserContext);
   const [title, setTitle] = useState('');
   const slug = encodeURI(kebabCase(title));
+  const colGroup = collectionGroup(db, 'designs')
+  const snapshot = query(colGroup,where('published','==',true))
+
+  // ,where(ref == slug)
 
   const isValid = title.length > 3 && title.length < 100;
 
   const createDesign =  async (e) => {
     e.preventDefault();
     const uid = auth.currentUser.uid;
+    const docSnap = await getDocs(snapshot)
+
+    if (docSnap.docs.some(x => x.id == slug)) {
+      toast.error(`${title} is already a published design.`)
+    }
+    else
+    {
     const ref = doc(collection( db,`users/${uid}/designs`),slug);
 
     const data = {
@@ -68,8 +80,8 @@ function CreateNewDesign() {
     toast.success(`${title} created !`)
 
     router.push(`/admin/${slug}`)
-
-  }
+    }
+  };
 
   return(
     <form onSubmit={createDesign}>

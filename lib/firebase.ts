@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider, } from "firebase/auth";
+import { getStorage } from "firebase/storage";
 import { Timestamp, getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -26,7 +27,6 @@ export const db = getFirestore(app);
 export const provider = new GoogleAuthProvider();
 export const auth = getAuth();
 export const fromMillis = Timestamp.fromMillis
-
 
 /**`
  * Gets a users/{uid} document with username
@@ -54,5 +54,10 @@ export function designToJSON(doc) {
     ...data,
     // Gotcha! firestore timestamp NOT serializable to JSON. Must convert to milliseconds
     createdAt: data.createdAt.toMillis(),
+    updatedAt: data.createdAt.toMillis(),
   };
 }
+
+// Storage exports
+export const storage = getStorage(app);
+

@@ -3,13 +3,13 @@ import styles from '../../styles/Admin.module.css';
 import AuthCheck from '../../components/AuthCheck';
 import { db, auth } from '../../lib/firebase';
 import { doc, setDoc, serverTimestamp, deleteDoc } from "firebase/firestore";
-
+import ImageUploader from '../../components/ImageUploader'
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 
 import { useDocument, useDocumentDataOnce, useDocumentData } from 'react-firebase-hooks/firestore';
 
-import { useForm } from 'react-hook-form';
+import { useForm, useFormState } from 'react-hook-form';
 import ReactMarkdown from 'react-markdown';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -30,9 +30,11 @@ export default function AdminDesignEdit(props) {
     const { slug } = router.query;
 
     const designRef = doc(db,`users/${auth.currentUser.uid}/designs`,slug);
-
     const [design] = useDocumentData(designRef)
 
+    const username = design?.username
+
+    console.log(username)
     return(
       <main className={styles.container}>
         {design && (
@@ -46,7 +48,7 @@ export default function AdminDesignEdit(props) {
             <aside>
               <h3>Tools</h3>
               <button onClick={() => setPreview(!preview)}>{preview ? 'Edit' : 'Preview'}</button>
-              <Link href={`/${design.username}/${design.slug}`} passHref>
+              <Link href={`/${username}/${design.slug}`} passHref>
                 <button className='btn-blue'>Live view</button>
               </Link>
               <DeletePostButton designRef={designRef} />
@@ -58,7 +60,7 @@ export default function AdminDesignEdit(props) {
   }
 
 function DesignForm({ defaultValues, designRef, preview }) {
-  const { register, handleSubmit, reset, watch} = useForm({ defaultValues, mode: 'onChange' });
+  const { register, handleSubmit, reset, watch, formState: { errors, isValid, isDirty }} = useForm({ defaultValues, mode: 'onChange' });
 
   const updateDesign = async ({ content, published }) => {
     await setDoc(designRef,{
@@ -66,7 +68,7 @@ function DesignForm({ defaultValues, designRef, preview }) {
       published,
       updatedAt: serverTimestamp(),
     });
-
+  
     reset({ content, published })
 
     toast.success('Design update success !')
@@ -82,16 +84,25 @@ function DesignForm({ defaultValues, designRef, preview }) {
 
       <div className={preview ? styles.hidden : styles.controls}>
 
-        <textarea {...register("content")} ></textarea>
+        <ImageUploader />
+
+        <textarea {...register("content", {
+          maxLength: { value: 20000, message: 'content is too long' },
+          minLength: { value: 10, message: 'content is too short' },
+          required: { value: true, message: 'content is required'}
+        })} >
+        </textarea>
+
+        {errors.content && <p className="text-danger">{errors.content.message}</p>}
 
         <fieldset>
           <input {...register('published')} className={styles.checkbox} type='checkbox' />
 
-
           <label>Published</label>
         </fieldset>
 
-        <button type="submit" className='btn-green'>
+        <button type="submit" className='btn-green' disabled={!isDirty || !isValid}>
+
           Save Changes
         </button>
       </div>

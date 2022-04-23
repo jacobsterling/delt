@@ -2,7 +2,5 @@
 </script>
 
 <template>
-  <div>
-    index
-  </div>
+  <div />
 </template>

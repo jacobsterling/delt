@@ -5,6 +5,10 @@ export default defineNuxtConfig({
   buildModules: [
     "@unocss/nuxt"
   ],
+  modules: ["@nuxtjs/supabase"],
+  supabase: {
+    // Options
+  },
   telemetry: false,
   typescript: {
     shim: false

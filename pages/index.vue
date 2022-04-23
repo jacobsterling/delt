@@ -1,9 +1,8 @@
-
 <script setup lang="ts">
 </script>
 
 <template>
-  <Navbar />
-  <main>
-  </main>
+  <div>
+    index
+  </div>
 </template>

@@ -1,31 +1,17 @@
 {
-  "name": "delt",
-  "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
-  "dependencies": {
-    "ethers": "^5.6.2",
-    "firebase": "^9.6.10",
-    "lodash.debounce": "^4.0.8",
-    "lodash.kebabcase": "^4.1.1",
-    "next": "12.1.4",
-    "react": "18.0.0",
-    "react-dom": "18.0.0",
-    "react-firebase-hooks": "^5.0.3",
-    "react-hook-form": "^7.30.0",
-    "react-hot-toast": "^2.2.0",
-    "react-icons": "^4.3.1",
-    "react-markdown": "^8.0.2"
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview"
   },
   "devDependencies": {
-    "@types/node": "^17.0.23",
-    "@types/react": "^17.0.43",
-    "eslint": "8.12.0",
-    "eslint-config-next": "12.1.4"
+    "@nuxtjs/eslint-config-typescript": "^9.0.0",
+    "@unocss/nuxt": "^0.31.13",
+    "eslint": "^8.14.0",
+    "eslint-plugin-nuxt": "^3.2.0",
+    "eslint-plugin-vue": "^8.7.1",
+    "nuxt": "3.0.0-rc.1"
   }
 }

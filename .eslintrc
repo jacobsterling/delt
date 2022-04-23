@@ -1,0 +1,68 @@
+{
+  "extends": [
+    "plugin:vue/recommended",
+    "plugin:vue/vue3-recommended",
+    "plugin:nuxt/recommended",
+    "@nuxtjs/eslint-config-typescript"
+  ],
+  "overrides": [
+    {
+      "files": [
+        "pages/**/*.vue"
+      ],
+      "rules": {
+        "vue/multi-word-component-names": "off"
+      }
+    }
+  ],
+  "parser": "@typescript-eslint/parser",
+  "plugins": [
+    "@typescript-eslint"
+  ],
+  "root": true,
+  "rules": {
+    "indent": [
+      "error",
+      2
+    ],
+    "import/order": [
+      "error",
+      {
+        "alphabetize": {
+          "caseInsensitive": true,
+          "order": "asc"
+        },
+        "groups": [
+          "builtin",
+          "external",
+          "internal"
+        ],
+        "newlines-between": "always",
+        "pathGroups": [
+          {
+            "group": "builtin",
+            "pattern": "vue",
+            "position": "before"
+          }
+        ],
+        "pathGroupsExcludedImportTypes": [
+          "vue"
+        ]
+      }
+    ],
+    "quotes": [
+      "error",
+      "double"
+    ],
+    "vue/no-v-for-template-key-on-child": "off",
+    "vue/sort-keys": [
+      "error",
+      "asc",
+      {
+        "caseSensitive": true,
+        "natural": false,
+        "minKeys": 2
+      }
+    ]
+  }
+}

@@ -16,7 +16,6 @@ const init = async () => {
     case "connect": {
       const [accounts] = await ethereum.request({ method: "eth_requestAccounts" })
       state.value = accounts
-      //compact address
       break
     }
     default: {

@@ -2,5 +2,11 @@
 </script>
 
 <template>
-  <div />
+  <div class="mx-auto px-4 dark:text-white max-w-screen-xl">
+    <ClientOnly>
+      <p>account: {{ $wallet.accountCompact }}</p>
+      <p>balance: {{ $wallet.balance }}</p>
+    </ClientOnly>
+    <p style="height: 1000px" />
+  </div>
 </template>

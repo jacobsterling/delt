@@ -6,7 +6,7 @@ export default defineNuxtConfig({
     "@unocss/reset/tailwind.css"
   ],
   modules: [
-    // "@nuxtjs/supabase",
+    "@nuxtjs/supabase",
     "@unocss/nuxt"
   ],
   telemetry: false,

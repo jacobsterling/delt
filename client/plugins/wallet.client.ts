@@ -1,6 +1,5 @@
 import MetaMaskOnboarding from "@metamask/onboarding"
 import { ethers } from "ethers"
-
 interface Wallet {
   account?: string,
   accountCompact?: string,

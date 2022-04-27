@@ -1,8 +1,10 @@
 <script setup lang="ts">
+const user = useSupabaseUser()
 </script>
 
 <template>
   <div class="mx-auto px-4 dark:text-white max-w-screen-xl">
-    <p style="height: 1000px" />
+    {{ user?.email }}
+    {{ user?.email_confirmed_at }}
   </div>
 </template>

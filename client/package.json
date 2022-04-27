@@ -7,6 +7,8 @@
     "preview": "nuxt preview"
   },
   "devDependencies": {
+    "@headlessui/vue": "^1.6.0",
+    "@heroicons/vue": "^1.0.6",
     "@metamask/onboarding": "^1.0.1",
     "@nuxtjs/eslint-config-typescript": "^9.0.0",
     "@nuxtjs/supabase": "^0.1.10",

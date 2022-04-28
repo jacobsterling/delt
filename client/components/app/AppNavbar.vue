@@ -10,7 +10,7 @@ const client = useSupabaseClient()
 const userLoginModal = ref<InstanceType<typeof UserLoginModal>>()
 
 const navigation = ref([
-  { current: true, href: "#", name: "Discover" },
+  { current: true, href: "#", name: "Showcase" },
   { current: false, href: "#", name: "FAQ" },
   { current: false, href: "#", name: "About" }
 ])
@@ -36,19 +36,18 @@ const navigation = ref([
             <div class="flex-shrink-0 flex items-center">
               <!-- <img class="block lg:hidden h-8 w-auto" src="https://tailwindui.com/img/logos/workflow-mark-indigo-500.svg" alt="Workflow">
               <img class="hidden lg:block h-8 w-auto" src="https://tailwindui.com/img/logos/workflow-logo-indigo-500-mark-white-text.svg" alt="Workflow"> -->
-              <p class="block lg:hidden h-8 w-auto text-white font-mono text-3xl">
+              <a href="#" class="block lg:hidden h-8 w-auto text-white font-mono text-3xl">
                 D
-              </p>
-              <p class="hidden lg:block h-8 w-auto text-white font-mono text-3xl">
+              </a>
+              <a href="#" class="hidden lg:block h-8 w-auto text-white font-mono text-3xl">
                 DELT
-              </p>
+              </a>
             </div>
             <div class="hidden sm:block sm:ml-6">
               <div class="flex space-x-4">
                 <a v-for="item in navigation" :key="item.name" :href="item.href"
                   :class="[item.current ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white', 'px-3 py-2 rounded-md text-sm font-medium']"
-                  :aria-current="item.current ? 'page' : undefined">
-                  {{ item.name }}</a>
+                  :aria-current="item.current ? 'page' : undefined">{{ item.name }}</a>
               </div>
             </div>
           </div>
@@ -60,8 +59,8 @@ const navigation = ref([
             </button>
 
             <!-- Profile dropdown -->
-            <p class="bg-gray-900 text-white px-3 py-2 rounded-md text-sm font-medium hidden sm:block ml-2">
-              {{ user?.email }}
+            <p v-if="user" class="bg-gray-900 text-white px-3 py-2 rounded-md text-sm font-medium hidden sm:block ml-2">
+              {{ user.email }}
             </p>
             <Menu as="div" class="ml-3 relative">
               <div>
@@ -81,16 +80,14 @@ const navigation = ref([
                   <MenuItem v-slot="{ active }">
                   <a v-if="user" href="#"
                     :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']"
-                    @click="userLoginModal.open">Login</a>
+                    @click="client.auth.signOut()">Sign out</a>
+                  <a v-else href="#" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']"
+                    @click="userLoginModal.open">Sign in</a>
+
                   </MenuItem>
                   <MenuItem v-slot="{ active }">
                   <a href="#"
                     :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']">Settings</a>
-                  </MenuItem>
-                  <MenuItem v-if="!user" v-slot="{ active }">
-                  <a href="#" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']"
-                    @click="client.auth.signOut()">Sign
-                    out</a>
                   </MenuItem>
                 </MenuItems>
               </transition>

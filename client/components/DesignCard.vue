@@ -3,8 +3,8 @@ const props = defineProps({
   design: {
     default: undefined,
     required: true,
-    type: String,
-    validator: prop => typeof prop === "string"
+    type: Object,
+    validator: prop => typeof prop === "object"
   },
   visible: {
     default: true,
@@ -23,24 +23,24 @@ const slug = props.design.slug
 </script>
 
 <template>
-  <NuxtLink :to="created_by / slug">
-    <div class="p-2 mx-1 my-1 shadow-2xl w-30% rounded-2xl">
-      <h1>{{ props.design.slug }}</h1>
-      <!-- <img src="~/assets/baki.jpg" class="w-100%" /> -->
-      <footer class="text-xs border-top my-2">
-        <ul>
-          <li>
-            <NuxtLink :to="created_by">
-              Created by: {{ created_by }}
-            </NuxtLink>
-          </li>
-          <li>
-            <NuxtLink :to="owned_by">
-              Owned by: {{ owned_by }}
-            </NuxtLink>
-          </li>
-        </ul>
-      </footer>
+  <div class="p-2 mx-1 my-1 shadow-2xl w-30% rounded-2xl">
+    <div @click="$router.push(`/${created_by}/${slug}`)">
+      <h1>{{ slug }}</h1>
+      <img src="~/assets/baki.jpg" class="w-100%" />
     </div>
-  </NuxtLink>
+    <footer class="text-xs border-top my-2">
+      <ul>
+        <li>
+          <NuxtLink :to="created_by">
+            Created by: {{ created_by }}
+          </NuxtLink>
+        </li>
+        <li>
+          <NuxtLink :to="owned_by">
+            Owned by: {{ owned_by }}
+          </NuxtLink>
+        </li>
+      </ul>
+    </footer>
+  </div>
 </template>

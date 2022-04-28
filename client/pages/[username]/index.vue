@@ -2,11 +2,10 @@
 
 const client = useSupabaseClient()
 const route = useRoute()
-const users = await client.from("usernames").select().eq("username", route.params.username)
+const users = await client.from("usernames").select("*").eq("username", route.params.username).single()
 const uid = users.data.id
-const designs = await client.from("designs").select().eq("created_by", uid)
+const designs = await client.from("designs").select("*").eq("created_by", uid)
 const designsData = designs.data
-
 </script>
 
 <template>

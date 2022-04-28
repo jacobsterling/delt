@@ -10,7 +10,7 @@ const client = useSupabaseClient()
 const userLoginModal = ref<InstanceType<typeof UserLoginModal>>()
 
 const navigation = ref([
-  { current: true, href: "#", name: "Showcase" },
+  { current: true, href: "/", name: "Showcase" },
   { current: false, href: "#", name: "FAQ" },
   { current: false, href: "#", name: "About" }
 ])
@@ -83,7 +83,6 @@ const navigation = ref([
                     @click="client.auth.signOut()">Sign out</a>
                   <a v-else href="#" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']"
                     @click="userLoginModal.open">Sign in</a>
-
                   </MenuItem>
                   <MenuItem v-slot="{ active }">
                   <a href="#"

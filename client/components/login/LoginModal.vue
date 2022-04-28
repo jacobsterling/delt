@@ -1,6 +1,5 @@
 <script setup lang="ts">
 const client = useSupabaseClient()
-const router = useRouter()
 const email = ref("")
 const password = ref("")
 
@@ -20,8 +19,7 @@ const submit = async () => {
   })
   if (error) {
     console.log(error)
-  }
-  else {
+  } else {
     visible = false
   }
 }

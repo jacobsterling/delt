@@ -1,8 +1,6 @@
 <script setup lang="ts">
-const user = useSupabaseUser()
 const client = useSupabaseClient()
 const router = useRouter()
-
 const email = ref("")
 const password = ref("")
 
@@ -23,6 +21,9 @@ const submit = async () => {
   if (error) {
     console.log(error)
   }
+  else {
+    visible = false
+  }
 }
 
 </script>
@@ -35,8 +36,15 @@ const submit = async () => {
         @keyup.enter="submit" />
       <input v-model="password" placeholder="password" class="rounded-2xl px-4 py-2 m-4 font-size-20 text-1xl"
         @keyup.enter="submit" />
-      <button class="flex-no-shrink text-white py-2 px-4 m-2 rounded bg-teal hover:bg-teal-dark " @click="submit">
-        Login\
+
+      <NuxtLink to="/signup">
+        <button class="flex-no-shrink text-white py-2 px-4 m-2 rounded-2xl bg-teal hover:bg-teal-dark">
+          Sign up
+        </button>
+      </NuxtLink>
+
+      <button class="flex-no-shrink text-white py-2 px-4 m-2 rounded-2xl bg-teal hover:bg-teal-dark" @click="submit">
+        Login
       </button>
     </div>
   </div>

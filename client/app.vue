@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="bg-brand-primary h-screen">
     <AppNavbar />
     <main>
       <NuxtPage />

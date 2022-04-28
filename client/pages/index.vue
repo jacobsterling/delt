@@ -26,7 +26,8 @@ const loadDesigns = async () => {
     <DesignCard :design="design" />
   </div>
   <div class="container mx-auto text-center">
-    <button v-if="status.value" @click="loadDesigns">
+    <button v-if="status.value" @click="loadDesigns"
+      class="flex-no-shrink text-white py-2 px-4 my-2 mx-6 rounded-2xl bg-teal hover:bg-teal-dark">
       Load more designs
     </button>
     <p v-else>

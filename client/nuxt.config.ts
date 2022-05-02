@@ -1,12 +1,9 @@
 import { defineNuxtConfig } from "nuxt"
 
+import { DeltUnocssNuxtOptions } from "./unocss.config"
+
 // https://v3.nuxtjs.org/api/configuration/nuxt.config
 export default defineNuxtConfig({
-  build: {
-    transpile: [
-      "@headlessui/vue"
-    ]
-  },
   css: [
     "@unocss/reset/tailwind.css"
   ],
@@ -19,19 +16,8 @@ export default defineNuxtConfig({
   typescript: {
     shim: false
   },
-  unocss: {
-    theme: {
-      breakpoints: {
-        sm: "640px",
-        xs: "320px"
-      },
-      colors: {
-        brand: {
-          primary: "#1f6ae3" // class="bg-brand-primary"
-        },
-        veryCool: "#0000ff" // class="text-very-cool"
-      }
-    }
+  unocss: DeltUnocssNuxtOptions,
+  vueuse: {
+    ssrHandlers: true
   }
-}
-)
+})

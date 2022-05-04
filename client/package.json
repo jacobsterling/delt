@@ -12,6 +12,7 @@
     "@metamask/onboarding": "^1.0.1",
     "@nuxtjs/eslint-config-typescript": "^9.0.0",
     "@nuxtjs/supabase": "^0.1.10",
+    "@types/mime": "^2.0.3",
     "@typescript-eslint/eslint-plugin": "^5.20.0",
     "@typescript-eslint/parser": "^5.20.0",
     "@unocss/nuxt": "^0.31.13",

@@ -38,7 +38,7 @@ export interface DeltInterface extends utils.Interface {
     "name()": FunctionFragment;
     "owner()": FunctionFragment;
     "ownerOf(uint256)": FunctionFragment;
-    "paytoMint(address,string)": FunctionFragment;
+    "payToMint(address,string)": FunctionFragment;
     "renounceOwnership()": FunctionFragment;
     "safeMint(address,string)": FunctionFragment;
     "safeTransferFrom(address,address,uint256)": FunctionFragment;
@@ -62,7 +62,7 @@ export interface DeltInterface extends utils.Interface {
       | "name"
       | "owner"
       | "ownerOf"
-      | "paytoMint"
+      | "payToMint"
       | "renounceOwnership"
       | "safeMint"
       | "safeTransferFrom(address,address,uint256)"
@@ -100,7 +100,7 @@ export interface DeltInterface extends utils.Interface {
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: "paytoMint",
+    functionFragment: "payToMint",
     values: [string, string]
   ): string;
   encodeFunctionData(
@@ -159,7 +159,7 @@ export interface DeltInterface extends utils.Interface {
   decodeFunctionResult(functionFragment: "name", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "ownerOf", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "paytoMint", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "payToMint", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "renounceOwnership",
     data: BytesLike
@@ -312,7 +312,7 @@ export interface Delt extends BaseContract {
       overrides?: CallOverrides
     ): Promise<[string]>;
 
-    paytoMint(
+    payToMint(
       recipient: string,
       metadataURI: string,
       overrides?: PayableOverrides & { from?: string | Promise<string> }
@@ -403,7 +403,7 @@ export interface Delt extends BaseContract {
 
   ownerOf(tokenId: BigNumberish, overrides?: CallOverrides): Promise<string>;
 
-  paytoMint(
+  payToMint(
     recipient: string,
     metadataURI: string,
     overrides?: PayableOverrides & { from?: string | Promise<string> }
@@ -491,7 +491,7 @@ export interface Delt extends BaseContract {
 
     ownerOf(tokenId: BigNumberish, overrides?: CallOverrides): Promise<string>;
 
-    paytoMint(
+    payToMint(
       recipient: string,
       metadataURI: string,
       overrides?: CallOverrides
@@ -499,7 +499,11 @@ export interface Delt extends BaseContract {
 
     renounceOwnership(overrides?: CallOverrides): Promise<void>;
 
-    safeMint(to: string, uri: string, overrides?: CallOverrides): Promise<void>;
+    safeMint(
+      to: string,
+      uri: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
 
     "safeTransferFrom(address,address,uint256)"(
       from: string,
@@ -621,7 +625,7 @@ export interface Delt extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
-    paytoMint(
+    payToMint(
       recipient: string,
       metadataURI: string,
       overrides?: PayableOverrides & { from?: string | Promise<string> }
@@ -722,7 +726,7 @@ export interface Delt extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
-    paytoMint(
+    payToMint(
       recipient: string,
       metadataURI: string,
       overrides?: PayableOverrides & { from?: string | Promise<string> }

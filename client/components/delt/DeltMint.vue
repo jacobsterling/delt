@@ -1,16 +1,14 @@
 <script setup lang="ts">
 
-import Delt from "../../../defi/artifacts/contracts/delt.sol/Delt.json"
-
-import { ethers, Signer, providers } from 'ethers';
-
-// Import the NFTStorage class and File constructor from the 'nft.storage' package
-import { NFTStorage } from "nft.storage"
-import { containsProp } from "@vueuse/shared";
-
 const { $wallet: wallet } = useNuxtApp()
 
-const mintStatus = await useContract(wallet, "baki")
+const loadingMint = ref<Boolean>(false)
+
+const mint = async (tokenId: string) => {
+  loadingMint.value = true
+  if (wallet) { const { mintStatus, tokenURI } = await useContract(wallet, tokenId) }
+  loadingMint.value = false
+}
 
 </script>
 

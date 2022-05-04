@@ -2,14 +2,13 @@ import { ethers, Signer, providers } from 'ethers';
 
 import { Wallet } from "../plugins/wallet.client"
 
-import Delt from "../../../defi/artifacts/contracts/delt.sol/Delt.json"
+import Delt from "../../defi/artifacts/contracts/delt.sol/Delt.json"
 
 import { NFTStorage } from "nft.storage"
 
-
 type Provider = providers.Provider
 
-export const useUser = async (wallet: Wallet, tokenId: string) => {
+export const useContract = async (wallet: Wallet, tokenId: string) => {
 
   const client = useSupabaseClient()
 

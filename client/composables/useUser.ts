@@ -1,10 +1,8 @@
 
 export const useUser = async (uid: any) => {
-
   const username = ref<string>("")
 
   if (uid) {
-
     const client = useSupabaseClient()
 
     try {
@@ -13,7 +11,6 @@ export const useUser = async (uid: any) => {
       username.value = data.username
 
       // return other username data (account type ?)
-
     } catch (error) {
       console.log(error)
     }

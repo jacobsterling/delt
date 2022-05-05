@@ -1,25 +1,51 @@
 <script setup lang="ts">
 
-const { $wallet: wallet } = useNuxtApp()
+const client = useSupabaseClient()
 
-const loadingMint = ref<Boolean>(false)
+// const { $wallet: wallet } = useNuxtApp()
 
-const mint = async (tokenId: string) => {
-  loadingMint.value = true
-  if (wallet) { const { mintStatus, tokenURI } = await useContract(wallet, tokenId) }
-  loadingMint.value = false
-}
+// const { data: download } = await client
+//     .storage
+//     .from("designs")
+//     .download(`designs/${tokenId}`)
+
+//   image.value = download
+
+// const loadingMint = ref<Boolean>(false)
+
+// const route = useRoute()
+
+// const tokenId = ref<string>(route.path)
+// const { data: design } = await client.from("designs").select("*").eq("slug", tokenId).single()
+
+// const isMinted = ref<Boolean>(false)
+// const tokenURI = ref<String>(undefined)
+
+// if (design.metadata) { isMinted.value = true }
+
+// console.log(tokenId.value)
+
+// const mint = async (design: string) => {
+//   loadingMint.value = true
+//   if (wallet) {
+//     const { mintStatus, tokenURI: uri } = await useContract(wallet, design)
+//     isMinted.value = mintStatus
+//     tokenURI.value = uri
+//   }
+//   loadingMint.value = false
+// }
 
 </script>
 
 <template>
   <div>
-    <!-- <h5>ID # {{ tokenID }}</h5>
-    <button v-if="!isMinted" @click="mintToken">
+    mint
+    <!-- <h5>ID # {{ tokenId }}</h5>
+    <button v-if="!isMinted" @click="mint(tokenId)">
       Mint
     </button>
-    <button v-else @click="getURI">
-      Taken! Show URI
+    <button v-else>
+      {{ tokenURI }}
     </button> -->
   </div>
 </template>

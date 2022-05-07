@@ -3,4 +3,3 @@
 /* eslint-disable */
 import type * as deltSol from "./delt.sol";
 export type { deltSol };
-export type { Manager } from "./Manager";

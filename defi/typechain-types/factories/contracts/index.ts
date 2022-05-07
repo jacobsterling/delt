@@ -2,4 +2,3 @@
 /* tslint:disable */
 /* eslint-disable */
 export * as deltSol from "./delt.sol";
-export { Manager__factory } from "./Manager__factory";

@@ -24,5 +24,3 @@ export type { IERC165 } from "./@openzeppelin/contracts/utils/introspection/IERC
 export { IERC165__factory } from "./factories/@openzeppelin/contracts/utils/introspection/IERC165__factory";
 export type { Delt } from "./contracts/delt.sol/Delt";
 export { Delt__factory } from "./factories/contracts/delt.sol/Delt__factory";
-export type { Manager } from "./contracts/Manager";
-export { Manager__factory } from "./factories/contracts/Manager__factory";

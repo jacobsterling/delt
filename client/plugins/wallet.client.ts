@@ -9,6 +9,7 @@ export interface Wallet {
   init: () => Promise<void>,
   network?: ReturnType<typeof ethers.providers.getNetwork>,
   provider?: ethers.providers.Web3Provider,
+  signer?: ethers.Signer,
   setAccount: (account?: string) => Promise<void>,
   switchNetwork: (config: { chainId: number }) => Promise<void>
 }
@@ -39,6 +40,7 @@ export default defineNuxtPlugin(() => {
       if (window.ethereum === undefined) { return }
 
       wallet.provider = markRaw(new ethers.providers.Web3Provider(window.ethereum))
+      wallet.signer = wallet.provider.getSigner()
       wallet.network = await wallet.provider.getNetwork()
 
       const [account] = await wallet.provider.listAccounts()

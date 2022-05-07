@@ -48,10 +48,6 @@ declare module "hardhat/types/runtime" {
       name: "Delt",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.Delt__factory>;
-    getContractFactory(
-      name: "Manager",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.Manager__factory>;
 
     getContractAt(
       name: "Ownable",
@@ -98,11 +94,6 @@ declare module "hardhat/types/runtime" {
       address: string,
       signer?: ethers.Signer
     ): Promise<Contracts.Delt>;
-    getContractAt(
-      name: "Manager",
-      address: string,
-      signer?: ethers.Signer
-    ): Promise<Contracts.Manager>;
 
     // default types
     getContractFactory(

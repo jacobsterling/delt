@@ -2,7 +2,7 @@
 
 const client = useSupabaseClient()
 
-// const { $wallet: wallet } = useNuxtApp()
+const { $wallet: wallet } = useNuxtApp()
 
 // const { data: download } = await client
 //     .storage
@@ -15,7 +15,8 @@ const client = useSupabaseClient()
 
 // const route = useRoute()
 
-// const tokenId = ref<string>(route.path)
+// const tokenId = ref<string>(undefined)
+
 // const { data: design } = await client.from("designs").select("*").eq("slug", tokenId).single()
 
 // const isMinted = ref<Boolean>(false)
@@ -39,7 +40,7 @@ const client = useSupabaseClient()
 
 <template>
   <div>
-    mint
+    {{ wallet }}
     <!-- <h5>ID # {{ tokenId }}</h5>
     <button v-if="!isMinted" @click="mint(tokenId)">
       Mint

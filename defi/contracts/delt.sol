@@ -19,14 +19,14 @@ contract Delt is ERC721, ERC721URIStorage, Ownable {
         return "ipfs://";
     }
 
-    function safeMint(address to, string memory uri)
+    function safeMint(address recipient, string memory uri)
         public
         onlyOwner
         returns (uint256)
     {
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
-        _safeMint(to, tokenId);
+        _safeMint(recipient, tokenId);
         _setTokenURI(tokenId, uri);
 
         return tokenId;

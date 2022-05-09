@@ -13,6 +13,7 @@ const { ROPSTEN_URL, PRIVATE_KEY } = process.env
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
+
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
   const accounts = await hre.ethers.getSigners();
 
@@ -29,6 +30,7 @@ const config: HardhatUserConfig = {
   paths: {
     artifacts: './artifacts',
   },
+  defaultNetwork: "ropsten",
   networks: {
     ropsten: {
       url: ROPSTEN_URL,
@@ -36,13 +38,5 @@ const config: HardhatUserConfig = {
     },
   },
 }
-// },
-// gasReporter: {
-//   enabled: process.env.REPORT_GAS !== undefined,
-//   currency: "USD",
-// },
-// etherscan: {
-//   apiKey: process.env.ETHERSCAN_API_KEY,
-// },
 
 export default config;

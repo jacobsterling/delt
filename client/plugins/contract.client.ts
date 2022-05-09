@@ -22,7 +22,6 @@ export interface ContractRef {
   contract: ethers.Contract
   contractInterface: ContractInterface,
   contractAddress: string,
-  NFT_STORAGE_KEY: string,
   deployContract: (wallet: Wallet) => void,
   store: () => void,
   updateMetadata: () => void,
@@ -35,10 +34,10 @@ export interface ContractRef {
 export default defineNuxtPlugin(() => {
   // npx hardhat run scripts/deploy.ts --network matic
   // wallet: Wallet, design: Object, image: Blob
+  const { CONTRACT_ADDRESS, NFT_STORAGE_KEY } = useRuntimeConfig()
   const contractRef = reactive<ContractRef>({
-    NFT_STORAGE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweGVjOTlmZTc3NzE5OGY5MDZGNTk1OWNCYWIwMzNmMThEMEVEMzQ2RkUiLCJpc3MiOiJuZnQtc3RvcmFnZSIsImlhdCI6MTY1MTUwMDI2NTc1MCwibmFtZSI6ImRlbHQifQ.TmVhxJwnYJHi2eijCDdg7tYYXo9lPG0dI62usKyW8Pg",
     contract: undefined,
-    contractAddress: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    contractAddress: CONTRACT_ADDRESS,
     contractInterface: Delt.abi,
 
     // creates new contract object (doesnt work server side ??)
@@ -87,11 +86,9 @@ export default defineNuxtPlugin(() => {
         await contractRef.store()
         await contractRef.updateMetadata()
 
-        // const result = await contractRef.contract.payToMint(connection.address, contractRef.metadataURI, {
-        //   value: ethers.utils.parseEther("0.05")
-        // })
-
-        const result = await contractRef.contract.safeMint(connection.address, contractRef.metadataURI)
+        const result = await contractRef.contract.payToMint(connection.address, contractRef.metadataURI, {
+          value: ethers.utils.parseEther("0.0001")
+        })
 
         console.log(result)
         await result.wait()
@@ -106,7 +103,8 @@ export default defineNuxtPlugin(() => {
     // stores the image on the ipfs with tokenId/slug and fixed description
     // gives metadataURI that is used in the contract (may or maynot be correct)
     store: async () => {
-      const api = new NFTStorage({ token: contractRef.NFT_STORAGE_KEY })
+      console.log(NFT_STORAGE_KEY)
+      const api = new NFTStorage({ token: NFT_STORAGE_KEY })
       if (contractRef.tokenId) {
         const metadata = await api.store({
           description: contractRef.description,

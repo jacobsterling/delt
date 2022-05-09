@@ -12,6 +12,13 @@ export default defineNuxtConfig({
     "@nuxtjs/supabase",
     "@unocss/nuxt"
   ],
+  runtimeConfig: {
+    public: {
+      API_KEY: process.env.API_KEY,
+      CONTRACT_ADDRESS: process.env.CONTRACT_ADDRESS,
+      NFT_STORAGE_KEY: process.env.NFT_STORAGE_KEY
+    }
+  },
   telemetry: false,
   typescript: {
     shim: false

@@ -323,7 +323,7 @@ export interface Delt extends BaseContract {
     ): Promise<ContractTransaction>;
 
     safeMint(
-      to: string,
+      recipient: string,
       uri: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
@@ -414,7 +414,7 @@ export interface Delt extends BaseContract {
   ): Promise<ContractTransaction>;
 
   safeMint(
-    to: string,
+    recipient: string,
     uri: string,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
@@ -500,7 +500,7 @@ export interface Delt extends BaseContract {
     renounceOwnership(overrides?: CallOverrides): Promise<void>;
 
     safeMint(
-      to: string,
+      recipient: string,
       uri: string,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
@@ -636,7 +636,7 @@ export interface Delt extends BaseContract {
     ): Promise<BigNumber>;
 
     safeMint(
-      to: string,
+      recipient: string,
       uri: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
@@ -737,7 +737,7 @@ export interface Delt extends BaseContract {
     ): Promise<PopulatedTransaction>;
 
     safeMint(
-      to: string,
+      recipient: string,
       uri: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;

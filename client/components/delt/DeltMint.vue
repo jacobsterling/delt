@@ -30,7 +30,6 @@ const mint = async (design: designObj) => {
   loadingMint.value = true
   const image = await getDesignImage(design.slug)
   if (wallet) {
-    wallet.switchNetwork({ chainId: "0x13881" })
     const mintResult = await contractRef.payToMint(wallet, design, image)
     console.log(mintResult)
     isMinted.value = mintResult

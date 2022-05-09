@@ -8,13 +8,15 @@ export interface Wallet {
   getHexChainId: () => string,
   init: () => Promise<void>,
   network?: ReturnType<typeof ethers.providers.getNetwork>,
-  provider?: ethers.providers.Web3Provider,
+  provider?: ethers.providers.Web3Provider, // | ethers.providers.AlchemyProvider,
   signer?: ethers.Signer,
   setAccount: (account?: string) => Promise<void>,
   switchNetwork: (config: { chainId: string }) => Promise<void>
 }
 
 export default defineNuxtPlugin(() => {
+  const { API_KEY } = useRuntimeConfig()
+
   const wallet = reactive<Wallet>({
     account: undefined,
     accountCompact: undefined,
@@ -39,7 +41,10 @@ export default defineNuxtPlugin(() => {
     init: async () => {
       if (window.ethereum === undefined) { return }
 
+      wallet.switchNetwork({ chainId: "0x3" })
+
       wallet.provider = markRaw(new ethers.providers.Web3Provider(window.ethereum))
+      // wallet.provider = markRaw(new ethers.providers.AlchemyProvider("ropsten", API_KEY))
       wallet.signer = wallet.provider.getSigner()
       wallet.network = await wallet.provider.getNetwork()
 
@@ -65,8 +70,8 @@ export default defineNuxtPlugin(() => {
       const balance = await wallet.provider?.getBalance(wallet.account)
       wallet.balance = ethers.utils.formatEther(balance)
     },
-    switchNetwork: async (config: { chainId: number }) => {
-      if (wallet.network?.chainId === config.chainId) { return }
+    switchNetwork: async (config: { chainId: string }) => {
+      if (wallet.network?.chainId.toString() === config.chainId) { return }
 
       try {
         await wallet.provider?.send("wallet_switchEthereumChain", [config])

@@ -1,11 +1,19 @@
 import { ContractInterface, ethers } from "ethers"
 import { NFTStorage } from "nft.storage"
-import { Wallet } from "wallet.client"
 
 import Delt from "../../defi/artifacts/contracts/delt.sol/Delt.json"
-
+import { Wallet } from "./wallet.client"
 export interface ContractRef {
-  design: object,
+  design: {
+    id: number,
+    created_at: number,
+    created_by: string,
+    owned_by: string,
+    slug: string,
+    published: boolean,
+    metadata: string,
+    metadataURI: string
+  },
   tokenId: string,
   metadataURI?: string,
   // metadata?: Object,
@@ -25,7 +33,7 @@ export interface ContractRef {
 }
 
 export default defineNuxtPlugin(() => {
-  // npx hardhat run scripts/deploy.ts --network localhost
+  // npx hardhat run scripts/deploy.ts --network matic
   // wallet: Wallet, design: Object, image: Blob
   const contractRef = reactive<ContractRef>({
     NFT_STORAGE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweGVjOTlmZTc3NzE5OGY5MDZGNTk1OWNCYWIwMzNmMThEMEVEMzQ2RkUiLCJpc3MiOiJuZnQtc3RvcmFnZSIsImlhdCI6MTY1MTUwMDI2NTc1MCwibmFtZSI6ImRlbHQifQ.TmVhxJwnYJHi2eijCDdg7tYYXo9lPG0dI62usKyW8Pg",
@@ -35,7 +43,7 @@ export default defineNuxtPlugin(() => {
 
     // creates new contract object (doesnt work server side ??)
     deployContract: (wallet: Wallet) => {
-      contractRef.contract = new ethers.Contract(contractRef.contractAddress, contractRef.contractInterface, wallet.signer)
+      contractRef.contract = markRaw(new ethers.Contract(contractRef.contractAddress, contractRef.contractInterface, wallet.signer))
     },
     // description used on ipfs (maybe add created by username ??)
     description: "DELT NFT Design",
@@ -56,27 +64,36 @@ export default defineNuxtPlugin(() => {
     metadataURI: undefined,
 
     // mints the design, brings together all the functions
-    payToMint: async (wallet: Wallet, design: Object, image: Blob) => {
+    payToMint: async (wallet: Wallet, design: typeof contractRef.design, image: Blob) => {
       contractRef.deployContract(wallet)
 
       contractRef.tokenId = design.slug
 
       contractRef.metadataURI = design.metadataURI
 
-      contractRef.image = image
+      contractRef.image = markRaw(image)
 
-      const mintResult = ref<any>(undefined)
+      const mintResult = ref<any>(false)
 
-      if (!contractRef.getMintedStatus(contractRef.metadataURI)) {
+      if (contractRef.metadataURI) {
+        if (contractRef.getMintedStatus(contractRef.metadataURI)) {
+          mintResult.value = true
+        }
+      }
+
+      if (!mintResult.value) {
         const connection = contractRef.contract.connect(wallet.signer)
 
-        contractRef.store()
-        contractRef.updateMetadata()
+        await contractRef.store()
+        await contractRef.updateMetadata()
 
-        const result = await contractRef.contract.payToMint(connection.address, contractRef.metadataURI, {
-          value: ethers.utils.parseEther("0.05")
-        })
+        // const result = await contractRef.contract.payToMint(connection.address, contractRef.metadataURI, {
+        //   value: ethers.utils.parseEther("0.05")
+        // })
 
+        const result = await contractRef.contract.safeMint(connection.address, contractRef.metadataURI)
+
+        console.log(result)
         await result.wait()
 
         mintResult.value = result
@@ -115,4 +132,9 @@ export default defineNuxtPlugin(() => {
       }
     }
   })
+  return {
+    provide: {
+      contractRef
+    }
+  }
 })

@@ -2,51 +2,55 @@
 
 const client = useSupabaseClient()
 
-const { $wallet: wallet } = useNuxtApp()
+const { $wallet: wallet, $contractRef: contractRef } = useNuxtApp()
 
-// const { data: download } = await client
-//     .storage
-//     .from("designs")
-//     .download(`designs/${tokenId}`)
+const loadingMint = ref<Boolean>(false)
+const isMinted = ref<Boolean>(false)
 
-//   image.value = download
+const { data: designs } = await client.from("designs").select("*").eq("published", false)
 
-// const loadingMint = ref<Boolean>(false)
+type designObj = typeof designs[0]
 
-// const route = useRoute()
+// if (design.metadataURI) { isMinted.value = true }
 
-// const tokenId = ref<string>(undefined)
+const getDesignImage = async (tokenId: string) => {
+  try {
+    const { data: download, error } = await client
+      .storage
+      .from("designs")
+      .download(`${tokenId}.png`)
+    if (error) { throw error }
+    return download
+  } catch (error) {
+    console.log(error)
+  }
+}
 
-// const { data: design } = await client.from("designs").select("*").eq("slug", tokenId).single()
-
-// const isMinted = ref<Boolean>(false)
-// const tokenURI = ref<String>(undefined)
-
-// if (design.metadata) { isMinted.value = true }
-
-// console.log(tokenId.value)
-
-// const mint = async (design: string) => {
-//   loadingMint.value = true
-//   if (wallet) {
-//     const { mintStatus, tokenURI: uri } = await useContract(wallet, design)
-//     isMinted.value = mintStatus
-//     tokenURI.value = uri
-//   }
-//   loadingMint.value = false
-// }
+const mint = async (design: designObj) => {
+  loadingMint.value = true
+  const image = await getDesignImage(design.slug)
+  if (wallet) {
+    wallet.switchNetwork({ chainId: "0x13881" })
+    const mintResult = await contractRef.payToMint(wallet, design, image)
+    console.log(mintResult)
+    isMinted.value = mintResult
+  }
+  loadingMint.value = false
+}
 
 </script>
 
 <template>
   <div>
-    {{ wallet }}
-    <!-- <h5>ID # {{ tokenId }}</h5>
-    <button v-if="!isMinted" @click="mint(tokenId)">
-      Mint
-    </button>
-    <button v-else>
-      {{ tokenURI }}
-    </button> -->
+    <div class="justify-center flex-no-shrink w-90%">
+      <DesignCard v-for="design in designs" :key="design.id" :design="design">
+        <button v-if="!isMinted" class="d-button-emerald" @click="mint(design)">
+          Mint
+        </button>
+        <button v-else class="d-button-red">
+          {{ design.metadataURI }}
+        </button>
+      </DesignCard>
+    </div>
   </div>
 </template>

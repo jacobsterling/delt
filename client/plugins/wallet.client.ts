@@ -11,7 +11,7 @@ export interface Wallet {
   provider?: ethers.providers.Web3Provider,
   signer?: ethers.Signer,
   setAccount: (account?: string) => Promise<void>,
-  switchNetwork: (config: { chainId: number }) => Promise<void>
+  switchNetwork: (config: { chainId: string }) => Promise<void>
 }
 
 export default defineNuxtPlugin(() => {

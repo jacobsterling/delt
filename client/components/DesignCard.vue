@@ -24,9 +24,12 @@ const owned_by = await useUser(props.design.owned_by)
   <div class="p-2 m-5 shadow-2xl rounded-2xl w-280px h-320px">
     <div @click="$router.push(`/${created_by.username}/${props.design.slug}`)">
       <h1>{{ props.design.slug }}</h1>
-      <img src="~/assets/baki.jpg" class="w-100%" />
+      <img src="~/assets/baki.jpg" class="w-100%">
     </div>
     <footer class="text-xs border-top my-2">
+      <aside class="float-right">
+        <slot />
+      </aside>
       <ul>
         <li>
           <NuxtLink :to="created_by.username">

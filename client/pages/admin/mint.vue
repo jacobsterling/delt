@@ -1,7 +1,5 @@
 <template>
   <div>
-    <ClientOnly>
-      <DeltMint />
-    </ClientOnly>
+    <DeltMint />
   </div>
 </template>

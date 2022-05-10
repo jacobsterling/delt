@@ -11,28 +11,22 @@ export interface ContractRef {
     owned_by: string,
     slug: string,
     published: boolean,
-    metadata: string,
-    metadataURI: string
   },
-  tokenId: string,
-  metadataURI?: string,
-  // metadata?: Object,
-  image: Blob,
   description?: string
   contract: ethers.Contract
   contractInterface: ContractInterface,
   contractAddress: string,
   deployContract: (wallet: Wallet) => void,
-  store: () => void,
-  updateMetadata: () => void,
-  getMintedStatus: (metadata: string) => Promise<Boolean>,
+  store: (image: Blob, description: string, name: string) => void,
+  updateMetadata: (mintResult: Boolean, slug: string) => void,
+  getMintedStatus: (metadata: string, wallet: Wallet) => Promise<Boolean>,
   payToMint: (wallet: Wallet, design: Object, image: Blob) => Promise<any>,
-  getURI: () => Promise<string>,
+  getURI: (tokenId: number) => Promise<string>,
   // safeMint: () => Promise<void>
 }
 
 export default defineNuxtPlugin(() => {
-  // npx hardhat run scripts/deploy.ts --network matic
+  // npx hardhat run scripts/deploy.ts --network ropsten
   // wallet: Wallet, design: Object, image: Blob
   const { CONTRACT_ADDRESS, NFT_STORAGE_KEY } = useRuntimeConfig()
   const contractRef = reactive<ContractRef>({
@@ -45,89 +39,66 @@ export default defineNuxtPlugin(() => {
       contractRef.contract = markRaw(new ethers.Contract(contractRef.contractAddress, contractRef.contractInterface, wallet.signer))
     },
     // description used on ipfs (maybe add created by username ??)
-    description: "DELT NFT Design",
+
     // supabase design object
     design: undefined,
 
     // get minted status from passed URI, assumes contract is deployed
-    getMintedStatus: async (metadataURI: string) => {
+    getMintedStatus: async (metadataURI: string, wallet: Wallet) => {
+      if (!metadataURI) { return false }
+      if (!contractRef.contract) { contractRef.deployContract(wallet) }
       return await contractRef.contract.isContentOwned(metadataURI) as Boolean
     },
 
     // get URI from contract
-    getURI: async () => {
-      return await contractRef.contract.tokenURI()
+    getURI: async (tokenId: number) => {
+      return await contractRef.contract.tokenURI(tokenId)
     },
-
-    image: undefined,
-    metadataURI: undefined,
 
     // mints the design, brings together all the functions
     payToMint: async (wallet: Wallet, design: typeof contractRef.design, image: Blob) => {
       contractRef.deployContract(wallet)
 
-      contractRef.tokenId = design.slug
+      const metadataURI = ref<string>(undefined)
+      try { metadataURI.value = await contractRef.getURI(design.id) } catch { }
 
-      contractRef.metadataURI = design.metadataURI
-
-      contractRef.image = markRaw(image)
-
-      const mintResult = ref<any>(false)
-
-      if (contractRef.metadataURI) {
-        if (contractRef.getMintedStatus(contractRef.metadataURI)) {
-          mintResult.value = true
-        }
-      }
-
-      if (!mintResult.value) {
+      if (!metadataURI.value) {
         const connection = contractRef.contract.connect(wallet.signer)
 
-        await contractRef.store()
-        await contractRef.updateMetadata()
+        metadataURI.value = await contractRef.store(image, design.slug)
 
-        const result = await contractRef.contract.payToMint(connection.address, contractRef.metadataURI, {
-          value: ethers.utils.parseEther("0.0001")
+        const result = await contractRef.contract.payToMint(connection.address, metadataURI.value, {
+          value: ethers.utils.parseEther("0.04")
         })
 
-        console.log(result)
-        await result.wait()
-
-        mintResult.value = result
-      } else {
-        mintResult.value = "Assumed to be already minted"
+        const newItemId = await result.wait()
+        console.log(newItemId)
+        await contractRef.updateMetadata(true, design.slug)
       }
-      return mintResult.value
+
+      return true
     },
 
     // stores the image on the ipfs with tokenId/slug and fixed description
     // gives metadataURI that is used in the contract (may or maynot be correct)
-    store: async () => {
-      console.log(NFT_STORAGE_KEY)
+    store: async (image: Blob, name: string, description: string = "DELT NFT Design") => {
       const api = new NFTStorage({ token: NFT_STORAGE_KEY })
-      if (contractRef.tokenId) {
-        const metadata = await api.store({
-          description: contractRef.description,
-          image: contractRef.image,
-          name: contractRef.tokenId
-        })
-        contractRef.metadataURI = metadata.url.replace(/^ipfs:\/\//, "")
-        // const metadataURI = ref<string>(`${NFT_STORAGE_KEY}/${tokenID}.json`)
-        // const imageURI = ref<string>(`ipfs://${NFT_STORAGE_KEY}/${tokenId}.png`)
-      }
+      const metadata = await api.store({
+        description,
+        image,
+        name
+      })
+      return metadata.url.replace(/^ipfs:\/\//, "")
+      // const metadataURI = ref<string>(`${NFT_STORAGE_KEY}/${tokenID}.json`)
+      // const imageURI = ref<string>(`ipfs://${NFT_STORAGE_KEY}/${tokenId}.png`)
     },
 
-    // NFT name, would like to be equal to design slug but idk how naming convention works
-    tokenId: undefined,
-
     // updates metadataURI in supabase (should we use all metadata from store() ??
-    updateMetadata: async () => {
-      if (contractRef.metadataURI) {
-        await useSupabaseClient()
-          .from("designs")
-          .update({ metadataURI: contractRef.metadataURI })
-          .eq("slug", contractRef.tokenId)
-      }
+    updateMetadata: async (mintResult: Boolean, slug: string) => {
+      await useSupabaseClient()
+        .from("designs")
+        .update({ published: mintResult })
+        .eq("slug", slug)
     }
   })
   return {

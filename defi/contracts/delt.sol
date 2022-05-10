@@ -38,7 +38,7 @@ contract Delt is ERC721, ERC721URIStorage, Ownable {
         returns (uint256)
     {
         require(existingURIs[metadataURI] != 1, "NFT already minted");
-        require(msg.value >= 0.05 ether, "you need to payup");
+        require(msg.value >= 0.0001 ether, "you need to payup");
 
         uint256 newItemId = _tokenIdCounter.current();
         _tokenIdCounter.increment();

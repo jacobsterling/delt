@@ -13,12 +13,12 @@ type designObj = typeof designs[0]
 
 // if (design.metadataURI) { isMinted.value = true }
 
-const getDesignImage = async (tokenId: string) => {
+const getDesignImage = async (slug: string) => {
   try {
     const { data: download, error } = await client
       .storage
       .from("designs")
-      .download(`${tokenId}.png`)
+      .download(`${slug}.png`)
     if (error) { throw error }
     return download
   } catch (error) {
@@ -31,7 +31,6 @@ const mint = async (design: designObj) => {
   const image = await getDesignImage(design.slug)
   if (wallet) {
     const mintResult = await contractRef.payToMint(wallet, design, image)
-    console.log(mintResult)
     isMinted.value = mintResult
   }
   loadingMint.value = false
@@ -47,7 +46,7 @@ const mint = async (design: designObj) => {
           Mint
         </button>
         <button v-else class="d-button-red">
-          {{ design.metadataURI }}
+          Minted
         </button>
       </DesignCard>
     </div>

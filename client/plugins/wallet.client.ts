@@ -15,8 +15,6 @@ export interface Wallet {
 }
 
 export default defineNuxtPlugin(() => {
-  const { API_KEY } = useRuntimeConfig()
-
   const wallet = reactive<Wallet>({
     account: undefined,
     accountCompact: undefined,

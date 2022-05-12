@@ -1,7 +1,7 @@
 
 export const useUser = async (uid: any) => {
-  const username = ref<string>("")
-
+  const username = ref<string>(undefined)
+  const type = ref<string>(undefined)
   if (uid) {
     const client = useSupabaseClient()
 
@@ -17,6 +17,7 @@ export const useUser = async (uid: any) => {
   }
 
   return {
+    type: type.value,
     username: username.value
   }
 }

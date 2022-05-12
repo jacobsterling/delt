@@ -3,15 +3,36 @@ import { Disclosure, DisclosureButton, DisclosurePanel } from "@headlessui/vue"
 import { MenuIcon, SearchIcon, XIcon } from "@heroicons/vue/outline"
 import { breakpointsTailwind } from "@vueuse/core"
 
+import { UserLoginModal } from "#components"
+
+const user = useSupabaseUser()
+const client = useSupabaseClient()
+
+const { $wallet: wallet } = useNuxtApp()
+const accountCompact = ref<string>("Connect Wallet")
+
+if (wallet) {
+  if (wallet.accountCompact) {
+    accountCompact.value = wallet.accountCompact
+  }
+}
+
+const connectWallet = () => {
+  if (!wallet) { wallet.connect() }
+}
+
 const { smaller } = useBreakpoints(breakpointsTailwind)
 const showMobileToggle = smaller("md")
 
 const header = ref<HTMLElement | null>(null)
 const { y } = useWindowScroll()
+
+const userLoginModal = ref<InstanceType<typeof UserLoginModal>>()
 </script>
 
 <template>
   <div>
+    <UserLoginModal ref="userLoginModal" />
     <header ref="header" :class="[y >= header?.getBoundingClientRect()?.height ? 'd-header-sticky' : '', 'd-header']">
       <Disclosure v-slot="{ open }" as="nav" class="d-header-items">
         <DisclosureButton v-if="showMobileToggle" class="d-header-mobile-toggle">
@@ -43,17 +64,18 @@ const { y } = useWindowScroll()
           </NuxtLink>
         </div>
         <div class="d-header-item hidden md:flex">
-          <DeltButton class="d-button-emerald">
-            Sign Up
+          <DeltButton v-if="user" class="d-button-zinc" @click="client.auth.signOut()">
+            Sign Out
           </DeltButton>
-        </div>
-        <div class="d-header-item hidden md:flex">
-          <DeltButton class="d-button-zinc">
+          <DeltButton v-else class="d-button-zinc" @click="userLoginModal.open()">
             Login
+          </DeltButton>
+          <DeltButton class="d-button-emerald mx-1 " @click="connectWallet()">
+            {{ accountCompact }}
           </DeltButton>
         </div>
         <div class="d-header-item">
-          <AppThemeToggle />
+          <DeltThemeToggle />
         </div>
 
         <DisclosurePanel class="md:hidden">
@@ -116,6 +138,7 @@ const { y } = useWindowScroll()
 .page-leave-active {
   transition: opacity 0.25s;
 }
+
 .page-enter,
 .page-leave-to {
   opacity: 0;

@@ -1,13 +1,16 @@
 <script setup lang="ts">
 
 const client = useSupabaseClient()
+const route = useRoute()
 
 const { $wallet: wallet, $contractRef: contractRef } = useNuxtApp()
 
 const loadingMint = ref<Boolean>(false)
 const isMinted = ref<Boolean>(false)
 
-const { data: designs } = await client.from("designs").select("*").eq("published", false)
+const uid = await client.from("usernames").select("*").eq("username", route.params.username).single()
+
+const { data: designs } = await client.from("designs").select("*").eq("published", false).eq("createdBy", uid)
 
 type designObj = typeof designs[0]
 

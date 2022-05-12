@@ -15,8 +15,8 @@ const props = defineProps({
   }
 })
 
-const created_by = await useUser(props.design.created_by)
-const owned_by = await useUser(props.design.owned_by)
+const { username: createdBy } = await useUser(props.design.createdBy)
+const { username: ownedBy } = await useUser(props.design.ownedBy)
 
 const client = useSupabaseClient()
 
@@ -25,7 +25,7 @@ const getDesignImage = (slug: string) => {
     const { data: url, error } = client
       .storage
       .from("designs")
-      .getPublicUrl(`${slug}.png`)
+      .getPublicUrl(`${slug}.jpg`)
     if (error) { throw error }
     return url.publicURL
   } catch (error) {
@@ -39,7 +39,7 @@ const image = getDesignImage(props.design.slug)
 
 <template>
   <div class="p-2 m-5 shadow-2xl rounded-2xl w-280px h-320px">
-    <div @click="$router.push(`/${created_by.username}/${props.design.slug}`)">
+    <div @click="$router.push(`/${createdBy}/${props.design.slug}`)">
       <h1>{{ props.design.slug }}</h1>
       <img :src="image" class="w-100%">
     </div>
@@ -49,13 +49,13 @@ const image = getDesignImage(props.design.slug)
       </aside>
       <ul>
         <li>
-          <NuxtLink :to="created_by.username">
-            Created by: {{ created_by.username }}
+          <NuxtLink :to="createdBy">
+            Created by: {{ createdBy }}
           </NuxtLink>
         </li>
         <li>
-          <NuxtLink :to="owned_by.username">
-            Owned by: {{ owned_by.username }}
+          <NuxtLink :to="ownedBy">
+            Owned by: {{ ownedBy }}
           </NuxtLink>
         </li>
       </ul>

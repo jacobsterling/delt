@@ -7,6 +7,8 @@ const user = useSupabaseUser()
 
 const { username } = await useUser(user.value.id)
 
+if (!username) { router.push("/404") }
+
 const { data: userData } = await client.from("usernames").select("*").eq("username", route.params.username).single()
 
 const tab = ref<string>("Published")
@@ -18,17 +20,17 @@ const { data: designsO } = await client.from("designs").select("*").eq("publishe
 
 <template>
   <div class="inline-flex justify-left">
-    <button v-if="route.params.username === username" @click="router.push(`/${username}/publish`)"
-      class="bg-red-200 hover:bg-red-400 rounded-md p-1 m-2 text-sm">
+    <button v-if="route.params.username === username" class="bg-red-200 hover:bg-red-400 rounded-md p-1 m-2 text-sm"
+      @click="router.push(`/${username}/publish`)">
       Publish Designs
     </button>
-    <button @click="tab = 'Published'" class="bg-red-200 hover:bg-red-400 rounded-md p-1 m-2 text-sm">
+    <button class="bg-red-200 hover:bg-red-400 rounded-md p-1 m-2 text-sm" @click="tab = 'Published'">
       Published
     </button>
-    <button @click="tab = 'Owned'" class="bg-red-200 hover:bg-red-400 rounded-md p-1 m-2 text-sm">
+    <button class="bg-red-200 hover:bg-red-400 rounded-md p-1 m-2 text-sm" @click="tab = 'Owned'">
       Owned
     </button>
-    <button @click="tab = 'Unpublished'" class="bg-red-200 hover:bg-red-400 rounded-md p-1 m-2 text-sm">
+    <button class="bg-red-200 hover:bg-red-400 rounded-md p-1 m-2 text-sm" @click="tab = 'Unpublished'">
       Unpublished
     </button>
   </div>

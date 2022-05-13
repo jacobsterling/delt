@@ -26,7 +26,7 @@ const getDesignImage = (slug: string) => {
     const { data: url, error } = client
       .storage
       .from("designs")
-      .getPublicUrl(`${slug}.jpg`)
+      .getPublicUrl(`${slug}.png`)
     if (error) { throw error }
     return url.publicURL
   } catch (error) {
@@ -47,28 +47,30 @@ if (ownedByType) { ownedByVerified.value = true }
 <template>
   <div class="p-2 m-5 flex-block shadow-2xl rounded-2xl w-280px">
     <div @click="$router.push(`/${createdBy}/${props.design.slug}`)">
-      <h1>{{ props.design.slug }}</h1>
-      <!-- <img :src="image" height="200"> -->
+      <img :src="image" height="200">
     </div>
-    <footer class="text-xs border-top my-2 flex justify-around">
-      <ul>
-        <li class="flex my-1">
+    <footer class="text-xs border-top my-1 flex justify-around content-center">
+      <ul class="grid justify-items-start">
+        <li class="text-base">
+          <h1>{{ props.design.slug }}</h1>
+        </li>
+        <li>
           <NuxtLink :to="createdBy">
             <div class="flex-inline">
               Created by:
               <img :src="createdByPp || '../../assets/knight-helmet.svg'" size="5px" class="d-icon-5 flex">
               {{ createdBy || createdByAcc }}
-              <BadgeCheckIcon v-if="createdByVerified" class="d-icon-4 flex blue mx-1" />
+              <BadgeCheckIcon v-if="createdByVerified" class="d-icon-4 flex mx-1" />
             </div>
           </NuxtLink>
         </li>
-        <li class="flex my-1">
+        <li>
           <NuxtLink :to="ownedBy">
             <div class="flex-inline">
               Owned by:
               <img :src="ownedByPp || '../../assets/knight-helmet.svg'" size="5px" class="d-icon-5 flex">
               {{ ownedBy || ownedByAcc }}
-              <BadgeCheckIcon v-if="ownedByVerified" class="d-icon-4 flex blue mx-1" />
+              <BadgeCheckIcon v-if="ownedByVerified" class="d-icon-4 flex mx-1" />
             </div>
           </NuxtLink>
         </li>

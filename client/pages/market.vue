@@ -22,26 +22,30 @@ const loadDesigns = async () => {
 </script>
 
 <template>
-  <div class="justify-center flex-no-shrink w-90%">
+  <div class="justify-center flex-wrap w-90%">
     <DesignCard v-for="design in designs" :design="design">
-      <div class="flex-block">
-        <DeltButton class="d-button-emerald p-1 flex">
-          <div class="flex-inline justify-around align-center">
-            <img src="../assets/ethereum.svg" size="5px" class="d-icon-5 flex">
-            <div class="flex text-center">
-              {{ design.ethPrice }}
+      <ul class="grid justify-items-end my-2">
+        <li>
+          <DeltButton class="d-button-emerald p-1 flex">
+            <div class="flex-inline justify-between align-center">
+              <img src="../assets/ethereum.svg" size="5px" class="d-icon-5 flex">
+              <div class="flex text-center">
+                {{ design.ethPrice }}
+              </div>
             </div>
-          </div>
-        </DeltButton>
-        <DeltButton class="d-button-cyan p-1 flex my-1">
-          <div class="flex-inline justify-around align-center">
-            <img src="../assets/t-shirt.svg" size="5px" class="d-icon-5 flex">
-            <div class="flex text-center">
-              {{ design.price }}
+          </DeltButton>
+        </li>
+        <li>
+          <DeltButton class="d-button-cyan p-1 flex my-1">
+            <div class="flex-inline justify-between align-center">
+              <img src="../assets/t-shirt.svg" size="5px" class="d-icon-5 flex">
+              <div class="flex text-center">
+                {{ design.price }}
+              </div>
             </div>
-          </div>
-        </DeltButton>
-      </div>
+          </DeltButton>
+        </li>
+      </ul>
     </DesignCard>
     <footer class="w-100% justify-center">
       <DeltButton v-if="status" class="d-button-cyan flex" @click="loadDesigns">

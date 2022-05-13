@@ -1,11 +1,11 @@
 <script setup lang="ts">
 useHead({
-  title: "FAQ"
+  title: "Roadmap"
 })
 </script>
 
 <template>
   <p style="height: 1000px;">
-    FAQ
+    Roadmap
   </p>
 </template>

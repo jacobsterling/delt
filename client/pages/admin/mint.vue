@@ -46,6 +46,11 @@ const mint = async (design: designObj) => {
 
 <template>
   <div>
+    <ClientOnly>
+      <NuxtLink :href="`https://ropsten.etherscan.io/address/${contractRef.contractAddress}`" class="d-button-emerald">
+        Pointed at contract: {{ contractRef.contractAddress }}
+      </NuxtLink>
+    </ClientOnly>
     <div class="justify-center flex-no-shrink w-90%">
       <DesignCard v-for="design in designs" :key="design.id" :design="design">
         <button v-if="!isMinted" class="d-button-emerald" @click="mint(design)">

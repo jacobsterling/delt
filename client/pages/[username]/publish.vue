@@ -3,6 +3,19 @@
 const client = useSupabaseClient()
 const user = useSupabaseUser()
 const router = useRouter()
+const route = useRoute()
+
+const account = ref<string>(undefined)
+const username = ref<string>(undefined)
+
+if (!user.value) { router.push("/") } else {
+  const { account: accountRef, username: usernameRef } = await useUser(user.value.id)
+
+  account.value = accountRef
+  username.value = usernameRef
+
+  if (username.value !== route.params.username) { router.push("/") }
+}
 
 const loadingU = ref<Boolean>(false)
 
@@ -21,14 +34,12 @@ const upload = async () => {
       .from("designs")
       .insert([
         {
-          createdBy: user.value.id,
+          createdBy: account.value || username.value,
           description: description.value,
-          ownedBy: user.value.id,
           slug: slug.value
         }
       ])
-    const { username } = await useUser(user.value.id)
-    router.push(`/${username}`)
+    router.push(`/${username.value}`)
     if (designError) { throw new Error(designError.message) }
   } catch (Error) { console.log(Error) } finally { loadingU.value = false }
 }
@@ -51,6 +62,7 @@ const onImageUpload = (e: any) => {
 
 <template>
   <div class="flex-block">
+    <input class="flex-block">
     <input v-model="slug" placeholder="Design name" type="text" class="flex m-2">
     <img ref="img" :src="image" height="100px" width="150px">
     <input ref="fileInput" type="file" class="flex m-2" @change="onImageUpload">

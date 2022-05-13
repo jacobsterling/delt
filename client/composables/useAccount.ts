@@ -1,8 +1,7 @@
-
-export const useUser = async (uid: any) => {
+export const useAccount = async (account: string) => {
   const username = ref<string>(undefined)
   const type = ref<string>(undefined)
-  const account = ref<string>(undefined)
+  const accountCompact = `${account.substring(0, 4)}...${account.substring(account.length - 4)}`
   const file = ref<Blob>(undefined)
   const imageURL = ref<Object>(undefined)
   const client = useSupabaseClient()
@@ -24,13 +23,12 @@ export const useUser = async (uid: any) => {
     reader.readAsDataURL(file.value)
   }
 
-  if (uid) {
+  if (account) {
     try {
-      const { data, error } = await client.from("usernames").select("*").eq("id", uid).single()
+      const { data, error } = await client.from("usernames").select("*").eq("account", account).single()
       if (error) { throw error }
       username.value = data.username
       type.value = data.type
-      account.value = data.account
 
       await getProfilePicture(username.value)
 
@@ -41,7 +39,7 @@ export const useUser = async (uid: any) => {
   }
 
   return {
-    account: account.value,
+    accountCompact,
     imageURL: imageURL.value,
     type: type.value,
     username: username.value

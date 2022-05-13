@@ -1,20 +1,30 @@
 <script setup lang="ts">
 
 const client = useSupabaseClient()
+const user = useSupabaseUser()
+const router = useRouter()
 const route = useRoute()
+
+if (!user.value) { router.push("/") } else {
+  const { username, type } = await useUser(user.value.id)
+
+  if (username !== route.params.username) {
+    if (type !== "admin") {
+      router.push("/")
+    }
+  }
+}
 
 const { $wallet: wallet, $contractRef: contractRef } = useNuxtApp()
 
 const loadingMint = ref<Boolean>(false)
 const isMinted = ref<Boolean>(false)
 
-const uid = await client.from("usernames").select("*").eq("username", route.params.username).single()
+const { data: uid } = await client.from("usernames").select("*").eq("username", route.params.username).single()
 
-const { data: designs } = await client.from("designs").select("*").eq("published", false).eq("createdBy", uid)
+const { data: designs } = await client.from("designs").select("*").eq("published", false).eq("createdBy", uid.id)
 
 type designObj = typeof designs[0]
-
-// if (design.metadataURI) { isMinted.value = true }
 
 const getDesignImage = async (slug: string) => {
   try {
@@ -43,7 +53,12 @@ const mint = async (design: designObj) => {
 
 <template>
   <div>
-    <div class="justify-center flex-no-shrink w-90%">
+    <ClientOnly>
+      <NuxtLink :href="`https://ropsten.etherscan.io/address/${contractRef.contractAddress}`" class="d-button-emerald">
+        Pointed at contract: {{ contractRef.contractAddress }}
+      </NuxtLink>
+    </ClientOnly>
+    <div class="justify-center flex-inline flex-no-shrink w-90%">
       <DesignCard v-for="design in designs" :key="design.id" :design="design">
         <button v-if="!isMinted" class="d-button-emerald" @click="mint(design)">
           Mint

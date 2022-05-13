@@ -20,8 +20,9 @@ export interface ContractRef {
   contractAddress: string,
   deployContract: (wallet: Wallet) => void,
   store: (image: Blob, description: string, name: string) => void,
-  updateMetadata: (tokenId: number, mintResult: Boolean, id: number) => void,
+  updateSupabase: (tokenId: number, mintResult: Boolean, id: number, wallet: Wallet) => void,
   getMintedStatus: (metadata: string, wallet: Wallet) => Promise<Boolean>,
+  getContractAddress: () => string,
   payToMint: (wallet: Wallet, design: Object, image: Blob) => Promise<any>,
   getURI: (tokenId: number) => Promise<string>,
   // safeMint: () => Promise<void>
@@ -30,10 +31,10 @@ export interface ContractRef {
 export default defineNuxtPlugin(() => {
   // npx hardhat run scripts/deploy.ts --network ropsten
   // wallet: Wallet, design: Object, image: Blob
-  const { CONTRACT_ADDRESS, NFT_STORAGE_KEY } = useRuntimeConfig()
+  const { NFT_STORAGE_KEY } = useRuntimeConfig()
   const contractRef = reactive<ContractRef>({
     contract: undefined,
-    contractAddress: CONTRACT_ADDRESS,
+    contractAddress: "0x9abD298a857531658729dDd4568C26f86bBfDc6B",
     contractInterface: Delt.abi,
 
     // creates new contract object (doesnt work server side ??)
@@ -44,6 +45,8 @@ export default defineNuxtPlugin(() => {
 
     // supabase design object
     design: undefined,
+
+    getContractAddress: () => { return contractRef.contractAddress },
 
     // get minted status from passed URI, assumes contract is deployed
     getMintedStatus: async (metadataURI: string, wallet: Wallet) => {
@@ -75,7 +78,7 @@ export default defineNuxtPlugin(() => {
 
         const newItemId = await result.wait()
 
-        await contractRef.updateMetadata(newItemId, true, design.id)
+        await contractRef.updateSupabase(newItemId, true, design.id, wallet)
 
         return true
       } else { return false }
@@ -84,32 +87,29 @@ export default defineNuxtPlugin(() => {
     // stores the image on the ipfs with tokenId/slug and fixed description
     // gives metadataURI that is used in the contract (may or maynot be correct)
     store: async (image: Blob, design: typeof contractRef.design) => {
-      const createdBy = ref<string>(undefined)
-      const { username } = await useUser(design.createdBy)
-      if (!username) {
-        createdBy.value = design.createdBy
-      }
+      const { username, accountCompact } = await useAccount(design.createdBy)
       const api = new NFTStorage({ token: NFT_STORAGE_KEY })
       const metadata = await api.store({
         description: design.description,
         image,
         name: design.slug,
         properties: {
-          createdBy: { username: createdBy },
-          origin: `https://delt/${createdBy}/${design.slug}`,
+          createdBy: { account: design.createdBy, username: username || accountCompact },
+          origin: `https://delt/${username}/${design.slug}`,
           type: "NFT"
         }
       })
+
       return metadata.url.replace(/^ipfs:\/\//, "")
       // const metadataURI = ref<string>(`${NFT_STORAGE_KEY}/${tokenID}.json`)
       // const imageURI = ref<string>(`ipfs://${NFT_STORAGE_KEY}/${tokenId}.png`)
     },
 
     // updates metadataURI in supabase (should we use all metadata from store() ??
-    updateMetadata: async (tokenId: number, mintResult: Boolean, id: number) => {
+    updateSupabase: async (tokenId: number, mintResult: Boolean, id: number, wallet: Wallet) => {
       await useSupabaseClient()
         .from("designs")
-        .update({ published: mintResult, tokenId })
+        .update({ createdBy: wallet.account, ownedBy: wallet.account, published: mintResult, tokenId })
         .eq("id", id)
     }
   })

@@ -8,40 +8,37 @@ const loading = ref(false)
 const reset = async () => {
   try {
     if (password.value !== passwordConfirm.value) {
-      throw new Error("Passwords do not match");
+      throw new Error("Passwords do not match")
     }
 
     loading.value = true
 
     const { error } = await client.auth.update({
       email: user.value.email,
-      password: password.value,
+      password: password.value
     })
 
     if (error) { throw error }
-
   } catch (error) {
-
     alert(error.error_description || error.message)
-
   } finally {
     loading.value = false
   }
 }
-</script>  
-    
+</script>
+
 <template>
   <ul class="justify-items-start">
     <li>
       <input v-model="password" placeholder="password" class="rounded-2xl px-4 py-2 m-4 font-size-20 text-1xl"
-        type="password" required />
+        type="password" required>
     </li>
     <li>
       <input v-model="passwordConfirm" placeholder="confirm password" required
-        class="rounded-2xl px-4 py-2 m-4 font-size-20  text-1xl" type="password" />
+        class="rounded-2xl px-4 py-2 m-4 font-size-20  text-1xl" type="password">
     </li>
     <li>
-      <button @click="reset" class="border rounded-2xl px-4 py-2 m-4 font-size-20 text-1xl content-center">
+      <button class="border rounded-2xl px-4 py-2 m-4 font-size-20 text-1xl content-center" @click="reset">
         <svg v-if="loading" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg"
           fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />

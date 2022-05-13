@@ -48,14 +48,11 @@ const userLoginModal = ref<InstanceType<typeof UserLoginModal>>()
           </h1>
         </div>
         <div class="d-header-links hidden md:flex">
-          <NuxtLink to="/Showcase" class="d-header-link d-link-emerald">
-            Showcase
+          <NuxtLink to="/Market" class="d-header-link d-link-emerald">
+            Market
           </NuxtLink>
-          <NuxtLink to="/FAQ" class="d-header-link d-link-emerald">
-            FAQ
-          </NuxtLink>
-          <NuxtLink to="/About" class="d-header-link d-link-emerald">
-            About
+          <NuxtLink to="/Roadmap" class="d-header-link d-link-emerald">
+            Roadmap
           </NuxtLink>
         </div>
         <div class="d-header-item hidden md:flex">
@@ -71,7 +68,12 @@ const userLoginModal = ref<InstanceType<typeof UserLoginModal>>()
             Login
           </DeltButton>
           <DeltButton class="d-button-emerald mx-1 " @click="connectWallet()">
-            {{ accountCompact }}
+            <div class="flex-inline justify-around">
+              <img src="../assets/metamask.svg" size="5px" class="d-icon-5 flex mr-2">
+              <div class="flex">
+                {{ accountCompact }}
+              </div>
+            </div>
           </DeltButton>
         </div>
         <div class="d-header-item">

@@ -4,21 +4,21 @@ const client = useSupabaseClient()
 const route = useRoute()
 const router = useRouter()
 const { $wallet: wallet, $contractRef: contractRef } = useNuxtApp()
-const { data: design } = await client.from("designs").select("*").eq("published", true).eq("slug", route.params.slug).single()
+const { data: item } = await client.from("items").select("*").eq("published", true).eq("slug", route.params.slug).single()
 
-if (!design) { router.push("/404") }
+if (!item) { router.push("/404") }
 
-const { username } = await useUser(design.createdBy)
+const { username } = await useUser(item.ownedBy)
 
-if (username !== route.params.username) { router.push(`/${username}/${design.slug}`) }
+if (username !== route.params.username) { router.push(`/${username}/${item.slug}`) }
 
-const { data: url } = client.storage.from("designs").getPublicUrl(`${design.slug}.jpg`)
+const { data: url } = client.storage.from("items").getPublicUrl(`${item.slug}.jpg`)
 
 const metadataURI = ref<string>("Connect wallet to see metadataURI")
 
 if (wallet) {
   contractRef.deployContract(wallet)
-  metadataURI.value = await contractRef.getURI(design.tokenId)
+  metadataURI.value = await contractRef.getURI(item.tokenId)
 }
 
 </script>
@@ -26,7 +26,7 @@ if (wallet) {
 <template>
   <div>
     <img :src="url.publicURL" height="100px" width="200px">
-    {{ design }}
+    {{ item }}
     {{ metadataURI }}
   </div>
 </template>

@@ -22,15 +22,15 @@ const isMinted = ref<Boolean>(false)
 
 const { data: uid } = await client.from("usernames").select("*").eq("username", route.params.username).single()
 
-const { data: designs } = await client.from("designs").select("*").eq("published", false).eq("createdBy", uid.id)
+const { data: items } = await client.from("items").select("*").eq("published", false).eq("createdBy", uid.id)
 
-type designObj = typeof designs[0]
+type itemObj = typeof items[0]
 
-const getDesignImage = async (slug: string) => {
+const getitemImage = async (slug: string) => {
   try {
     const { data: download, error } = await client
       .storage
-      .from("designs")
+      .from("items")
       .download(`${slug}.png`)
     if (error) { throw error }
     return download
@@ -39,11 +39,11 @@ const getDesignImage = async (slug: string) => {
   }
 }
 
-const mint = async (design: designObj) => {
+const mint = async (item: itemObj) => {
   loadingMint.value = true
-  const image = await getDesignImage(design.slug)
+  const image = await getitemImage(item.slug)
   if (wallet) {
-    const mintResult = await contractRef.payToMint(wallet, design, image)
+    const mintResult = await contractRef.payToMint(wallet, item, image)
     isMinted.value = mintResult
   }
   loadingMint.value = false
@@ -59,14 +59,14 @@ const mint = async (design: designObj) => {
       </NuxtLink>
     </ClientOnly>
     <div class="justify-center flex-inline flex-no-shrink w-90%">
-      <DesignCard v-for="design in designs" :key="design.id" :design="design">
-        <button v-if="!isMinted" class="d-button-emerald" @click="mint(design)">
+      <itemCard v-for="item in items" :key="item.id" :item="item">
+        <button v-if="!isMinted" class="d-button-emerald" @click="mint(item)">
           Mint
         </button>
         <button v-else class="d-button-red">
           Minted
         </button>
-      </DesignCard>
+      </itemCard>
     </div>
   </div>
 </template>

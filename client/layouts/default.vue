@@ -18,7 +18,7 @@ if (wallet) {
 }
 
 const connectWallet = () => {
-  if (!wallet) { wallet.connect() }
+  if (wallet) { wallet.connect() }
 }
 
 const { smaller } = useBreakpoints(breakpointsTailwind)

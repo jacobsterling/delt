@@ -128,7 +128,7 @@ contract DeltItems is
         string[] memory _attributes,
         string[] memory _statKeys,
         int32[] memory _statValues
-    ) public onlyRole(MINTER_ROLE) {
+    ) private onlyRole(MINTER_ROLE) {
         require(
             _statKeys.length == _statValues.length,
             "Keys length != values length"

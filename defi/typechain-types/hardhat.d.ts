@@ -121,10 +121,6 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IERC165__factory>;
     getContractFactory(
-      name: "Delt",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.Delt__factory>;
-    getContractFactory(
       name: "DeltItems",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.DeltItems__factory>;
@@ -264,11 +260,6 @@ declare module "hardhat/types/runtime" {
       address: string,
       signer?: ethers.Signer
     ): Promise<Contracts.IERC165>;
-    getContractAt(
-      name: "Delt",
-      address: string,
-      signer?: ethers.Signer
-    ): Promise<Contracts.Delt>;
     getContractAt(
       name: "DeltItems",
       address: string,

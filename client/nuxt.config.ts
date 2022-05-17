@@ -23,6 +23,7 @@ export default defineNuxtConfig({
   typescript: {
     shim: false
   },
+
   unocss: DeltUnocssNuxtOptions,
   vueuse: {
     ssrHandlers: true

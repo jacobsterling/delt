@@ -60,7 +60,5 @@ export type { ERC165 } from "./@openzeppelin/contracts/utils/introspection/ERC16
 export { ERC165__factory } from "./factories/@openzeppelin/contracts/utils/introspection/ERC165__factory";
 export type { IERC165 } from "./@openzeppelin/contracts/utils/introspection/IERC165";
 export { IERC165__factory } from "./factories/@openzeppelin/contracts/utils/introspection/IERC165__factory";
-export type { Delt } from "./contracts/delt.sol/Delt";
-export { Delt__factory } from "./factories/contracts/delt.sol/Delt__factory";
 export type { DeltItems } from "./contracts/DeltItems";
 export { DeltItems__factory } from "./factories/contracts/DeltItems__factory";

@@ -1,13 +1,18 @@
 <script setup lang="ts">
 useHead({
-  title: "Home"
+  title: "Delt"
 })
+
+const downloaded = ref<boolean>(false)
+
+const game = await import("../../delt/game.js")
+
+downloaded.value = true
+
+await game.launch("containerId")
+
 </script>
 
 <template>
-  <div>
-    <p style="height: 10000px;">
-      Index
-    </p>
-  </div>
+  <div v-if="downloaded" ref="containerId" />
 </template>

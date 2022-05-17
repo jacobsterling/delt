@@ -39,7 +39,6 @@ export interface DeltItemsInterface extends utils.Interface {
     "awardItem(address,string,string[],string[],int32[],string)": FunctionFragment;
     "balanceOf(address)": FunctionFragment;
     "burn(uint256)": FunctionFragment;
-    "createItem(uint256,string,string[],string[],int32[])": FunctionFragment;
     "delegate(address)": FunctionFragment;
     "delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32)": FunctionFragment;
     "delegates(address)": FunctionFragment;
@@ -100,7 +99,6 @@ export interface DeltItemsInterface extends utils.Interface {
       | "awardItem"
       | "balanceOf"
       | "burn"
-      | "createItem"
       | "delegate"
       | "delegateBySig"
       | "delegates"
@@ -183,10 +181,6 @@ export interface DeltItemsInterface extends utils.Interface {
   ): string;
   encodeFunctionData(functionFragment: "balanceOf", values: [string]): string;
   encodeFunctionData(functionFragment: "burn", values: [BigNumberish]): string;
-  encodeFunctionData(
-    functionFragment: "createItem",
-    values: [BigNumberish, string, string[], string[], BigNumberish[]]
-  ): string;
   encodeFunctionData(functionFragment: "delegate", values: [string]): string;
   encodeFunctionData(
     functionFragment: "delegateBySig",
@@ -374,7 +368,6 @@ export interface DeltItemsInterface extends utils.Interface {
   decodeFunctionResult(functionFragment: "awardItem", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "burn", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "createItem", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "delegate", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "delegateBySig",
@@ -707,15 +700,6 @@ export interface DeltItems extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
-    createItem(
-      _tokenId: BigNumberish,
-      _itemId: string,
-      _attributes: string[],
-      _statKeys: string[],
-      _statValues: BigNumberish[],
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<ContractTransaction>;
-
     delegate(
       delegatee: string,
       overrides?: Overrides & { from?: string | Promise<string> }
@@ -983,15 +967,6 @@ export interface DeltItems extends BaseContract {
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
-  createItem(
-    _tokenId: BigNumberish,
-    _itemId: string,
-    _attributes: string[],
-    _statKeys: string[],
-    _statValues: BigNumberish[],
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
-
   delegate(
     delegatee: string,
     overrides?: Overrides & { from?: string | Promise<string> }
@@ -1240,15 +1215,6 @@ export interface DeltItems extends BaseContract {
     balanceOf(owner: string, overrides?: CallOverrides): Promise<BigNumber>;
 
     burn(tokenId: BigNumberish, overrides?: CallOverrides): Promise<void>;
-
-    createItem(
-      _tokenId: BigNumberish,
-      _itemId: string,
-      _attributes: string[],
-      _statKeys: string[],
-      _statValues: BigNumberish[],
-      overrides?: CallOverrides
-    ): Promise<void>;
 
     delegate(delegatee: string, overrides?: CallOverrides): Promise<void>;
 
@@ -1592,15 +1558,6 @@ export interface DeltItems extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
-    createItem(
-      _tokenId: BigNumberish,
-      _itemId: string,
-      _attributes: string[],
-      _statKeys: string[],
-      _statValues: BigNumberish[],
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<BigNumber>;
-
     delegate(
       delegatee: string,
       overrides?: Overrides & { from?: string | Promise<string> }
@@ -1868,15 +1825,6 @@ export interface DeltItems extends BaseContract {
 
     burn(
       tokenId: BigNumberish,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<PopulatedTransaction>;
-
-    createItem(
-      _tokenId: BigNumberish,
-      _itemId: string,
-      _attributes: string[],
-      _statKeys: string[],
-      _statValues: BigNumberish[],
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 

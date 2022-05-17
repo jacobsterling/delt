@@ -45,7 +45,15 @@ export default defineNuxtPlugin(() => {
 
         metadataURI.value = await contractRef.store(image, item, wallet)
 
-        const result = await contractRef.contract.awardItem(connection.address, item.slug, item.attributes, item.statKeys, item.statValues, metadataURI.value)
+        const result = await contractRef.contract.awardItem(connection.address, item.slug, item.attributes, metadataURI.value)
+
+        // .awardItem(player,
+        //   "common short sword",
+        //   [
+        //     ["damage", [4, ""]],
+        //     ["weight", [2, "light"]]
+        //   ],
+        //   metadataURI);
 
         const newItemId = await result.wait()
 
@@ -56,7 +64,7 @@ export default defineNuxtPlugin(() => {
     },
 
     contract: undefined,
-    contractAddress: "0x26228e385bc95ddf4ca4d8b10c9f76860f4d3b6b",
+    contractAddress: "0xd68074b9146f3467320c746d32a7bcc5f1716007",
     contractInterface: DeltItems.abi,
 
     // creates new contract object (doesnt work server side ??)

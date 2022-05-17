@@ -1,18 +1,28 @@
-<script setup lang="ts">
-useHead({
-  title: "Delt"
-})
-
-const downloaded = ref<boolean>(false)
-
-const game = await import("../../delt/game.js")
-
-downloaded.value = true
-
-await game.launch("containerId")
-
+<script>
+export default {
+  data() {
+    return {
+      containerId: "game-container",
+      downloaded: false,
+      gameInstance: null
+    }
+  },
+  async mounted() {
+    const game = await import(/* webpackChunkName: "game" */ "../../delt/game.js")
+    this.downloaded = true
+    this.$nextTick(() => {
+      this.gameInstance = game.launch(this.containerId)
+    })
+  },
+  unmounted() {
+    this.gameInstance.destroy(false)
+  }
+}
 </script>
 
 <template>
-  <div v-if="downloaded" ref="containerId" />
+  <div v-if="downloaded" :id="containerId" />
+  <div v-else class="placeholder">
+    Downloading ...
+  </div>
 </template>

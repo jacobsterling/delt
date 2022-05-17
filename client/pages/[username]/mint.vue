@@ -43,7 +43,7 @@ const mint = async (item: itemObj) => {
   loadingMint.value = true
   const image = await getitemImage(item.slug)
   if (wallet) {
-    const mintResult = await contractRef.payToMint(wallet, item, image)
+    const mintResult = await contractRef.awardItem(wallet, item, image)
     isMinted.value = mintResult
   }
   loadingMint.value = false

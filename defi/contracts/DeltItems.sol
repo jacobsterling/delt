@@ -1,6 +1,6 @@
 // contracts/DeltItems.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
@@ -28,16 +28,31 @@ contract DeltItems is
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
     CountersUpgradeable.Counter private _tokenIdCounter;
 
     mapping(uint256 => string) public itemId;
     mapping(string => uint256) public tokenIdlookup;
-    mapping(string => uint8) public existingURIs; // set these in award item and pay for item
-    mapping(uint256 => string[]) public attributes;
-    mapping(uint256 => mapping(string => int32)) public stats;
-    mapping(string => bool) public statKeyExists;
+    mapping(string => uint8) public existingURIs;
+    // mapping(uint256 => string[]) public attributes;
+    // mapping(uint256 => mapping(string => int32)) public stats;
+    mapping(uint256 => mapping(string => Attr)) public attributes;
+    mapping(uint256 => string[]) public attrKeys;
+    //mapping(string => bool) public statKeyExists;
 
-    string[] public statKeys;
+    // struct Attr {
+    //     Stat[] stats;
+    // }
+
+    struct Attr {
+        int32 value;
+        string desc;
+    }
+
+    struct Attribute {
+        string attrKey;
+        Attr attr;
+    }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -57,6 +72,7 @@ contract DeltItems is
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(PAUSER_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
+        _grantRole(BURNER_ROLE, msg.sender);
     }
 
     function _baseURI() internal pure override returns (string memory) {
@@ -71,130 +87,6 @@ contract DeltItems is
         _unpause();
     }
 
-    function safeMint(address to, string memory uri)
-        public
-        onlyRole(MINTER_ROLE)
-    {
-        uint256 tokenId = _tokenIdCounter.current();
-        _tokenIdCounter.increment();
-        _safeMint(to, tokenId);
-        _setTokenURI(tokenId, uri);
-    }
-
-    function setStat(
-        uint256 _tokenId,
-        string memory _stat,
-        int32 _statValue
-    ) public onlyRole(MINTER_ROLE) {
-        stats[_tokenId][_stat] = _statValue;
-        if (statKeyExists[_stat] == false) {
-            statKeys.push(_stat);
-        }
-    }
-
-    function modStat(
-        uint256 _tokenId,
-        string memory _stat,
-        int32 _statMod
-    ) public onlyRole(MINTER_ROLE) {
-        stats[_tokenId][_stat] += _statMod;
-    }
-
-    function addAttribute(uint256 _tokenId, string memory _attribute)
-        public
-        onlyRole(MINTER_ROLE)
-    {
-        attributes[_tokenId].push(_attribute);
-    }
-
-    function deleteAttribute(uint256 _tokenId, string memory _attribute)
-        public
-        onlyRole(MINTER_ROLE)
-    {
-        uint256 i = 0;
-        while (i != attributes[_tokenId].length) {
-            if (
-                keccak256(abi.encodePacked(attributes[_tokenId][i])) ==
-                keccak256(abi.encodePacked(_attribute))
-            ) {
-                delete attributes[_tokenId][i];
-            }
-        }
-    }
-
-    function createItem(
-        uint256 _tokenId,
-        string memory _itemId,
-        string[] memory _attributes,
-        string[] memory _statKeys,
-        int32[] memory _statValues
-    ) private onlyRole(MINTER_ROLE) {
-        require(
-            _statKeys.length == _statValues.length,
-            "Keys length != values length"
-        );
-
-        itemId[_tokenId] = _itemId;
-        tokenIdlookup[_itemId] = _tokenId;
-
-        uint48 i = 0;
-        while (i != _attributes.length) {
-            addAttribute(_tokenId, _attributes[i]);
-            i++;
-        }
-
-        uint8 j = 0;
-        while (j != _statKeys.length) {
-            stats[_tokenId][_statKeys[j]] = _statValues[j];
-            setStat(_tokenId, _statKeys[j], _statValues[j]);
-            j++;
-        }
-    }
-
-    function getAttributes(uint256 _tokenId)
-        public
-        view
-        returns (string[] memory)
-    {
-        return attributes[_tokenId];
-    }
-
-    function getStatKeys(uint256 _tokenId)
-        public
-        view
-        returns (string[] memory)
-    {
-        uint256 i = 0;
-        uint256 j = 0;
-        string[] memory _keys;
-        while (i != statKeys.length) {
-            if (stats[_tokenId][statKeys[i]] != 0) {
-                _keys[j] = statKeys[i];
-                j++;
-            }
-            i++;
-        }
-
-        return _keys;
-    }
-
-    function getStatValues(uint256 _tokenId)
-        public
-        view
-        returns (int32[] memory)
-    {
-        uint256 i = 0;
-        uint256 j = 0;
-        int32[] memory _values;
-        while (i != statKeys.length) {
-            if (stats[_tokenId][statKeys[i]] != 0) {
-                _values[j] = stats[_tokenId][statKeys[i]];
-            }
-            i++;
-        }
-        return _values;
-    }
-
     function getItemId(uint256 _tokenId) public view returns (string memory) {
         return itemId[_tokenId];
     }
@@ -203,23 +95,111 @@ contract DeltItems is
         return tokenIdlookup[_itemId];
     }
 
+    function getAttributes(uint256 _tokenId)
+        public
+        view
+        onlyRole(MINTER_ROLE)
+        returns (Attribute[] memory)
+    {
+        Attribute[] memory _attributes = new Attribute[](
+            attrKeys[_tokenId].length
+        );
+        for (uint256 i = 0; i <= attrKeys[_tokenId].length; i++) {
+            _attributes[i] = Attribute(
+                attrKeys[_tokenId][i],
+                attributes[_tokenId][attrKeys[_tokenId][i]]
+            );
+        }
+        return _attributes;
+    }
+
+    function addAttribute(
+        uint256 _tokenId,
+        string memory _key,
+        int32 _value,
+        string memory _desc
+    ) public onlyRole(MINTER_ROLE) {
+        for (uint256 i = 0; i <= attrKeys[_tokenId].length; i++) {
+            if (
+                keccak256(abi.encode(attrKeys[_tokenId][i])) ==
+                keccak256(abi.encode(_key))
+            ) {
+                attributes[_tokenId][_key].value = _value;
+                attributes[_tokenId][_key].desc = _desc;
+                break;
+            }
+        }
+    }
+
+    function modAttribute(
+        uint256 _tokenId,
+        string memory _key,
+        int32 _mod
+    ) public onlyRole(MINTER_ROLE) {
+        for (uint256 i = 0; i <= attrKeys[_tokenId].length; i++) {
+            if (
+                keccak256(abi.encode(attrKeys[_tokenId][i])) ==
+                keccak256(abi.encode(_key))
+            ) {
+                attributes[_tokenId][_key].value += _mod;
+                break;
+            }
+        }
+    }
+
+    function removeAttribute(uint256 _tokenId, string memory _key)
+        public
+        onlyRole(MINTER_ROLE)
+    {
+        for (uint256 i = 0; i <= attrKeys[_tokenId].length; i++) {
+            if (
+                keccak256(abi.encode(attrKeys[_tokenId][i])) ==
+                keccak256(abi.encode(_key))
+            ) {
+                delete attributes[_tokenId][_key];
+                break;
+            }
+        }
+    }
+
+    function createItem(
+        uint256 _tokenId,
+        string memory _itemId,
+        Attribute[] memory _attributes
+    ) private onlyRole(MINTER_ROLE) {
+        itemId[_tokenId] = _itemId;
+        tokenIdlookup[_itemId] = _tokenId;
+        for (uint256 i = 0; i <= _attributes.length; i++) {
+            attrKeys[_tokenId].push(_attributes[i].attrKey);
+            attributes[_tokenId][_attributes[i].attrKey] = _attributes[i].attr;
+        }
+    }
+
+    function burnItem(uint256 _tokenId) private onlyRole(BURNER_ROLE) {
+        string memory _itemId = getItemId(_tokenId);
+        delete itemId[_tokenId];
+        delete tokenIdlookup[_itemId];
+        for (uint256 i = 0; i <= attrKeys[_tokenId].length; i++) {
+            delete attributes[_tokenId][attrKeys[_tokenId][i]];
+        }
+        delete attrKeys[_tokenId];
+    }
+
     function awardItem(
         address player,
         string memory _itemId,
-        string[] memory _attributes,
-        string[] memory _statKeys,
-        int32[] memory _statValues,
-        string memory metadataURI
+        Attribute[] memory _attributes,
+        string memory _tokenURI
     ) public returns (uint256) {
-        require(existingURIs[metadataURI] != 1, "NFT already minted");
+        require(existingURIs[_tokenURI] != 1, "NFT already minted");
 
         uint256 newTokenId = _tokenIdCounter.current();
-        existingURIs[metadataURI] = 1;
+        existingURIs[_tokenURI] = 1;
 
         _mint(player, newTokenId);
-        _setTokenURI(newTokenId, metadataURI);
+        _setTokenURI(newTokenId, _tokenURI);
 
-        createItem(newTokenId, _itemId, _attributes, _statKeys, _statValues);
+        createItem(newTokenId, _itemId, _attributes);
 
         _tokenIdCounter.increment();
 
@@ -229,20 +209,18 @@ contract DeltItems is
     function payToMintItem(
         address player,
         string memory _itemId,
-        string[] memory _attributes,
-        string[] memory _statKeys,
-        int32[] memory _statValues,
-        string memory metadataURI
+        Attribute[] memory _attributes,
+        string memory _tokenURI
     ) public payable returns (uint256) {
-        require(existingURIs[metadataURI] != 1, "NFT already minted");
+        require(existingURIs[_tokenURI] != 1, "NFT already minted");
         require(msg.value > 0 ether, "you need to payup");
         uint256 newTokenId = _tokenIdCounter.current();
-        existingURIs[metadataURI] = 1;
+        existingURIs[_tokenURI] = 1;
 
         _mint(player, newTokenId);
-        _setTokenURI(newTokenId, metadataURI);
+        _setTokenURI(newTokenId, _tokenURI);
 
-        createItem(newTokenId, _itemId, _attributes, _statKeys, _statValues);
+        createItem(newTokenId, _itemId, _attributes);
 
         _tokenIdCounter.increment();
 
@@ -274,8 +252,10 @@ contract DeltItems is
     function _burn(uint256 tokenId)
         internal
         override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
+        onlyRole(BURNER_ROLE)
     {
         super._burn(tokenId);
+        burnItem(tokenId);
     }
 
     function tokenURI(uint256 tokenId)

@@ -175,7 +175,7 @@ contract DeltItems is
         }
     }
 
-    function burnItem(uint256 _tokenId) private onlyRole(BURNER_ROLE) {
+    function burnItem(uint256 _tokenId) public onlyRole(BURNER_ROLE) {
         string memory _itemId = getItemId(_tokenId);
         delete itemId[_tokenId];
         delete tokenIdlookup[_itemId];
@@ -191,7 +191,7 @@ contract DeltItems is
         Attribute[] memory _attributes,
         string memory _tokenURI
     ) public returns (uint256) {
-        require(existingURIs[_tokenURI] != 1, "NFT already minted");
+        require(existingURIs[_tokenURI] == 1, "NFT already minted");
 
         uint256 newTokenId = _tokenIdCounter.current();
         existingURIs[_tokenURI] = 1;

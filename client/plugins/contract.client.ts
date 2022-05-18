@@ -1,7 +1,7 @@
-import { ContractInterface, ethers } from "ethers"
+import { Signer } from "ethers"
 import { NFTStorage } from "nft.storage"
 
-import DeltItems from "../../defi/artifacts/contracts/DeltItems.sol/DeltItems.json"
+import { getProxy, proxyAddress } from "../../defi/scripts/getProxy"
 import { Wallet } from "./wallet.client"
 export interface ContractRef {
   item: {
@@ -10,16 +10,12 @@ export interface ContractRef {
     createdAt: number,
     description: string,
     owner: string,
-    slug: string,
-    published: boolean,
+    slug: string
   },
   description?: string
-  contract: ethers.Contract
-  contractInterface: ContractInterface,
-  contractAddress: string,
-  deployContract: (wallet: Wallet) => void,
   store: (image: Blob, item: Object, wallet: Wallet) => void,
   updateSupabase: (tokenId: number, id: number, wallet: Wallet) => void,
+  getContract: (signer: Signer) => void,
   getContractAddress: () => string,
   awardItem: (wallet: Wallet, item: Object, image: Blob) => Promise<any>,
   getURI: (tokenId: number) => Promise<string>,
@@ -35,25 +31,19 @@ export default defineNuxtPlugin(() => {
 
     // mints the item, brings together all the functions
     awardItem: async (wallet: Wallet, item: typeof contractRef.item, image: Blob) => {
-      contractRef.deployContract(wallet)
+      const tokenURI = ref<string>(undefined)
+      try { if (item.tokenId) { tokenURI.value = await contractRef.getURI(item.tokenId) } } catch { }
 
-      const metadataURI = ref<string>(undefined)
-      try { if (item.tokenId) { metadataURI.value = await contractRef.getURI(item.tokenId) } } catch { }
+      if (!tokenURI.value && !item.tokenId) {
+        await contractRef.getContract(wallet.signer)
 
-      if (!metadataURI.value && !item.tokenId) {
-        const connection = contractRef.contract.connect(wallet.signer)
+        tokenURI.value = await contractRef.store(image, item, wallet)
 
-        metadataURI.value = await contractRef.store(image, item, wallet)
+        const result = await contractRef.value.awardItem(wallet.account, item.slug, item.attributes, tokenURI.value)
 
-        const result = await contractRef.contract.awardItem(connection.address, item.slug, item.attributes, metadataURI.value)
-
-        // .awardItem(player,
-        //   "common short sword",
-        //   [
-        //     ["damage", [4, ""]],
-        //     ["weight", [2, "light"]]
-        //   ],
-        //   metadataURI);
+        // {
+        // value: ethers.utils.parseEther("0.001")
+        // }
 
         const newItemId = await result.wait()
 
@@ -62,17 +52,13 @@ export default defineNuxtPlugin(() => {
         return true
       } else { return false }
     },
+    // "0x066676897391d185058c8cFF87B0734368BD44B9",
 
-    contract: undefined,
-    contractAddress: "0xd68074b9146f3467320c746d32a7bcc5f1716007",
-    contractInterface: DeltItems.abi,
-
-    // creates new contract object (doesnt work server side ??)
-    deployContract: (wallet: Wallet) => {
-      contractRef.contract = markRaw(new ethers.Contract(contractRef.contractAddress, contractRef.contractInterface, wallet.signer))
+    getContract: () => async (signer: Signer) => {
+      contractRef.value = markRaw(await getProxy(signer))
     },
 
-    getContractAddress: () => { return contractRef.contractAddress },
+    getContractAddress: () => { return proxyAddress },
 
     // get URI from contract
     getURI: async (tokenId: number) => {

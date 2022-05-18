@@ -2,9 +2,9 @@
 export default {
   data() {
     return {
-      containerId: "game-container",
       downloaded: false,
-      gameInstance: null
+      gameInstance: null,
+      containerId: "game-container"
     }
   },
   async mounted() {
@@ -21,7 +21,7 @@ export default {
 </script>
 
 <template>
-  <div v-if="downloaded" :id="containerId" />
+  <div v-if="downloaded" :id="gameInstance" />
   <div v-else class="placeholder">
     Downloading ...
   </div>

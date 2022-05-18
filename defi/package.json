@@ -3,7 +3,7 @@
     "hardhat": "hardhat compile --show-stack-traces; hardhat run scripts/deploy.ts --network ropsten --show-stack-traces"
   },
   "devDependencies": {
-    "@nomiclabs/hardhat-ethers": "^2.0.5",
+    "@nomiclabs/hardhat-ethers": "^2.0.6",
     "@nomiclabs/hardhat-etherscan": "^3.0.3",
     "@nomiclabs/hardhat-waffle": "^2.0.3",
     "@openzeppelin/contracts": "^4.6.0",
@@ -22,5 +22,6 @@
     "solidity-coverage": "^0.7.20",
     "ts-node": "^10.7.0",
     "typescript": "^4.6.3"
-  }
+  },
+  "type": "module"
 }

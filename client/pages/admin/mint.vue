@@ -49,8 +49,9 @@ const mint = async (item: itemObj) => {
 <template>
   <div>
     <ClientOnly>
-      <NuxtLink :href="`https://ropsten.etherscan.io/address/${contractRef.contractAddress}`" class="d-button-emerald">
-        Pointed at contract: {{ contractRef.contractAddress }}
+      <NuxtLink :href="`https://ropsten.etherscan.io/address/${contractRef.getContractAddress()}`"
+        class="d-button-emerald">
+        Pointed at contract: {{ contractRef.getContractAddress() }}
       </NuxtLink>
     </ClientOnly>
     <div class="justify-center flex-no-shrink w-90%">

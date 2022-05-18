@@ -1,4 +1,3 @@
-import { LogLevel } from "@ethersproject/logger"
 
 export const useAccount = async (account: string) => {
   const username = ref<string>(undefined)
@@ -7,7 +6,6 @@ export const useAccount = async (account: string) => {
   const file = ref<Blob>(undefined)
   const imageURL = ref<Object>(undefined)
   const level = ref<number>(undefined)
-
   const client = useSupabaseClient()
 
   const getProfilePicture = async (username: string) => {

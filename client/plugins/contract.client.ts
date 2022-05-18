@@ -3,6 +3,7 @@ import { NFTStorage } from "nft.storage"
 
 import { getProxy, proxyAddress } from "../../defi/scripts/getProxy"
 import { Wallet } from "./wallet.client"
+
 export interface ContractRef {
   item: {
     id: number,
@@ -10,12 +11,11 @@ export interface ContractRef {
     createdAt: number,
     description: string,
     owner: string,
-    slug: string
+    slug: string,
   },
-  description?: string
   store: (image: Blob, item: Object, wallet: Wallet) => void,
   updateSupabase: (tokenId: number, id: number, wallet: Wallet) => void,
-  getContract: (signer: Signer) => void,
+  initContract: (signer: any) => any,
   getContractAddress: () => string,
   awardItem: (wallet: Wallet, item: Object, image: Blob) => Promise<any>,
   getURI: (tokenId: number) => Promise<string>,
@@ -35,15 +35,14 @@ export default defineNuxtPlugin(() => {
       try { if (item.tokenId) { tokenURI.value = await contractRef.getURI(item.tokenId) } } catch { }
 
       if (!tokenURI.value && !item.tokenId) {
-        await contractRef.getContract(wallet.signer)
+        // const contract = await contractRef.initContract(wallet.signer)
+        // const contract = new ethers.Contract(contractRef.getContractAddress(), DeltItems.abi, wallet.provider)
+        // const contract = await getProxy(ethers, wallet.signer)
+        // const connection = contract.connect(wallet.signer)
 
         tokenURI.value = await contractRef.store(image, item, wallet)
 
-        const result = await contractRef.value.awardItem(wallet.account, item.slug, item.attributes, tokenURI.value)
-
-        // {
-        // value: ethers.utils.parseEther("0.001")
-        // }
+        const result = await connection.awardItem(wallet.account, item.slug, item.attributes, tokenURI.value)
 
         const newItemId = await result.wait()
 
@@ -54,16 +53,20 @@ export default defineNuxtPlugin(() => {
     },
     // "0x066676897391d185058c8cFF87B0734368BD44B9",
 
-    getContract: () => async (signer: Signer) => {
-      contractRef.value = markRaw(await getProxy(signer))
-    },
+    // creates new contract object (doesnt work server side ??)
+    getContractAddress: () => { return "0x066676897391d185058c8cFF87B0734368BD44B9" },
 
-    getContractAddress: () => { return proxyAddress },
-
-    // get URI from contract
     getURI: async (tokenId: number) => {
       return await contractRef.contract.tokenURI(tokenId)
     },
+
+    initContract: () => async (signer: any) => {
+      const proxy = await import("../../defi/scripts/getProxy.ts")
+      console.log(proxy)
+      return markRaw(await proxy.getProxy(signer))
+    },
+
+    // get URI from contract
 
     // supabase item object
     item: undefined,

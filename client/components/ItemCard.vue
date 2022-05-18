@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 const props = defineProps({
   item: {
     default: undefined,
@@ -16,7 +15,6 @@ const props = defineProps({
 })
 
 const { username: owner, accountCompact: ownerAcc, type: ownerType, imageURL: ownerPp, level: ownerLvl } = await useAccount(props.item.owner)
-
 const client = useSupabaseClient()
 
 const getItemImage = (slug: string) => {

@@ -25,6 +25,11 @@ export default defineNuxtConfig({
   },
 
   unocss: DeltUnocssNuxtOptions,
+  vite: {
+    optimizeDeps: {
+      exclude: ["hardhat"]
+    }
+  },
   vueuse: {
     ssrHandlers: true
   }

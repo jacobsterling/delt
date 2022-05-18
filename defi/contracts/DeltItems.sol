@@ -175,7 +175,7 @@ contract DeltItems is
         }
     }
 
-    function burnItem(uint256 _tokenId) private onlyRole(BURNER_ROLE) {
+    function burnItem(uint256 _tokenId) public onlyRole(BURNER_ROLE) {
         string memory _itemId = getItemId(_tokenId);
         delete itemId[_tokenId];
         delete tokenIdlookup[_itemId];

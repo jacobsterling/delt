@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { BadgeCheckIcon } from "@heroicons/vue/solid"
-
 const props = defineProps({
   item: {
     default: undefined,
@@ -16,8 +14,7 @@ const props = defineProps({
   }
 })
 
-const { username: owner, accountCompact: ownerAcc, type: ownerType, imageURL: ownerPp } = await useAccount(props.item.owner)
-
+const { username: owner, accountCompact: ownerAcc, type: ownerType, imageURL: ownerPp, level: ownerLvl } = await useAccount(props.item.owner)
 const client = useSupabaseClient()
 
 const getItemImage = (slug: string) => {
@@ -35,10 +32,6 @@ const getItemImage = (slug: string) => {
 
 const image = getItemImage(props.item.slug)
 
-const ownerVerified = ref<Boolean>(false)
-
-if (ownerType) { ownerVerified.value = true }
-
 </script>
 
 <template>
@@ -55,7 +48,9 @@ if (ownerType) { ownerVerified.value = true }
               Owned by:
               <img :src="ownerPp || '../../assets/knight-helmet.svg'" size="5px" class="d-icon-5 flex">
               {{ owner || ownerAcc }}
-              <BadgeCheckIcon v-if="ownerVerified" class="d-icon-4 flex mx-1" />
+              <div class="d-icon-4 flex mx-1">
+                {{ ownerLvl || "??" }}
+              </div>
             </div>
           </NuxtLink>
         </li>

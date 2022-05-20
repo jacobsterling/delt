@@ -1,60 +1,81 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
-import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/draft-ERC721Votes.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/draft-ERC721VotesUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import "./Base64.sol";
+import "./DeltUtils.sol";
 
+/// @custom:security-contact kciuq@protonmail.com
 contract DeltItems is
-    ERC721,
-    ERC721Enumerable,
-    ERC721URIStorage,
-    Pausable,
-    AccessControl,
-    ERC721Burnable,
-    EIP712,
-    ERC721Votes
+    Initializable,
+    ERC721Upgradeable,
+    ERC721EnumerableUpgradeable,
+    ERC721URIStorageUpgradeable,
+    PausableUpgradeable,
+    AccessControlUpgradeable,
+    ERC721BurnableUpgradeable,
+    EIP712Upgradeable,
+    ERC721VotesUpgradeable
 {
-    using Counters for Counters.Counter;
+    using CountersUpgradeable for CountersUpgradeable.Counter;
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
-    Counters.Counter private _tokenIdCounter;
+    CountersUpgradeable.Counter private _tokenIdCounter;
 
     mapping(uint256 => string) public itemId;
     mapping(string => uint256) public tokenIdlookup;
-    mapping(string => uint8) public existingURIs;
-    mapping(uint256 => mapping(string => Stat)) public attributes;
+    mapping(uint256 => mapping(string => mapping(string => StatValue)))
+        public attributes;
+    mapping(uint256 => mapping(string => string[])) public statKeys;
     mapping(uint256 => string[]) public attrKeys;
 
-    struct Stat {
-        int32 value;
+    struct Attribute {
+        string attrKey;
+        StatInput[] stats;
+    }
+
+    struct StatInput {
+        string statKey;
+        StatValue stat;
+    }
+
+    struct StatValue {
+        uint32 value;
         string desc;
         string rarity;
     }
 
-    struct Attribute {
-        string attrKey;
-        Stat stat;
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
     }
 
-    constructor() ERC721("DeltItems", "DELT") EIP712("DeltItems", "1") {
+    function initialize() public initializer {
+        __ERC721_init("DeltItems", "DELTI");
+        __ERC721Enumerable_init();
+        __ERC721URIStorage_init();
+        __Pausable_init();
+        __AccessControl_init();
+        __ERC721Burnable_init();
+        __EIP712_init("DeltItems", "1");
+        __ERC721Votes_init();
+
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(PAUSER_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
         _grantRole(BURNER_ROLE, msg.sender);
-    }
-
-    function _baseURI() internal pure override returns (string memory) {
-        return "ipfs://";
     }
 
     function pause() public onlyRole(PAUSER_ROLE) {
@@ -77,73 +98,81 @@ contract DeltItems is
         public
         view
         onlyRole(MINTER_ROLE)
-        returns (Attribute[] memory)
+        returns (string memory)
     {
         string[] memory _attrKeys = attrKeys[_tokenId];
 
-        Attribute[] memory _attributes = new Attribute[](_attrKeys.length);
+        string memory _attributes = "[";
 
         for (uint256 i = 0; i < _attrKeys.length; i++) {
             string memory _attrKey = _attrKeys[i];
-            Stat memory _stat = attributes[_tokenId][_attrKey];
-            _attributes[i] = Attribute(_attrKey, _stat);
+            //Stat[] memory _stats = attributes[_tokenId][_attrKey];
+            _attributes = string(
+                abi.encodePacked(_attributes, '"', _attrKey, '": ')
+            );
+            for (uint256 j = 0; j < statKeys[_tokenId][_attrKey].length; j++) {
+                string memory _statKey = statKeys[_tokenId][_attrKey][j];
+                _attributes = string(
+                    abi.encodePacked(
+                        _attributes,
+                        '["',
+                        _statKey,
+                        '", ',
+                        Utils.uint2str(
+                            attributes[_tokenId][_attrKey][_statKey].value
+                        ),
+                        ", ",
+                        '"',
+                        attributes[_tokenId][_attrKey][_statKey].desc,
+                        '", ',
+                        '"',
+                        attributes[_tokenId][_attrKey][_statKey].rarity,
+                        '"]'
+                    )
+                );
+                if (j < statKeys[_tokenId][_attrKey].length - 1) {
+                    _attributes = string(abi.encodePacked(_attributes, ","));
+                }
+            }
+            if (i < _attrKeys.length - 1) {
+                _attributes = string(abi.encodePacked(_attributes, ","));
+            }
         }
-        return _attributes;
+        return string(abi.encodePacked(_attributes, "]"));
     }
 
-    function addAttribute(
+    function setStat(
         uint256 _tokenId,
-        string memory _key,
-        int32 _value,
-        string memory _desc,
-        string memory _rarity
+        string memory _attrKey,
+        StatInput memory _stat
     ) public onlyRole(MINTER_ROLE) {
-        bool add = true;
-        for (uint256 i = 0; i <= attrKeys[_tokenId].length; i++) {
-            if (
-                keccak256(abi.encode(attrKeys[_tokenId][i])) ==
-                keccak256(abi.encode(_key))
-            ) {
-                add = false;
-                break;
-            }
-        }
-        if (add) {
-            attrKeys[_tokenId].push(_key);
-            attributes[_tokenId][_key].value = _value;
-            attributes[_tokenId][_key].desc = _desc;
-            attributes[_tokenId][_key].rarity = _rarity;
+        statKeys[_tokenId][_attrKey].push(_stat.statKey);
+        attributes[_tokenId][_attrKey][_stat.statKey] = _stat.stat;
+
+        Utils.KeyQueryResult memory query = Utils.keyQuery(
+            _attrKey,
+            attrKeys[_tokenId],
+        );
+
+        if (!query.result) {
+            attrKeys[_tokenId].push(_attrKey);
         }
     }
 
-    function modAttribute(
+    function removeStat(
         uint256 _tokenId,
-        string memory _key,
-        int32 _mod
+        string memory _attrKey,
+        string memory _statKey
     ) public onlyRole(MINTER_ROLE) {
-        for (uint256 i = 0; i <= attrKeys[_tokenId].length; i++) {
-            if (
-                keccak256(abi.encode(attrKeys[_tokenId][i])) ==
-                keccak256(abi.encode(_key))
-            ) {
-                attributes[_tokenId][_key].value += _mod;
-                break;
-            }
-        }
-    }
+        Utils.KeyQueryResult memory query = Utils.keyQuery(
+            _statKey,
+            statKeys[_tokenId][_attrKey]
+            
+        );
 
-    function removeAttribute(uint256 _tokenId, string memory _key)
-        public
-        onlyRole(MINTER_ROLE)
-    {
-        for (uint256 i = 0; i <= attrKeys[_tokenId].length; i++) {
-            if (
-                keccak256(abi.encode(attrKeys[_tokenId][i])) ==
-                keccak256(abi.encode(_key))
-            ) {
-                delete attributes[_tokenId][_key];
-                break;
-            }
+        if (query.result) {
+            delete statKeys[_tokenId][_attrKey][query.index];
+            delete attributes[_tokenId][_attrKey][_statKey];
         }
     }
 
@@ -151,52 +180,59 @@ contract DeltItems is
         uint256 _tokenId,
         string memory _itemId,
         Attribute[] memory _attributes
-    ) private onlyRole(MINTER_ROLE) {
+    ) internal onlyRole(MINTER_ROLE) {
         itemId[_tokenId] = _itemId;
         tokenIdlookup[_itemId] = _tokenId;
+        string[] memory _attrKeys = new string[](_attributes.length);
         for (uint256 i = 0; i < _attributes.length; i++) {
             Attribute memory _attribute = _attributes[i];
 
-            string memory _attrKey = _attribute.attrKey;
+            _attrKeys[i] = _attribute.attrKey;
 
-            string[] storage _attrKeys = attrKeys[_tokenId];
+            StatInput[] memory _stats = _attribute.stats;
 
-            _attrKeys.push(_attrKey);
+            string[] memory _statKeys = new string[](_stats.length);
 
-            attrKeys[_tokenId] = _attrKeys;
-
-            Stat memory _stat = _attribute.stat;
-
-            attributes[_tokenId][_attrKey] = _stat;
+            for (uint256 j = 0; j < _stats.length; j++) {
+                StatInput memory _stat = _stats[j];
+                _statKeys[j] = _stat.statKey;
+                attributes[_tokenId][_attribute.attrKey][_stat.statKey] = _stat
+                    .stat;
+            }
+            statKeys[_tokenId][_attribute.attrKey] = _statKeys;
         }
+        attrKeys[_tokenId] = _attrKeys;
     }
 
     function burnItem(uint256 _tokenId) public onlyRole(BURNER_ROLE) {
         string memory _itemId = getItemId(_tokenId);
         delete itemId[_tokenId];
         delete tokenIdlookup[_itemId];
-        for (uint256 i = 0; i <= attrKeys[_tokenId].length; i++) {
-            delete attributes[_tokenId][attrKeys[_tokenId][i]];
+        for (uint256 i = 0; i < attrKeys[_tokenId].length; i++) {
+            string memory _attrKey = attrKeys[_tokenId][i];
+            for (uint256 j = 0; j < statKeys[_tokenId][_attrKey].length; j++) {
+                string memory _statKey = statKeys[_tokenId][_attrKey][j];
+                delete attributes[_tokenId][_attrKey][_statKey];
+                delete statKeys[_tokenId][_attrKey][j];
+            }
+            delete attrKeys[_tokenId][i];
         }
-        delete attrKeys[_tokenId];
     }
 
     function awardItem(
         address player,
         string memory _itemId,
-        Attribute[] memory _attributes,
-        string memory _tokenURI
+        string memory _tokenSVG,
+        Attribute[] memory _attributes
     ) public returns (uint256) {
-        require(existingURIs[_tokenURI] == 1, "NFT already minted");
+        require(tokenIdlookup[_itemId] == 0, "NFT name already minted");
 
         uint256 newTokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
 
-        existingURIs[_tokenURI] = 1;
-
         _safeMint(player, newTokenId);
 
-        _setTokenURI(newTokenId, _tokenURI);
+        _setTokenURI(newTokenId, _tokenSVG);
 
         createItem(newTokenId, _itemId, _attributes);
 
@@ -206,20 +242,22 @@ contract DeltItems is
     function payToMintItem(
         address player,
         string memory _itemId,
-        Attribute[] memory _attributes,
-        string memory _tokenURI
+        string memory _tokenSVG,
+        Attribute[] memory _attributes
     ) public payable returns (uint256) {
-        require(existingURIs[_tokenURI] != 1, "NFT already minted");
+        require(tokenIdlookup[_itemId] == 0, "NFT name already minted");
         require(msg.value > 0 ether, "you need to payup");
+
         uint256 newTokenId = _tokenIdCounter.current();
-        existingURIs[_tokenURI] = 1;
+        _tokenIdCounter.increment();
 
         _safeMint(player, newTokenId);
-        _setTokenURI(newTokenId, _tokenURI);
+
+        _setTokenURI(newTokenId, _tokenSVG);
 
         createItem(newTokenId, _itemId, _attributes);
 
-        _tokenIdCounter.increment();
+        require(newTokenId > 0, "fault");
 
         return newTokenId;
     }
@@ -228,7 +266,11 @@ contract DeltItems is
         address from,
         address to,
         uint256 tokenId
-    ) internal override(ERC721, ERC721Enumerable) whenNotPaused {
+    )
+        internal
+        override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
+        whenNotPaused
+    {
         super._beforeTokenTransfer(from, to, tokenId);
     }
 
@@ -238,31 +280,52 @@ contract DeltItems is
         address from,
         address to,
         uint256 tokenId
-    ) internal override(ERC721, ERC721Votes) {
+    ) internal override(ERC721Upgradeable, ERC721VotesUpgradeable) {
         super._afterTokenTransfer(from, to, tokenId);
     }
 
-    function _burn(uint256 tokenId)
+    function _burn(uint256 _tokenId)
         internal
-        override(ERC721, ERC721URIStorage)
-        onlyRole(BURNER_ROLE)
+        override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
     {
-        super._burn(tokenId);
+        burnItem(_tokenId);
+        super._burn(_tokenId);
     }
 
-    function tokenURI(uint256 tokenId)
+    function tokenURI(uint256 _tokenId)
         public
         view
-        override(ERC721, ERC721URIStorage)
+        override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
         returns (string memory)
     {
-        return super.tokenURI(tokenId);
+        string memory json = Base64.encode(
+            bytes(
+                string(
+                    abi.encodePacked(
+                        '{"name": "',
+                        getItemId(_tokenId),
+                        '",',
+                        '"image_data": "',
+                        super.tokenURI(_tokenId),
+                        '",',
+                        '"attributes": ',
+                        getAttributes(_tokenId),
+                        "}"
+                    )
+                )
+            )
+        );
+        return string(abi.encodePacked("data:application/json;base64,", json));
     }
 
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721, ERC721Enumerable, AccessControl)
+        override(
+            ERC721Upgradeable,
+            ERC721EnumerableUpgradeable,
+            AccessControlUpgradeable
+        )
         returns (bool)
     {
         return super.supportsInterface(interfaceId);

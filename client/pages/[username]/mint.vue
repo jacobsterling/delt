@@ -26,13 +26,14 @@ const { data: items } = await client.from("items").select("*").eq("published", f
 
 type itemObj = typeof items[0]
 
-const getitemImage = async (slug: string) => {
+const getItemImage = async (slug: string) => {
   try {
     const { data: download, error } = await client
       .storage
       .from("items")
-      .download(`${slug}.png`)
+      .download(`${slug}.svg`)
     if (error) { throw error }
+    console.log(download)
     return download
   } catch (error) {
     console.log(error)
@@ -41,8 +42,9 @@ const getitemImage = async (slug: string) => {
 
 const mint = async (item: itemObj) => {
   loadingMint.value = true
-  const image = await getitemImage(item.slug)
+  const image = await getItemImage(item.slug)
   if (wallet) {
+    await contractRef.initContract(wallet.signer)
     const mintResult = await contractRef.awardItem(wallet, item, image)
     isMinted.value = mintResult
   }
@@ -60,7 +62,7 @@ const mint = async (item: itemObj) => {
     </ClientOnly>
     <div class="justify-center flex-inline flex-no-shrink w-90%">
       <itemCard v-for="item in items" :key="item.id" :item="item">
-        <button v-if="!isMinted" class="d-button-emerald" @click="mint(item)">
+        <button v-if="!isMinted" class="d-button-emerald" @click="getItemImage(item.slug)">
           Mint
         </button>
         <button v-else class="d-button-red">

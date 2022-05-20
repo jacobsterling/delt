@@ -1,4 +1,4 @@
-import { ethers, Signer, Contract, ContractInterface, BigNumber } from "ethers"
+import { ethers, Signer, Contract, ContractInterface } from "ethers"
 import { NFTStorage } from "nft.storage"
 
 import DeltItems from "../../defi/artifacts/contracts/DeltItems.sol/DeltItems.json"
@@ -18,27 +18,27 @@ export interface ContractRef {
   initContract: (signer: Signer, contractAbi: ContractInterface) => void,
   getContractAddress: () => string,
   getAttributes: (tokenId: number) => Promise<any>,
-  awardItem: (wallet: Wallet, item: Object, image: Blob) => Promise<any>,
+  awardItem: (wallet: Wallet, item: Object, image: string) => Promise<any>,
   getURI: (tokenId: number) => Promise<string>,
   // safeMint: () => Promise<void>
 }
 
 export default defineNuxtPlugin(() => {
-  // npx hardhat run scripts/deploy.ts --network ropsten
+  // npx hardhat run scripts/upgradeProxy.ts --network localhost
   // wallet: Wallet, item: Object, image: Blob
   const { NFT_STORAGE_KEY } = useRuntimeConfig()
   const contractRef = reactive<ContractRef>({
     // description used on ipfs (maybe add created by username ??)
 
     // mints the item, brings together all the functions
-    awardItem: async (wallet: Wallet, item: typeof contractRef.item, image: Blob) => {
+    awardItem: async (wallet: Wallet, item: typeof contractRef.item, image: string) => {
       const tokenURI = ref<string>(undefined)
       try { if (item.tokenId) { tokenURI.value = await contractRef.getURI(item.tokenId) } } catch { }
 
       if (!tokenURI.value && !item.tokenId) {
-        tokenURI.value = await contractRef.store(image, item, wallet.account)
+        // tokenURI.value = await contractRef.store(image, item, wallet.account)
 
-        const result = await contractRef.contract.awardItem(wallet.account, item.slug, item.attributes, tokenURI.value)
+        const result = await contractRef.contract.awardItem(wallet.account, item.slug, item.attributes, image)
 
         const newTokenId = await result.wait()
 
@@ -52,14 +52,14 @@ export default defineNuxtPlugin(() => {
     contract: undefined,
 
     getAttributes: async (tokenId: number) => {
-      const result = await contractRef.contract.getAttributes(BigNumber.from(tokenId))
+      const result = await contractRef.contract.getAttributes(tokenId)
       return result
     },
 
     // creates new contract object (doesnt work server side ??)
     getContractAddress: () => {
-      return "0x9E545E3C0baAB3E08CdfD552C960A1050f373042"
-    }, // "0x066676897391d185058c8cFF87B0734368BD44B9" },
+      return "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
+    }, // "" },0xf0c8941ad3c227bcd6f31321ce50693e7a75af8a
 
     getURI: async (tokenId: number) => {
       const result = await contractRef.contract.tokenURI(tokenId)

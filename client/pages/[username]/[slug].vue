@@ -12,15 +12,15 @@ const { username } = await useAccount(item.owner)
 
 if (username !== route.params.username) { router.push(`/${username}/${item.slug}`) }
 
-const { data: url } = client.storage.from("items").getPublicUrl(`${item.slug}.jpg`)
+const { data: url } = client.storage.from("items").getPublicUrl(`${item.slug}.svg`)
 
 const metadataURI = ref<string>("Connect wallet to see metadataURI")
-const attributes = ref<any[]>(undefined)
+const attributes = ref<string>(undefined)
 
 if (wallet) {
   contractRef.initContract(wallet.signer)
   attributes.value = await contractRef.getAttributes(item.tokenId)
-  // metadataURI.value = await contractRef.getURI(item.tokenId)
+  // metadataURI.value = await contractRef.tokenURI(item.tokenId)
 }
 
 </script>

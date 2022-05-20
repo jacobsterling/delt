@@ -1,8 +1,5 @@
 import Image from '../assets/particles/flares.png';
 import Json from '../assets/particles/flares.json';
-import { Player } from '../entities/player';
-import { Vector2 } from '@graph-ts/vector2';
-
 
 export const preload = (scene: Phaser.Scene) => {
     scene.load.atlas('flares', Image, Json);
@@ -15,7 +12,7 @@ export class Emitter {
 
     private static emitZone = new Phaser.Geom.Circle(0, 0, 5);
 
-    public velocity!: Vector2;
+    public declare velocity: Phaser.Types.Math.Vector2Like;
 
     constructor(scene: Phaser.Scene, position: Phaser.GameObjects.Image, { x, y }: Phaser.Input.Pointer) {
 
@@ -65,8 +62,8 @@ export class Emitter {
 
     public update = (t: number, dt: number) => {
         this.emitter.setPosition(
-            this.emitter.x.propertyValue + this.velocity.x,
-            this.emitter.y.propertyValue + this.velocity.y
+            this.emitter.x.propertyValue + (this.velocity.x ?? 0),
+            this.emitter.y.propertyValue + (this.velocity.y ?? 0)
         );
     }
 

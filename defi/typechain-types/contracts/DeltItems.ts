@@ -28,33 +28,41 @@ import type {
 } from "../common";
 
 export declare namespace DeltItems {
-  export type AttrStruct = { value: BigNumberish; desc: string };
-
-  export type AttrStructOutput = [number, string] & {
-    value: number;
+  export type StatStruct = {
+    value: BigNumberish;
     desc: string;
+    rarity: string;
   };
 
-  export type AttributeStruct = { attrKey: string; attr: DeltItems.AttrStruct };
+  export type StatStructOutput = [number, string, string] & {
+    value: number;
+    desc: string;
+    rarity: string;
+  };
 
-  export type AttributeStructOutput = [string, DeltItems.AttrStructOutput] & {
+  export type AttributeStruct = { attrKey: string; stat: DeltItems.StatStruct };
+
+  export type AttributeStructOutput = [string, DeltItems.StatStructOutput] & {
     attrKey: string;
-    attr: DeltItems.AttrStructOutput;
+    stat: DeltItems.StatStructOutput;
   };
 }
 
 export interface DeltItemsInterface extends utils.Interface {
   functions: {
+    "BURNER_ROLE()": FunctionFragment;
     "DEFAULT_ADMIN_ROLE()": FunctionFragment;
     "DOMAIN_SEPARATOR()": FunctionFragment;
     "MINTER_ROLE()": FunctionFragment;
     "PAUSER_ROLE()": FunctionFragment;
+    "addAttribute(uint256,string,int32,string,string)": FunctionFragment;
     "approve(address,uint256)": FunctionFragment;
     "attrKeys(uint256,uint256)": FunctionFragment;
     "attributes(uint256,string)": FunctionFragment;
-    "awardItem(address,string,(string,(int32,string))[],string)": FunctionFragment;
+    "awardItem(address,string,(string,(int32,string,string))[],string)": FunctionFragment;
     "balanceOf(address)": FunctionFragment;
     "burn(uint256)": FunctionFragment;
+    "burnItem(uint256)": FunctionFragment;
     "delegate(address)": FunctionFragment;
     "delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32)": FunctionFragment;
     "delegates(address)": FunctionFragment;
@@ -69,7 +77,6 @@ export interface DeltItemsInterface extends utils.Interface {
     "getVotes(address)": FunctionFragment;
     "grantRole(bytes32,address)": FunctionFragment;
     "hasRole(bytes32,address)": FunctionFragment;
-    "initialize()": FunctionFragment;
     "isApprovedForAll(address,address)": FunctionFragment;
     "itemId(uint256)": FunctionFragment;
     "modAttribute(uint256,string,int32)": FunctionFragment;
@@ -78,14 +85,13 @@ export interface DeltItemsInterface extends utils.Interface {
     "ownerOf(uint256)": FunctionFragment;
     "pause()": FunctionFragment;
     "paused()": FunctionFragment;
-    "payToMintItem(address,string,(string,(int32,string))[],string)": FunctionFragment;
+    "payToMintItem(address,string,(string,(int32,string,string))[],string)": FunctionFragment;
     "removeAttribute(uint256,string)": FunctionFragment;
     "renounceRole(bytes32,address)": FunctionFragment;
     "revokeRole(bytes32,address)": FunctionFragment;
     "safeTransferFrom(address,address,uint256)": FunctionFragment;
     "safeTransferFrom(address,address,uint256,bytes)": FunctionFragment;
     "setApprovalForAll(address,bool)": FunctionFragment;
-    "setAttribute(uint256,string,int32,string)": FunctionFragment;
     "supportsInterface(bytes4)": FunctionFragment;
     "symbol()": FunctionFragment;
     "tokenByIndex(uint256)": FunctionFragment;
@@ -99,16 +105,19 @@ export interface DeltItemsInterface extends utils.Interface {
 
   getFunction(
     nameOrSignatureOrTopic:
+      | "BURNER_ROLE"
       | "DEFAULT_ADMIN_ROLE"
       | "DOMAIN_SEPARATOR"
       | "MINTER_ROLE"
       | "PAUSER_ROLE"
+      | "addAttribute"
       | "approve"
       | "attrKeys"
       | "attributes"
       | "awardItem"
       | "balanceOf"
       | "burn"
+      | "burnItem"
       | "delegate"
       | "delegateBySig"
       | "delegates"
@@ -123,7 +132,6 @@ export interface DeltItemsInterface extends utils.Interface {
       | "getVotes"
       | "grantRole"
       | "hasRole"
-      | "initialize"
       | "isApprovedForAll"
       | "itemId"
       | "modAttribute"
@@ -139,7 +147,6 @@ export interface DeltItemsInterface extends utils.Interface {
       | "safeTransferFrom(address,address,uint256)"
       | "safeTransferFrom(address,address,uint256,bytes)"
       | "setApprovalForAll"
-      | "setAttribute"
       | "supportsInterface"
       | "symbol"
       | "tokenByIndex"
@@ -151,6 +158,10 @@ export interface DeltItemsInterface extends utils.Interface {
       | "unpause"
   ): FunctionFragment;
 
+  encodeFunctionData(
+    functionFragment: "BURNER_ROLE",
+    values?: undefined
+  ): string;
   encodeFunctionData(
     functionFragment: "DEFAULT_ADMIN_ROLE",
     values?: undefined
@@ -166,6 +177,10 @@ export interface DeltItemsInterface extends utils.Interface {
   encodeFunctionData(
     functionFragment: "PAUSER_ROLE",
     values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "addAttribute",
+    values: [BigNumberish, string, BigNumberish, string, string]
   ): string;
   encodeFunctionData(
     functionFragment: "approve",
@@ -185,6 +200,10 @@ export interface DeltItemsInterface extends utils.Interface {
   ): string;
   encodeFunctionData(functionFragment: "balanceOf", values: [string]): string;
   encodeFunctionData(functionFragment: "burn", values: [BigNumberish]): string;
+  encodeFunctionData(
+    functionFragment: "burnItem",
+    values: [BigNumberish]
+  ): string;
   encodeFunctionData(functionFragment: "delegate", values: [string]): string;
   encodeFunctionData(
     functionFragment: "delegateBySig",
@@ -237,10 +256,6 @@ export interface DeltItemsInterface extends utils.Interface {
     values: [BytesLike, string]
   ): string;
   encodeFunctionData(
-    functionFragment: "initialize",
-    values?: undefined
-  ): string;
-  encodeFunctionData(
     functionFragment: "isApprovedForAll",
     values: [string, string]
   ): string;
@@ -289,10 +304,6 @@ export interface DeltItemsInterface extends utils.Interface {
     values: [string, boolean]
   ): string;
   encodeFunctionData(
-    functionFragment: "setAttribute",
-    values: [BigNumberish, string, BigNumberish, string]
-  ): string;
-  encodeFunctionData(
     functionFragment: "supportsInterface",
     values: [BytesLike]
   ): string;
@@ -324,6 +335,10 @@ export interface DeltItemsInterface extends utils.Interface {
   encodeFunctionData(functionFragment: "unpause", values?: undefined): string;
 
   decodeFunctionResult(
+    functionFragment: "BURNER_ROLE",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "DEFAULT_ADMIN_ROLE",
     data: BytesLike
   ): Result;
@@ -339,12 +354,17 @@ export interface DeltItemsInterface extends utils.Interface {
     functionFragment: "PAUSER_ROLE",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(
+    functionFragment: "addAttribute",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "approve", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "attrKeys", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "attributes", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "awardItem", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "burn", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "burnItem", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "delegate", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "delegateBySig",
@@ -380,7 +400,6 @@ export interface DeltItemsInterface extends utils.Interface {
   decodeFunctionResult(functionFragment: "getVotes", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "hasRole", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "initialize", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "isApprovedForAll",
     data: BytesLike
@@ -421,10 +440,6 @@ export interface DeltItemsInterface extends utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "setAttribute",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
     functionFragment: "supportsInterface",
     data: BytesLike
   ): Result;
@@ -457,7 +472,6 @@ export interface DeltItemsInterface extends utils.Interface {
     "ApprovalForAll(address,address,bool)": EventFragment;
     "DelegateChanged(address,address,address)": EventFragment;
     "DelegateVotesChanged(address,uint256,uint256)": EventFragment;
-    "Initialized(uint8)": EventFragment;
     "Paused(address)": EventFragment;
     "RoleAdminChanged(bytes32,bytes32,bytes32)": EventFragment;
     "RoleGranted(bytes32,address,address)": EventFragment;
@@ -470,7 +484,6 @@ export interface DeltItemsInterface extends utils.Interface {
   getEvent(nameOrSignatureOrTopic: "ApprovalForAll"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "DelegateChanged"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "DelegateVotesChanged"): EventFragment;
-  getEvent(nameOrSignatureOrTopic: "Initialized"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "Paused"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "RoleAdminChanged"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "RoleGranted"): EventFragment;
@@ -527,13 +540,6 @@ export type DelegateVotesChangedEvent = TypedEvent<
 
 export type DelegateVotesChangedEventFilter =
   TypedEventFilter<DelegateVotesChangedEvent>;
-
-export interface InitializedEventObject {
-  version: number;
-}
-export type InitializedEvent = TypedEvent<[number], InitializedEventObject>;
-
-export type InitializedEventFilter = TypedEventFilter<InitializedEvent>;
 
 export interface PausedEventObject {
   account: string;
@@ -625,6 +631,8 @@ export interface DeltItems extends BaseContract {
   removeListener: OnEvent<this>;
 
   functions: {
+    BURNER_ROLE(overrides?: CallOverrides): Promise<[string]>;
+
     DEFAULT_ADMIN_ROLE(overrides?: CallOverrides): Promise<[string]>;
 
     DOMAIN_SEPARATOR(overrides?: CallOverrides): Promise<[string]>;
@@ -632,6 +640,15 @@ export interface DeltItems extends BaseContract {
     MINTER_ROLE(overrides?: CallOverrides): Promise<[string]>;
 
     PAUSER_ROLE(overrides?: CallOverrides): Promise<[string]>;
+
+    addAttribute(
+      _tokenId: BigNumberish,
+      _key: string,
+      _value: BigNumberish,
+      _desc: string,
+      _rarity: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
 
     approve(
       to: string,
@@ -649,7 +666,9 @@ export interface DeltItems extends BaseContract {
       arg0: BigNumberish,
       arg1: string,
       overrides?: CallOverrides
-    ): Promise<[number, string] & { value: number; desc: string }>;
+    ): Promise<
+      [number, string, string] & { value: number; desc: string; rarity: string }
+    >;
 
     awardItem(
       player: string,
@@ -663,6 +682,11 @@ export interface DeltItems extends BaseContract {
 
     burn(
       tokenId: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
+    burnItem(
+      _tokenId: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
@@ -731,10 +755,6 @@ export interface DeltItems extends BaseContract {
       account: string,
       overrides?: CallOverrides
     ): Promise<[boolean]>;
-
-    initialize(
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<ContractTransaction>;
 
     isApprovedForAll(
       owner: string,
@@ -813,14 +833,6 @@ export interface DeltItems extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
-    setAttribute(
-      _tokenId: BigNumberish,
-      _key: string,
-      _value: BigNumberish,
-      _desc: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<ContractTransaction>;
-
     supportsInterface(
       interfaceId: BytesLike,
       overrides?: CallOverrides
@@ -863,6 +875,8 @@ export interface DeltItems extends BaseContract {
     ): Promise<ContractTransaction>;
   };
 
+  BURNER_ROLE(overrides?: CallOverrides): Promise<string>;
+
   DEFAULT_ADMIN_ROLE(overrides?: CallOverrides): Promise<string>;
 
   DOMAIN_SEPARATOR(overrides?: CallOverrides): Promise<string>;
@@ -870,6 +884,15 @@ export interface DeltItems extends BaseContract {
   MINTER_ROLE(overrides?: CallOverrides): Promise<string>;
 
   PAUSER_ROLE(overrides?: CallOverrides): Promise<string>;
+
+  addAttribute(
+    _tokenId: BigNumberish,
+    _key: string,
+    _value: BigNumberish,
+    _desc: string,
+    _rarity: string,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
 
   approve(
     to: string,
@@ -887,7 +910,9 @@ export interface DeltItems extends BaseContract {
     arg0: BigNumberish,
     arg1: string,
     overrides?: CallOverrides
-  ): Promise<[number, string] & { value: number; desc: string }>;
+  ): Promise<
+    [number, string, string] & { value: number; desc: string; rarity: string }
+  >;
 
   awardItem(
     player: string,
@@ -901,6 +926,11 @@ export interface DeltItems extends BaseContract {
 
   burn(
     tokenId: BigNumberish,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
+  burnItem(
+    _tokenId: BigNumberish,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
@@ -963,10 +993,6 @@ export interface DeltItems extends BaseContract {
     account: string,
     overrides?: CallOverrides
   ): Promise<boolean>;
-
-  initialize(
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
 
   isApprovedForAll(
     owner: string,
@@ -1042,14 +1068,6 @@ export interface DeltItems extends BaseContract {
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
-  setAttribute(
-    _tokenId: BigNumberish,
-    _key: string,
-    _value: BigNumberish,
-    _desc: string,
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
-
   supportsInterface(
     interfaceId: BytesLike,
     overrides?: CallOverrides
@@ -1086,6 +1104,8 @@ export interface DeltItems extends BaseContract {
   ): Promise<ContractTransaction>;
 
   callStatic: {
+    BURNER_ROLE(overrides?: CallOverrides): Promise<string>;
+
     DEFAULT_ADMIN_ROLE(overrides?: CallOverrides): Promise<string>;
 
     DOMAIN_SEPARATOR(overrides?: CallOverrides): Promise<string>;
@@ -1093,6 +1113,15 @@ export interface DeltItems extends BaseContract {
     MINTER_ROLE(overrides?: CallOverrides): Promise<string>;
 
     PAUSER_ROLE(overrides?: CallOverrides): Promise<string>;
+
+    addAttribute(
+      _tokenId: BigNumberish,
+      _key: string,
+      _value: BigNumberish,
+      _desc: string,
+      _rarity: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
 
     approve(
       to: string,
@@ -1110,7 +1139,9 @@ export interface DeltItems extends BaseContract {
       arg0: BigNumberish,
       arg1: string,
       overrides?: CallOverrides
-    ): Promise<[number, string] & { value: number; desc: string }>;
+    ): Promise<
+      [number, string, string] & { value: number; desc: string; rarity: string }
+    >;
 
     awardItem(
       player: string,
@@ -1123,6 +1154,8 @@ export interface DeltItems extends BaseContract {
     balanceOf(owner: string, overrides?: CallOverrides): Promise<BigNumber>;
 
     burn(tokenId: BigNumberish, overrides?: CallOverrides): Promise<void>;
+
+    burnItem(_tokenId: BigNumberish, overrides?: CallOverrides): Promise<void>;
 
     delegate(delegatee: string, overrides?: CallOverrides): Promise<void>;
 
@@ -1183,8 +1216,6 @@ export interface DeltItems extends BaseContract {
       account: string,
       overrides?: CallOverrides
     ): Promise<boolean>;
-
-    initialize(overrides?: CallOverrides): Promise<void>;
 
     isApprovedForAll(
       owner: string,
@@ -1255,14 +1286,6 @@ export interface DeltItems extends BaseContract {
     setApprovalForAll(
       operator: string,
       approved: boolean,
-      overrides?: CallOverrides
-    ): Promise<void>;
-
-    setAttribute(
-      _tokenId: BigNumberish,
-      _key: string,
-      _value: BigNumberish,
-      _desc: string,
       overrides?: CallOverrides
     ): Promise<void>;
 
@@ -1345,9 +1368,6 @@ export interface DeltItems extends BaseContract {
       newBalance?: null
     ): DelegateVotesChangedEventFilter;
 
-    "Initialized(uint8)"(version?: null): InitializedEventFilter;
-    Initialized(version?: null): InitializedEventFilter;
-
     "Paused(address)"(account?: null): PausedEventFilter;
     Paused(account?: null): PausedEventFilter;
 
@@ -1400,6 +1420,8 @@ export interface DeltItems extends BaseContract {
   };
 
   estimateGas: {
+    BURNER_ROLE(overrides?: CallOverrides): Promise<BigNumber>;
+
     DEFAULT_ADMIN_ROLE(overrides?: CallOverrides): Promise<BigNumber>;
 
     DOMAIN_SEPARATOR(overrides?: CallOverrides): Promise<BigNumber>;
@@ -1407,6 +1429,15 @@ export interface DeltItems extends BaseContract {
     MINTER_ROLE(overrides?: CallOverrides): Promise<BigNumber>;
 
     PAUSER_ROLE(overrides?: CallOverrides): Promise<BigNumber>;
+
+    addAttribute(
+      _tokenId: BigNumberish,
+      _key: string,
+      _value: BigNumberish,
+      _desc: string,
+      _rarity: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
 
     approve(
       to: string,
@@ -1438,6 +1469,11 @@ export interface DeltItems extends BaseContract {
 
     burn(
       tokenId: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
+    burnItem(
+      _tokenId: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
@@ -1505,10 +1541,6 @@ export interface DeltItems extends BaseContract {
       role: BytesLike,
       account: string,
       overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    initialize(
-      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     isApprovedForAll(
@@ -1588,14 +1620,6 @@ export interface DeltItems extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
-    setAttribute(
-      _tokenId: BigNumberish,
-      _key: string,
-      _value: BigNumberish,
-      _desc: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<BigNumber>;
-
     supportsInterface(
       interfaceId: BytesLike,
       overrides?: CallOverrides
@@ -1636,6 +1660,8 @@ export interface DeltItems extends BaseContract {
   };
 
   populateTransaction: {
+    BURNER_ROLE(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
     DEFAULT_ADMIN_ROLE(
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
@@ -1645,6 +1671,15 @@ export interface DeltItems extends BaseContract {
     MINTER_ROLE(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     PAUSER_ROLE(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    addAttribute(
+      _tokenId: BigNumberish,
+      _key: string,
+      _value: BigNumberish,
+      _desc: string,
+      _rarity: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
 
     approve(
       to: string,
@@ -1679,6 +1714,11 @@ export interface DeltItems extends BaseContract {
 
     burn(
       tokenId: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    burnItem(
+      _tokenId: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
@@ -1758,10 +1798,6 @@ export interface DeltItems extends BaseContract {
       role: BytesLike,
       account: string,
       overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
-    initialize(
-      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     isApprovedForAll(
@@ -1844,14 +1880,6 @@ export interface DeltItems extends BaseContract {
     setApprovalForAll(
       operator: string,
       approved: boolean,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<PopulatedTransaction>;
-
-    setAttribute(
-      _tokenId: BigNumberish,
-      _key: string,
-      _value: BigNumberish,
-      _desc: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 

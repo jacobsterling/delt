@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue"
-import { BellIcon, MenuIcon, XIcon, UserCircleIcon, MoonIcon, SunIcon } from "@heroicons/vue/outline"
+import { BellIcon, MenuIcon, XIcon, UserCircleIcon } from "@heroicons/vue/outline"
 
 import { UserLoginModal } from "#components"
 
@@ -26,7 +26,8 @@ const navigation = ref([
           <div class="absolute inset-y-0 left-0 flex items-center sm:hidden">
             <!-- Mobile menu button-->
             <DisclosureButton
-              class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white">
+              class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+            >
               <span class="sr-only">Open main menu</span>
               <MenuIcon v-if="!open" class="block h-6 w-6" aria-hidden="true" />
               <XIcon v-else class="block h-6 w-6" aria-hidden="true" />
@@ -45,17 +46,23 @@ const navigation = ref([
             </div>
             <div class="hidden sm:block sm:ml-6">
               <div class="flex space-x-4">
-                <a v-for="item in navigation" :key="item.name" :href="item.href"
+                <a
+                  v-for="item in navigation"
+                  :key="item.name"
+                  :href="item.href"
                   :class="[item.current ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white', 'px-3 py-2 rounded-md text-sm font-medium']"
-                  :aria-current="item.current ? 'page' : undefined">{{ item.name }}</a>
+                  :aria-current="item.current ? 'page' : undefined"
+                >{{ item.name }}</a>
               </div>
             </div>
           </div>
           <SearchBar />
           <div class="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
             <AppDarkToggle />
-            <button type="button"
-              class="bg-gray-800 p-1 rounded-full text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
+            <button
+              type="button"
+              class="bg-gray-800 p-1 rounded-full text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
+            >
               <span class="sr-only">View notifications</span>
               <BellIcon class="h-6 w-6" aria-hidden="true" />
             </button>
@@ -67,28 +74,42 @@ const navigation = ref([
             <Menu as="div" class="ml-3 relative">
               <div>
                 <MenuButton
-                  class="bg-gray-800 p-1 rounded-full text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
+                  class="bg-gray-800 p-1 rounded-full text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
+                >
                   <span class="sr-only">Open user menu</span>
                   <!-- add user profile picture -->
                   <UserCircleIcon class="h-6 w-6" aria-hidden="true" />
                 </MenuButton>
               </div>
-              <transition enter-active-class="transition ease-out duration-100"
-                enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100"
-                leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100"
-                leave-to-class="transform opacity-0 scale-95">
+              <transition
+                enter-active-class="transition ease-out duration-100"
+                enter-from-class="transform opacity-0 scale-95"
+                enter-to-class="transform opacity-100 scale-100"
+                leave-active-class="transition ease-in duration-75"
+                leave-from-class="transform opacity-100 scale-100"
+                leave-to-class="transform opacity-0 scale-95"
+              >
                 <MenuItems
-                  class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+                  class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
+                >
                   <MenuItem v-slot="{ active }">
-                  <a v-if="user" href="#"
-                    :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']"
-                    @click="client.auth.signOut()">Sign out</a>
-                  <a v-else href="#" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']"
-                    @click="userLoginModal.open">Sign in</a>
+                    <a
+                      v-if="user"
+                      href="#"
+                      :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']"
+                      @click="client.auth.signOut()"
+                    >Sign out</a>
+                    <a
+                      v-else
+                      href="#"
+                      :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']"
+                      @click="userLoginModal.open"
+                    >
+                      Sign in
+                    </a>
                   </MenuItem>
                   <MenuItem v-slot="{ active }">
-                  <a href="#"
-                    :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']">Settings</a>
+                    <a href="#" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']">Settings</a>
                   </MenuItem>
                 </MenuItems>
               </transition>
@@ -99,9 +120,14 @@ const navigation = ref([
 
       <DisclosurePanel class="sm:hidden">
         <div class="px-2 pt-2 pb-3 space-y-1">
-          <DisclosureButton v-for="item in navigation" :key="item.name" as="a" :href="item.href"
+          <DisclosureButton
+            v-for="item in navigation"
+            :key="item.name"
+            as="a"
+            :href="item.href"
             :class="[item.current ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white', 'block px-3 py-2 rounded-md text-base font-medium']"
-            :aria-current="item.current ? 'page' : undefined">
+            :aria-current="item.current ? 'page' : undefined"
+          >
             {{ item.name }}
           </DisclosureButton>
         </div>

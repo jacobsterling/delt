@@ -20,8 +20,11 @@ const { data: designsO } = await client.from("designs").select("*").eq("publishe
 
 <template>
   <div class="inline-flex justify-left">
-    <button v-if="route.params.username === username" class="bg-red-200 hover:bg-red-400 rounded-md p-1 m-2 text-sm"
-      @click="router.push(`/${username}/publish`)">
+    <button
+      v-if="route.params.username === username"
+      class="bg-red-200 hover:bg-red-400 rounded-md p-1 m-2 text-sm"
+      @click="router.push(`/${username}/publish`)"
+    >
       Publish Designs
     </button>
     <button class="bg-red-200 hover:bg-red-400 rounded-md p-1 m-2 text-sm" @click="tab = 'Published'">
@@ -35,12 +38,27 @@ const { data: designsO } = await client.from("designs").select("*").eq("publishe
     </button>
   </div>
   <div v-if="tab === 'Published'" class="inline-flex justify-center">
-    <DesignCard v-for="design in designsP" :design="design" />
+    <DesignCard
+      v-for="design in designsP"
+      :key="design.id"
+      :design="design"
+    />
   </div>
   <div v-if="tab === 'Owned'" class="inline-flex justify-center">
-    <DesignCard v-for="design in designsO" :design="design" />
+    <DesignCard
+      v-for="design in designsO"
+      :key="design.id"
+      :design="design"
+    />
   </div>
-  <div v-if="tab === 'Unpublished'" class="inline-flex justify-center">
-    <DesignCard v-for="design in designsU" :design="design" />
+  <div
+    v-if="tab === 'Unpublished'"
+    class="inline-flex justify-center"
+  >
+    <DesignCard
+      v-for="design in designsU"
+      :key="design.id"
+      :design="design"
+    />
   </div>
 </template>

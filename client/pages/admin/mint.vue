@@ -28,7 +28,7 @@ const getDesignImage = async (slug: string) => {
     if (error) { throw error }
     return download
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 }
 

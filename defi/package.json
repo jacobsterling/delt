@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "hardhat": "hardhat compile --show-stack-traces; hardhat run scripts/deploy.ts --network ropsten --show-stack-traces"
+  },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.5",
     "@nomiclabs/hardhat-etherscan": "^3.0.3",
@@ -12,7 +15,7 @@
     "dotenv": "^16.0.0",
     "ethereum-waffle": "^3.4.4",
     "ethers": "^5.6.4",
-    "hardhat": "^2.9.3",
+    "hardhat": "^2.9.5",
     "hardhat-gas-reporter": "^1.0.8",
     "solidity-coverage": "^0.7.20",
     "ts-node": "^10.7.0",

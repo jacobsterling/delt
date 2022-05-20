@@ -22,7 +22,7 @@ const loaditems = async () => {
 
 <template>
   <div class="justify-center flex-wrap w-90%">
-    <ItemCard v-for="item in items" :item="item">
+    <ItemCard v-for="item in items" :key="item.id" :item="item">
       <ul class="grid justify-items-end my-2">
         <li>
           <DeltButton class="d-button-emerald p-1 flex">

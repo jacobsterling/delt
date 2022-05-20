@@ -1,5 +1,11 @@
 {
   "compilerOptions": {
-    "typeRoots": ["../delt/typings", "./node_modules/"]
+    "target": "ES2022",
+    "module": "es2022",
+    "moduleResolution": "node",
+    "typeRoots": ["./node_modules/"],
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
   }
 }

@@ -14,8 +14,6 @@ const props = defineProps({
   }
 })
 
-console.log(props.item.owner)
-
 const { username: owner, accountCompact: ownerAcc, type: ownerType, imageURL: ownerPp, level: ownerLvl } = await useAccount(props.item.owner)
 
 const client = useSupabaseClient()
@@ -27,8 +25,9 @@ const getItemImage = (slug: string) => {
     const { data: url, error } = client
       .storage
       .from("items")
-      .getPublicUrl(`${slug}.png`)
+      .getPublicUrl(`${slug}.svg`)
     if (error) { throw error }
+    console.log(url.publicURL)
     return url.publicURL
   } catch (error) {
     console.log(error)
@@ -48,16 +47,16 @@ const image = getItemImage(props.item.slug)
           <h1>{{ props.item.slug }}</h1>
         </li>
         <li>
-          <NuxtLink :to="owner">
-            <div class="flex-inline">
-              Owned by:
-              <img :src="ownerPp || '../../assets/knight-helmet.svg'" size="5px" class="d-icon-5 flex">
-              {{ owner || ownerAcc }}
-              <div class="d-icon-4 flex mx-1">
-                {{ ownerLvl || "??" }}
-              </div>
+          <!-- <NuxtLink :to="owner"> -->
+          <div class="flex-inline">
+            Owned by:
+            <img :src="ownerPp || '../../assets/knight-helmet.svg'" size="5px" class="d-icon-5 flex">
+            {{ owner || ownerAcc }}
+            <div class="d-icon-4 flex mx-1">
+              {{ ownerLvl || "??" }}
             </div>
-          </NuxtLink>
+          </div>
+          <!-- </NuxtLink> -->
         </li>
       </ul>
       <aside class="flex float:right">

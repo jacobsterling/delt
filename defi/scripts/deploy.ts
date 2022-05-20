@@ -1,18 +1,12 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional
-// but useful for running the script in a standalone fashion through `node <script>`.
-//
-// When running the script with `npx hardhat run <script>` you'll find the Hardhat
-// Runtime Environment's members available in the global scope.
-import { ethers, upgrades } from "hardhat"
+import { ethers } from "hardhat"
 
 async function main() {
-
   const DeltItems = await ethers.getContractFactory("DeltItems");
-  const proxy = await upgrades.deployProxy(DeltItems);
+  const instance = await DeltItems.deploy();
 
-  await proxy.deployed();
+  await instance.deployed();
 
-  console.log("Delt deployed to:", proxy.address);
+  console.log("DeltItems deployed to:", instance.address);
 }
 
 main().catch((error) => {

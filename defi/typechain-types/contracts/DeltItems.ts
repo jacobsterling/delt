@@ -28,18 +28,23 @@ import type {
 } from "../common";
 
 export declare namespace DeltItems {
-  export type AttrStruct = { value: BigNumberish; desc: string };
-
-  export type AttrStructOutput = [number, string] & {
-    value: number;
+  export type StatStruct = {
+    value: BigNumberish;
     desc: string;
+    rarity: string;
   };
 
-  export type AttributeStruct = { attrKey: string; attr: DeltItems.AttrStruct };
+  export type StatStructOutput = [number, string, string] & {
+    value: number;
+    desc: string;
+    rarity: string;
+  };
 
-  export type AttributeStructOutput = [string, DeltItems.AttrStructOutput] & {
+  export type AttributeStruct = { attrKey: string; stat: DeltItems.StatStruct };
+
+  export type AttributeStructOutput = [string, DeltItems.StatStructOutput] & {
     attrKey: string;
-    attr: DeltItems.AttrStructOutput;
+    stat: DeltItems.StatStructOutput;
   };
 }
 
@@ -50,13 +55,14 @@ export interface DeltItemsInterface extends utils.Interface {
     "DOMAIN_SEPARATOR()": FunctionFragment;
     "MINTER_ROLE()": FunctionFragment;
     "PAUSER_ROLE()": FunctionFragment;
-    "addAttribute(uint256,string,int32,string)": FunctionFragment;
+    "addAttribute(uint256,string,int32,string,string)": FunctionFragment;
     "approve(address,uint256)": FunctionFragment;
     "attrKeys(uint256,uint256)": FunctionFragment;
     "attributes(uint256,string)": FunctionFragment;
-    "awardItem(address,string,(string,(int32,string))[],string)": FunctionFragment;
+    "awardItem(address,string,(string,(int32,string,string))[],string)": FunctionFragment;
     "balanceOf(address)": FunctionFragment;
     "burn(uint256)": FunctionFragment;
+    "burnItem(uint256)": FunctionFragment;
     "delegate(address)": FunctionFragment;
     "delegateBySig(address,uint256,uint256,uint8,bytes32,bytes32)": FunctionFragment;
     "delegates(address)": FunctionFragment;
@@ -71,7 +77,6 @@ export interface DeltItemsInterface extends utils.Interface {
     "getVotes(address)": FunctionFragment;
     "grantRole(bytes32,address)": FunctionFragment;
     "hasRole(bytes32,address)": FunctionFragment;
-    "initialize()": FunctionFragment;
     "isApprovedForAll(address,address)": FunctionFragment;
     "itemId(uint256)": FunctionFragment;
     "modAttribute(uint256,string,int32)": FunctionFragment;
@@ -80,7 +85,7 @@ export interface DeltItemsInterface extends utils.Interface {
     "ownerOf(uint256)": FunctionFragment;
     "pause()": FunctionFragment;
     "paused()": FunctionFragment;
-    "payToMintItem(address,string,(string,(int32,string))[],string)": FunctionFragment;
+    "payToMintItem(address,string,(string,(int32,string,string))[],string)": FunctionFragment;
     "removeAttribute(uint256,string)": FunctionFragment;
     "renounceRole(bytes32,address)": FunctionFragment;
     "revokeRole(bytes32,address)": FunctionFragment;
@@ -112,6 +117,7 @@ export interface DeltItemsInterface extends utils.Interface {
       | "awardItem"
       | "balanceOf"
       | "burn"
+      | "burnItem"
       | "delegate"
       | "delegateBySig"
       | "delegates"
@@ -126,7 +132,6 @@ export interface DeltItemsInterface extends utils.Interface {
       | "getVotes"
       | "grantRole"
       | "hasRole"
-      | "initialize"
       | "isApprovedForAll"
       | "itemId"
       | "modAttribute"
@@ -175,7 +180,11 @@ export interface DeltItemsInterface extends utils.Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "addAttribute",
+<<<<<<< HEAD
     values: [BigNumberish, string, BigNumberish, string]
+=======
+    values: [BigNumberish, string, BigNumberish, string, string]
+>>>>>>> 99f4382 (working contract interation)
   ): string;
   encodeFunctionData(
     functionFragment: "approve",
@@ -195,6 +204,10 @@ export interface DeltItemsInterface extends utils.Interface {
   ): string;
   encodeFunctionData(functionFragment: "balanceOf", values: [string]): string;
   encodeFunctionData(functionFragment: "burn", values: [BigNumberish]): string;
+  encodeFunctionData(
+    functionFragment: "burnItem",
+    values: [BigNumberish]
+  ): string;
   encodeFunctionData(functionFragment: "delegate", values: [string]): string;
   encodeFunctionData(
     functionFragment: "delegateBySig",
@@ -245,10 +258,6 @@ export interface DeltItemsInterface extends utils.Interface {
   encodeFunctionData(
     functionFragment: "hasRole",
     values: [BytesLike, string]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "initialize",
-    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "isApprovedForAll",
@@ -359,6 +368,7 @@ export interface DeltItemsInterface extends utils.Interface {
   decodeFunctionResult(functionFragment: "awardItem", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "burn", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "burnItem", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "delegate", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "delegateBySig",
@@ -394,7 +404,6 @@ export interface DeltItemsInterface extends utils.Interface {
   decodeFunctionResult(functionFragment: "getVotes", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "hasRole", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "initialize", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "isApprovedForAll",
     data: BytesLike
@@ -467,7 +476,6 @@ export interface DeltItemsInterface extends utils.Interface {
     "ApprovalForAll(address,address,bool)": EventFragment;
     "DelegateChanged(address,address,address)": EventFragment;
     "DelegateVotesChanged(address,uint256,uint256)": EventFragment;
-    "Initialized(uint8)": EventFragment;
     "Paused(address)": EventFragment;
     "RoleAdminChanged(bytes32,bytes32,bytes32)": EventFragment;
     "RoleGranted(bytes32,address,address)": EventFragment;
@@ -480,7 +488,6 @@ export interface DeltItemsInterface extends utils.Interface {
   getEvent(nameOrSignatureOrTopic: "ApprovalForAll"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "DelegateChanged"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "DelegateVotesChanged"): EventFragment;
-  getEvent(nameOrSignatureOrTopic: "Initialized"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "Paused"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "RoleAdminChanged"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "RoleGranted"): EventFragment;
@@ -537,13 +544,6 @@ export type DelegateVotesChangedEvent = TypedEvent<
 
 export type DelegateVotesChangedEventFilter =
   TypedEventFilter<DelegateVotesChangedEvent>;
-
-export interface InitializedEventObject {
-  version: number;
-}
-export type InitializedEvent = TypedEvent<[number], InitializedEventObject>;
-
-export type InitializedEventFilter = TypedEventFilter<InitializedEvent>;
 
 export interface PausedEventObject {
   account: string;
@@ -650,6 +650,10 @@ export interface DeltItems extends BaseContract {
       _key: string,
       _value: BigNumberish,
       _desc: string,
+<<<<<<< HEAD
+=======
+      _rarity: string,
+>>>>>>> 99f4382 (working contract interation)
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
@@ -669,7 +673,9 @@ export interface DeltItems extends BaseContract {
       arg0: BigNumberish,
       arg1: string,
       overrides?: CallOverrides
-    ): Promise<[number, string] & { value: number; desc: string }>;
+    ): Promise<
+      [number, string, string] & { value: number; desc: string; rarity: string }
+    >;
 
     awardItem(
       player: string,
@@ -683,6 +689,11 @@ export interface DeltItems extends BaseContract {
 
     burn(
       tokenId: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
+    burnItem(
+      _tokenId: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
@@ -751,10 +762,6 @@ export interface DeltItems extends BaseContract {
       account: string,
       overrides?: CallOverrides
     ): Promise<[boolean]>;
-
-    initialize(
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<ContractTransaction>;
 
     isApprovedForAll(
       owner: string,
@@ -890,6 +897,10 @@ export interface DeltItems extends BaseContract {
     _key: string,
     _value: BigNumberish,
     _desc: string,
+<<<<<<< HEAD
+=======
+    _rarity: string,
+>>>>>>> 99f4382 (working contract interation)
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
@@ -909,7 +920,9 @@ export interface DeltItems extends BaseContract {
     arg0: BigNumberish,
     arg1: string,
     overrides?: CallOverrides
-  ): Promise<[number, string] & { value: number; desc: string }>;
+  ): Promise<
+    [number, string, string] & { value: number; desc: string; rarity: string }
+  >;
 
   awardItem(
     player: string,
@@ -923,6 +936,11 @@ export interface DeltItems extends BaseContract {
 
   burn(
     tokenId: BigNumberish,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
+  burnItem(
+    _tokenId: BigNumberish,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
@@ -985,10 +1003,6 @@ export interface DeltItems extends BaseContract {
     account: string,
     overrides?: CallOverrides
   ): Promise<boolean>;
-
-  initialize(
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
 
   isApprovedForAll(
     owner: string,
@@ -1115,6 +1129,10 @@ export interface DeltItems extends BaseContract {
       _key: string,
       _value: BigNumberish,
       _desc: string,
+<<<<<<< HEAD
+=======
+      _rarity: string,
+>>>>>>> 99f4382 (working contract interation)
       overrides?: CallOverrides
     ): Promise<void>;
 
@@ -1134,7 +1152,9 @@ export interface DeltItems extends BaseContract {
       arg0: BigNumberish,
       arg1: string,
       overrides?: CallOverrides
-    ): Promise<[number, string] & { value: number; desc: string }>;
+    ): Promise<
+      [number, string, string] & { value: number; desc: string; rarity: string }
+    >;
 
     awardItem(
       player: string,
@@ -1147,6 +1167,8 @@ export interface DeltItems extends BaseContract {
     balanceOf(owner: string, overrides?: CallOverrides): Promise<BigNumber>;
 
     burn(tokenId: BigNumberish, overrides?: CallOverrides): Promise<void>;
+
+    burnItem(_tokenId: BigNumberish, overrides?: CallOverrides): Promise<void>;
 
     delegate(delegatee: string, overrides?: CallOverrides): Promise<void>;
 
@@ -1207,8 +1229,6 @@ export interface DeltItems extends BaseContract {
       account: string,
       overrides?: CallOverrides
     ): Promise<boolean>;
-
-    initialize(overrides?: CallOverrides): Promise<void>;
 
     isApprovedForAll(
       owner: string,
@@ -1361,9 +1381,6 @@ export interface DeltItems extends BaseContract {
       newBalance?: null
     ): DelegateVotesChangedEventFilter;
 
-    "Initialized(uint8)"(version?: null): InitializedEventFilter;
-    Initialized(version?: null): InitializedEventFilter;
-
     "Paused(address)"(account?: null): PausedEventFilter;
     Paused(account?: null): PausedEventFilter;
 
@@ -1431,6 +1448,10 @@ export interface DeltItems extends BaseContract {
       _key: string,
       _value: BigNumberish,
       _desc: string,
+<<<<<<< HEAD
+=======
+      _rarity: string,
+>>>>>>> 99f4382 (working contract interation)
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
@@ -1464,6 +1485,11 @@ export interface DeltItems extends BaseContract {
 
     burn(
       tokenId: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
+    burnItem(
+      _tokenId: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
@@ -1531,10 +1557,6 @@ export interface DeltItems extends BaseContract {
       role: BytesLike,
       account: string,
       overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    initialize(
-      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     isApprovedForAll(
@@ -1671,6 +1693,10 @@ export interface DeltItems extends BaseContract {
       _key: string,
       _value: BigNumberish,
       _desc: string,
+<<<<<<< HEAD
+=======
+      _rarity: string,
+>>>>>>> 99f4382 (working contract interation)
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
@@ -1707,6 +1733,11 @@ export interface DeltItems extends BaseContract {
 
     burn(
       tokenId: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    burnItem(
+      _tokenId: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
@@ -1786,10 +1817,6 @@ export interface DeltItems extends BaseContract {
       role: BytesLike,
       account: string,
       overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
-    initialize(
-      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     isApprovedForAll(

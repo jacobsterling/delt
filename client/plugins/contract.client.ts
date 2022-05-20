@@ -1,9 +1,8 @@
-import { Signer } from "ethers"
+import { ethers, Signer, Contract, ContractInterface, BigNumber } from "ethers"
 import { NFTStorage } from "nft.storage"
 
-import { getProxy, proxyAddress } from "../../defi/scripts/getProxy"
+import DeltItems from "../../defi/artifacts/contracts/DeltItems.sol/DeltItems.json"
 import { Wallet } from "./wallet.client"
-
 export interface ContractRef {
   item: {
     id: number,
@@ -13,10 +12,12 @@ export interface ContractRef {
     owner: string,
     slug: string,
   },
-  store: (image: Blob, item: Object, wallet: Wallet) => void,
-  updateSupabase: (tokenId: number, id: number, wallet: Wallet) => void,
-  initContract: (signer: any) => any,
+  contract: Contract,
+  store: (image: Blob, item: Object, account: string) => void,
+  updateSupabase: (tokenId: number, id: number, account: string) => void,
+  initContract: (signer: Signer, contractAbi: ContractInterface) => void,
   getContractAddress: () => string,
+  getAttributes: (tokenId: number) => Promise<any>,
   awardItem: (wallet: Wallet, item: Object, image: Blob) => Promise<any>,
   getURI: (tokenId: number) => Promise<string>,
   // safeMint: () => Promise<void>
@@ -35,46 +36,49 @@ export default defineNuxtPlugin(() => {
       try { if (item.tokenId) { tokenURI.value = await contractRef.getURI(item.tokenId) } } catch { }
 
       if (!tokenURI.value && !item.tokenId) {
-        // const contract = await contractRef.initContract(wallet.signer)
-        // const contract = new ethers.Contract(contractRef.getContractAddress(), DeltItems.abi, wallet.provider)
-        // const contract = await getProxy(ethers, wallet.signer)
-        // const connection = contract.connect(wallet.signer)
+        tokenURI.value = await contractRef.store(image, item, wallet.account)
 
-        tokenURI.value = await contractRef.store(image, item, wallet)
+        const result = await contractRef.contract.awardItem(wallet.account, item.slug, item.attributes, tokenURI.value)
 
-        const result = await connection.awardItem(wallet.account, item.slug, item.attributes, tokenURI.value)
+        const newTokenId = await result.wait()
 
-        const newItemId = await result.wait()
-
-        await contractRef.updateSupabase(newItemId, true, item.id, wallet)
+        await contractRef.updateSupabase(newTokenId, item.id, wallet.account)
 
         return true
       } else { return false }
     },
     // "0x066676897391d185058c8cFF87B0734368BD44B9",
 
+    contract: undefined,
+
+    getAttributes: async (tokenId: number) => {
+      const result = await contractRef.contract.getAttributes(BigNumber.from(tokenId))
+      return result
+    },
+
     // creates new contract object (doesnt work server side ??)
-    getContractAddress: () => { return "0x066676897391d185058c8cFF87B0734368BD44B9" },
+    getContractAddress: () => {
+      return "0x9E545E3C0baAB3E08CdfD552C960A1050f373042"
+    }, // "0x066676897391d185058c8cFF87B0734368BD44B9" },
 
     getURI: async (tokenId: number) => {
-      return await contractRef.contract.tokenURI(tokenId)
+      const result = await contractRef.contract.tokenURI(tokenId)
+      const URI = await result.wait()
+      return URI
     },
 
-    initContract: () => async (signer: any) => {
-      const proxy = await import("../../defi/scripts/getProxy.ts")
-      console.log(proxy)
-      return markRaw(await proxy.getProxy(signer))
+    initContract: (signer: Signer, contractAbi: ContractInterface = DeltItems.abi) => {
+      const contract = markRaw(new ethers.Contract(contractRef.getContractAddress(), contractAbi, signer))
+      contractRef.contract = contract.connect(signer)
     },
-
-    // get URI from contract
 
     // supabase item object
     item: undefined,
 
     // stores the image on the ipfs with tokenId/slug and fixed description
     // gives metadataURI that is used in the contract (may or maynot be correct)
-    store: async (image: Blob, item: typeof contractRef.item, wallet: Wallet) => {
-      const { username, accountCompact } = await useAccount(wallet.account)
+    store: async (image: Blob, item: typeof contractRef.item, account: string) => {
+      const { username, accountCompact } = await useAccount(account)
       const api = new NFTStorage({ token: NFT_STORAGE_KEY })
       const metadata = await api.store({
         description: item.description,
@@ -93,10 +97,10 @@ export default defineNuxtPlugin(() => {
     },
 
     // updates metadataURI in supabase (should we use all metadata from store() ??
-    updateSupabase: async (tokenId: number, id: number, wallet: Wallet) => {
+    updateSupabase: async (tokenId: number, id: number, owner: string) => {
       await useSupabaseClient()
         .from("items")
-        .update({ owner: wallet.account, tokenId })
+        .update({ owner, tokenId })
         .eq("id", id)
     }
   })

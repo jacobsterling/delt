@@ -197,19 +197,11 @@ export interface DeltItemsInterface extends utils.Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "addAttribute",
-<<<<<<< HEAD
-<<<<<<< HEAD
-    values: [BigNumberish, string, BigNumberish, string]
-=======
-    values: [BigNumberish, string, BigNumberish, string, string]
->>>>>>> 99f4382 (working contract interation)
-=======
     values: [BigNumberish, string, DeltItems.StatInputStruct[]]
   ): string;
   encodeFunctionData(
     functionFragment: "addStat",
     values: [BigNumberish, string, DeltItems.StatInputStruct]
->>>>>>> bbe77fc (fixing smarty contract)
   ): string;
   encodeFunctionData(
     functionFragment: "approve",
@@ -679,14 +671,6 @@ export interface DeltItems extends BaseContract {
     addAttribute(
       _tokenId: BigNumberish,
       _key: string,
-<<<<<<< HEAD
-      _value: BigNumberish,
-      _desc: string,
-<<<<<<< HEAD
-=======
-      _rarity: string,
->>>>>>> 99f4382 (working contract interation)
-=======
       _stats: DeltItems.StatInputStruct[],
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
@@ -695,7 +679,6 @@ export interface DeltItems extends BaseContract {
       _tokenId: BigNumberish,
       _key: string,
       _stat: DeltItems.StatInputStruct,
->>>>>>> bbe77fc (fixing smarty contract)
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
@@ -949,14 +932,6 @@ export interface DeltItems extends BaseContract {
   addAttribute(
     _tokenId: BigNumberish,
     _key: string,
-<<<<<<< HEAD
-    _value: BigNumberish,
-    _desc: string,
-<<<<<<< HEAD
-=======
-    _rarity: string,
->>>>>>> 99f4382 (working contract interation)
-=======
     _stats: DeltItems.StatInputStruct[],
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
@@ -965,7 +940,6 @@ export interface DeltItems extends BaseContract {
     _tokenId: BigNumberish,
     _key: string,
     _stat: DeltItems.StatInputStruct,
->>>>>>> bbe77fc (fixing smarty contract)
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
@@ -1204,14 +1178,6 @@ export interface DeltItems extends BaseContract {
     addAttribute(
       _tokenId: BigNumberish,
       _key: string,
-<<<<<<< HEAD
-      _value: BigNumberish,
-      _desc: string,
-<<<<<<< HEAD
-=======
-      _rarity: string,
->>>>>>> 99f4382 (working contract interation)
-=======
       _stats: DeltItems.StatInputStruct[],
       overrides?: CallOverrides
     ): Promise<void>;
@@ -1220,7 +1186,6 @@ export interface DeltItems extends BaseContract {
       _tokenId: BigNumberish,
       _key: string,
       _stat: DeltItems.StatInputStruct,
->>>>>>> bbe77fc (fixing smarty contract)
       overrides?: CallOverrides
     ): Promise<void>;
 
@@ -1550,14 +1515,6 @@ export interface DeltItems extends BaseContract {
     addAttribute(
       _tokenId: BigNumberish,
       _key: string,
-<<<<<<< HEAD
-      _value: BigNumberish,
-      _desc: string,
-<<<<<<< HEAD
-=======
-      _rarity: string,
->>>>>>> 99f4382 (working contract interation)
-=======
       _stats: DeltItems.StatInputStruct[],
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
@@ -1566,7 +1523,6 @@ export interface DeltItems extends BaseContract {
       _tokenId: BigNumberish,
       _key: string,
       _stat: DeltItems.StatInputStruct,
->>>>>>> bbe77fc (fixing smarty contract)
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
@@ -1818,14 +1774,6 @@ export interface DeltItems extends BaseContract {
     addAttribute(
       _tokenId: BigNumberish,
       _key: string,
-<<<<<<< HEAD
-      _value: BigNumberish,
-      _desc: string,
-<<<<<<< HEAD
-=======
-      _rarity: string,
->>>>>>> 99f4382 (working contract interation)
-=======
       _stats: DeltItems.StatInputStruct[],
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
@@ -1834,7 +1782,6 @@ export interface DeltItems extends BaseContract {
       _tokenId: BigNumberish,
       _key: string,
       _stat: DeltItems.StatInputStruct,
->>>>>>> bbe77fc (fixing smarty contract)
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 

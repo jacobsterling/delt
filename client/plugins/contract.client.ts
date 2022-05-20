@@ -1,7 +1,7 @@
-import { ContractInterface, ethers } from "ethers"
+import { Signer } from "ethers"
 import { NFTStorage } from "nft.storage"
 
-import Delt from "../../defi/artifacts/contracts/delt.sol/Delt.json"
+import { getProxy, proxyAddress } from "../../defi/scripts/getProxy"
 import { Wallet } from "./wallet.client"
 export interface ContractRef {
   item: {
@@ -10,19 +10,14 @@ export interface ContractRef {
     createdAt: number,
     description: string,
     owner: string,
-    slug: string,
-    published: boolean,
+    slug: string
   },
   description?: string
-  contract: ethers.Contract
-  contractInterface: ContractInterface,
-  contractAddress: string,
-  deployContract: (wallet: Wallet) => void,
   store: (image: Blob, item: Object, wallet: Wallet) => void,
   updateSupabase: (tokenId: number, id: number, wallet: Wallet) => void,
-  getMintedStatus: (metadata: string, wallet: Wallet) => Promise<Boolean>,
+  getContract: (signer: Signer) => void,
   getContractAddress: () => string,
-  payToMint: (wallet: Wallet, item: Object, image: Blob) => Promise<any>,
+  awardItem: (wallet: Wallet, item: Object, image: Blob) => Promise<any>,
   getURI: (tokenId: number) => Promise<string>,
   // safeMint: () => Promise<void>
 }
@@ -32,48 +27,23 @@ export default defineNuxtPlugin(() => {
   // wallet: Wallet, item: Object, image: Blob
   const { NFT_STORAGE_KEY } = useRuntimeConfig()
   const contractRef = reactive<ContractRef>({
-    contract: undefined,
-    contractAddress: "0x9abD298a857531658729dDd4568C26f86bBfDc6B",
-    contractInterface: Delt.abi,
-
-    // creates new contract object (doesnt work server side ??)
-    deployContract: (wallet: Wallet) => {
-      contractRef.contract = markRaw(new ethers.Contract(contractRef.contractAddress, contractRef.contractInterface, wallet.signer))
-    },
     // description used on ipfs (maybe add created by username ??)
 
-    getContractAddress: () => { return contractRef.contractAddress },
-
-    // supabase item object
-    item: undefined,
-
-    // get minted status from passed URI, assumes contract is deployed
-    getMintedStatus: async (metadataURI: string, wallet: Wallet) => {
-      if (!metadataURI) { return false }
-      if (!contractRef.contract) { contractRef.deployContract(wallet) }
-      return await contractRef.contract.isContentOwned(metadataURI) as Boolean
-    },
-
-    // get URI from contract
-    getURI: async (tokenId: number) => {
-      return await contractRef.contract.tokenURI(tokenId)
-    },
-
     // mints the item, brings together all the functions
-    payToMint: async (wallet: Wallet, item: typeof contractRef.item, image: Blob) => {
-      contractRef.deployContract(wallet)
+    awardItem: async (wallet: Wallet, item: typeof contractRef.item, image: Blob) => {
+      const tokenURI = ref<string>(undefined)
+      try { if (item.tokenId) { tokenURI.value = await contractRef.getURI(item.tokenId) } } catch { }
 
-      const metadataURI = ref<string>(undefined)
-      try { if (item.tokenId) { metadataURI.value = await contractRef.getURI(item.tokenId) } } catch { }
+      if (!tokenURI.value && !item.tokenId) {
+        await contractRef.getContract(wallet.signer)
 
-      if (!metadataURI.value && !item.tokenId) {
-        const connection = contractRef.contract.connect(wallet.signer)
+        tokenURI.value = await contractRef.store(image, item, wallet)
 
-        metadataURI.value = await contractRef.store(image, item, wallet)
+        const result = await contractRef.value.awardItem(wallet.account, item.slug, item.attributes, tokenURI.value)
 
-        const result = await contractRef.contract.payToMint(connection.address, metadataURI.value, {
-          value: ethers.utils.parseEther("0.001")
-        })
+        // {
+        // value: ethers.utils.parseEther("0.001")
+        // }
 
         const newItemId = await result.wait()
 
@@ -82,6 +52,21 @@ export default defineNuxtPlugin(() => {
         return true
       } else { return false }
     },
+    // "0x066676897391d185058c8cFF87B0734368BD44B9",
+
+    getContract: () => async (signer: Signer) => {
+      contractRef.value = markRaw(await getProxy(signer))
+    },
+
+    getContractAddress: () => { return proxyAddress },
+
+    // get URI from contract
+    getURI: async (tokenId: number) => {
+      return await contractRef.contract.tokenURI(tokenId)
+    },
+
+    // supabase item object
+    item: undefined,
 
     // stores the image on the ipfs with tokenId/slug and fixed description
     // gives metadataURI that is used in the contract (may or maynot be correct)

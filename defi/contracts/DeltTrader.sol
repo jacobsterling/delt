@@ -1,20 +1,20 @@
 // contracts/DeltTrader.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+// pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+// import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 
-contract DeltTrader {
-    mapping(address => mapping(uint256 => Listing)) public listings;
+// contract DeltTrader {
+//     mapping(address => mapping(uint256 => Listing)) public listings;
 
-    struct Listing {
-        uint256 price;
-        address seller;
-    }
+//     struct Listing {
+//         uint256 price;
+//         address seller;
+//     }
 
-    function addListing(
-        uint256 price,
-        address contractAddr,
-        uint256 tokenId
-    ) public {}
-}
+//     function addListing(
+//         uint256 price,
+//         address contractAddr,
+//         uint256 tokenId
+//     ) public {}
+// }

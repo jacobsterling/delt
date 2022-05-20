@@ -3,16 +3,16 @@
 //
 // When running the script with `npx hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat"
 
 async function main() {
 
-  const Delt = await ethers.getContractFactory("Delt");
-  const delt = await Delt.deploy();
+  const DeltItems = await ethers.getContractFactory("DeltItems");
+  const proxy = await upgrades.deployProxy(DeltItems);
 
-  await delt.deployed();
+  await proxy.deployed();
 
-  console.log("Delt deployed to:", delt.address);
+  console.log("Delt deployed to:", proxy.address);
 }
 
 main().catch((error) => {

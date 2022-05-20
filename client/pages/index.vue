@@ -8,7 +8,7 @@ export default {
     }
   },
   async mounted () {
-    const game = await import(/* webpackChunkName: "game" */ "../../delt/game.js")
+    const game = await import(/* webpackChunkName: "game" */ "../../delt/game.ts")
     this.downloaded = true
     this.$nextTick(() => {
       this.gameInstance = game.launch(this.containerId)

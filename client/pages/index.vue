@@ -1,20 +1,20 @@
 <script>
 export default {
-  data() {
+  data () {
     return {
+      containerId: "game-container",
       downloaded: false,
-      gameInstance: null,
-      containerId: "game-container"
+      gameInstance: null
     }
   },
-  async mounted() {
-    const game = await import(/* webpackChunkName: "game" */ "../../delt/game.js")
+  async mounted () {
+    const game = await import(/* webpackChunkName: "game" */ "../../delt/game.ts")
     this.downloaded = true
     this.$nextTick(() => {
       this.gameInstance = game.launch(this.containerId)
     })
   },
-  unmounted() {
+  unmounted () {
     this.gameInstance.destroy(false)
   }
 }

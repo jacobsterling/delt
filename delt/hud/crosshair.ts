@@ -1,9 +1,8 @@
 import 'phaser';
-import { Vector2 } from '../../node_modules/@graph-ts/vector2/dist/index';
 
 export class Crosshair extends Phaser.GameObjects.GameObject {
 
-    private position!: Vector2;
+    private position!: Phaser.Types.Math.Vector2Like;
     private arc!: Phaser.GameObjects.Arc;
 
     constructor(scene: Phaser.Scene) {

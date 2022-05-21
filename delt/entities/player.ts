@@ -56,7 +56,7 @@ const Movement: IMovementSettings[] = [
 
 export class Player extends Entity {
     private crosshair!: Crosshair;
-    public sprite!: Phaser.GameObjects.Image;
+    public declare sprite: Phaser.GameObjects.Image;
     public projectiles: Emitter[] = [];
 
 
@@ -98,7 +98,6 @@ export class Player extends Entity {
         const loadImage = (fileName: string) => {
             this.scene.load.image(nameof(fileName), fileName);
         }
-
         Object.values(Wizard).forEach(x => loadImage(x));
     }
 

@@ -14,6 +14,8 @@ const props = defineProps({
   }
 })
 
+const { $wallet: wallet, $contractRef: contractRef } = useNuxtApp()
+
 const { username: owner, accountCompact: ownerAcc, type: ownerType, imageURL: ownerPp, level: ownerLvl } = await useAccount(props.item.owner)
 
 const client = useSupabaseClient()
@@ -36,10 +38,31 @@ const getItemImage = (slug: string) => {
 
 const image = getItemImage(props.item.slug)
 
+const tokenURI = ref<string>(undefined)
+const status = ref<string>("get URI")
+
+if (wallet) {
+  const contract = contractRef.read(wallet.signer)
+  try {
+    const tokenId = await contract.getTokenId(props.item.slug)
+    console.log(tokenId)
+    tokenURI.value = await contract.tokenURI(tokenId)
+  } catch (Error) {
+    console.log(Error)
+    status.value = "Unminted"
+  }
+  console.log(tokenURI.value)
+  // Buffer.from(base64, "base64").toString("binary")
+}
+
+const getURI = () => {
+  window.open(tokenURI.value)
+}
+
 </script>
 
 <template>
-  <div class="p-2 m-5 flex-block shadow-2xl rounded-2xl w-280px" @click="router.push(`/${owner}/${item.slug}`)">
+  <div class="p-2 m-5 flex-block shadow-2xl rounded-2xl w-280px">
     <img :src="image" height="200">
     <footer class="text-xs border-top my-1 flex justify-around content-center">
       <ul class="grid justify-items-start">
@@ -57,6 +80,11 @@ const image = getItemImage(props.item.slug)
             </div>
           </div>
           <!-- </NuxtLink> -->
+        </li>
+        <li>
+          <DeltButton class="d-button-rose" @click="getURI">
+            {{ status }}
+          </DeltButton>
         </li>
       </ul>
       <aside class="flex float:right">

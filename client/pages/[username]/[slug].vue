@@ -14,13 +14,12 @@ if (username !== route.params.username) { router.push(`/${username}/${item.slug}
 
 const { data: url } = client.storage.from("items").getPublicUrl(`${item.slug}.svg`)
 
-const metadataURI = ref<string>("Connect wallet to see metadataURI")
-const attributes = ref<string>(undefined)
+const tokenURI = ref<string>("Connect wallet to see metadataURI")
 
 if (wallet) {
-  contractRef.initContract(wallet.signer)
-  attributes.value = await contractRef.getAttributes(item.tokenId)
-  // metadataURI.value = await contractRef.tokenURI(item.tokenId)
+  const contract = contractRef.readContract(wallet.signer)
+  tokenURI.value = await contract.tokenURI(item.tokenId)
+  // Buffer.from(base64, "base64").toString("binary")
 }
 
 </script>
@@ -30,7 +29,6 @@ if (wallet) {
     <img :src="url.publicURL" height="100px" width="200px">
     {{ item }}
     <ItemPurchase v-if="item.auction" :item="item" />
-    <h1>{{ metadataURI }}</h1>
-    <h1>{{ attributes }}</h1>
+    <h1>{{ tokenURI }}</h1>
   </div>
 </template>

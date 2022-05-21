@@ -1,65 +1,82 @@
-import { ethers, Signer, Contract, ContractInterface } from "ethers"
-import { NFTStorage } from "nft.storage"
+import { ethers, Signer, providers, Contract, ContractInterface } from "ethers"
 
 import DeltItems from "../../defi/artifacts/contracts/DeltItems.sol/DeltItems.json"
 import { Wallet } from "./wallet.client"
+
+export interface Stat {
+  statKey: string,
+  value: number,
+  desc: string,
+  rarity: string
+}
+export interface Attr {
+  attrKey: string,
+  stats: Stat[],
+}
+
+export interface Item {
+  id: number,
+  attributes: JSON,
+  tokenId: number,
+  createdAt: number,
+  description: string,
+  owner: string,
+  slug: string
+}
 export interface ContractRef {
-  item: {
-    id: number,
-    tokenId: number,
-    createdAt: number,
-    description: string,
-    owner: string,
-    slug: string,
-  },
+
   contract: Contract,
-  store: (image: Blob, item: Object, account: string) => void,
   updateSupabase: (tokenId: number, id: number, account: string) => void,
-  initContract: (signer: Signer, contractAbi: ContractInterface) => void,
-  getContractAddress: () => string,
-  getAttributes: (tokenId: number) => Promise<any>,
-  awardItem: (wallet: Wallet, item: Object, image: string) => Promise<any>,
+  burnItem: (wallet: Wallet, item: Item) => Promise<void>,
+  read: (provider: providers.Web3Provider, contractAbi: ContractInterface) => Contract,
+  connect: (signer: Signer, contractAbi: ContractInterface) => void,
+  removeAttribute: (tokenId: string, attrKey: string) => Promise<void>,
+  removeStat: (tokenId: string, attrKey: string, stat: Stat) => Promise<void>,
+  setAttribute: (tokenId: string, attribute: Attr) => Promise<void>,
+  setStat: (tokenId: string, attrKey: string, stat: Stat) => Promise<void>,
+  getAddress: () => string,
+  awardItem: (wallet: Wallet, item: Item, image: string) => Promise<any>,
   getURI: (tokenId: number) => Promise<string>,
-  // safeMint: () => Promise<void>
 }
 
 export default defineNuxtPlugin(() => {
   // npx hardhat run scripts/upgradeProxy.ts --network localhost
-  // wallet: Wallet, item: Object, image: Blob
-  const { NFT_STORAGE_KEY } = useRuntimeConfig()
   const contractRef = reactive<ContractRef>({
-    // description used on ipfs (maybe add created by username ??)
 
-    // mints the item, brings together all the functions
-    awardItem: async (wallet: Wallet, item: typeof contractRef.item, image: string) => {
-      const tokenURI = ref<string>(undefined)
-      try { if (item.tokenId) { tokenURI.value = await contractRef.getURI(item.tokenId) } } catch { }
+    awardItem: async (wallet: Wallet, item: Item, image: string) => {
+      try {
+        const newTokenId = await contractRef.contract.awardItem(wallet.account, item.slug, image, item.attributes)
 
-      if (!tokenURI.value && !item.tokenId) {
-        // tokenURI.value = await contractRef.store(image, item, wallet.account)
+        await newTokenId.wait()
 
-        const result = await contractRef.contract.awardItem(wallet.account, item.slug, item.attributes, image)
+        console.log(newTokenId.value.toNumber())
 
-        const newTokenId = await result.wait()
-
-        await contractRef.updateSupabase(newTokenId, item.id, wallet.account)
+        await contractRef.updateSupabase(item.id, newTokenId.value.toNumber(), wallet.account)
 
         return true
-      } else { return false }
+      } catch (Error) {
+        console.log(Error)
+        return false
+      }
     },
-    // "0x066676897391d185058c8cFF87B0734368BD44B9",
+
+    burnItem: async (wallet: Wallet, item: Item) => {
+      const tokenId = await contractRef.contract.getTokenId(item.slug)
+      const result = await contractRef.contract.burn(tokenId)
+      await result.wait()
+      await contractRef.updateSupabase(item.id, null, wallet.account)
+    },
+
+    connect: (signer: Signer, contractAbi: ContractInterface = DeltItems.abi) => {
+      const contract = markRaw(new ethers.Contract(contractRef.getAddress(), contractAbi, signer))
+      contractRef.contract = contract.connect(signer)
+    },
 
     contract: undefined,
 
-    getAttributes: async (tokenId: number) => {
-      const result = await contractRef.contract.getAttributes(tokenId)
-      return result
+    getAddress: () => {
+      return "0x67d269191c92Caf3cD7723F116c85e6E9bf55933"
     },
-
-    // creates new contract object (doesnt work server side ??)
-    getContractAddress: () => {
-      return "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
-    }, // "" },0xf0c8941ad3c227bcd6f31321ce50693e7a75af8a
 
     getURI: async (tokenId: number) => {
       const result = await contractRef.contract.tokenURI(tokenId)
@@ -67,37 +84,32 @@ export default defineNuxtPlugin(() => {
       return URI
     },
 
-    initContract: (signer: Signer, contractAbi: ContractInterface = DeltItems.abi) => {
-      const contract = markRaw(new ethers.Contract(contractRef.getContractAddress(), contractAbi, signer))
-      contractRef.contract = contract.connect(signer)
+    read: (provider: providers.Web3Provider, contractAbi: ContractInterface = DeltItems.abi) => {
+      return markRaw(new ethers.Contract(contractRef.getAddress(), contractAbi, provider))
     },
 
-    // supabase item object
-    item: undefined,
+    removeAttribute: async (tokenId: string, attrKey: string) => {
+      const result = await contractRef.contract.removeAttribute(tokenId, attrKey)
+      await result.wait()
+    },
 
-    // stores the image on the ipfs with tokenId/slug and fixed description
-    // gives metadataURI that is used in the contract (may or maynot be correct)
-    store: async (image: Blob, item: typeof contractRef.item, account: string) => {
-      const { username, accountCompact } = await useAccount(account)
-      const api = new NFTStorage({ token: NFT_STORAGE_KEY })
-      const metadata = await api.store({
-        description: item.description,
-        image,
-        name: item.slug,
-        properties: {
-          minBy: { account: item.owner, username: username || accountCompact },
-          origin: `https://delt/${username}/${item.slug}`,
-          type: "NFT"
-        }
-      })
+    removeStat: async (tokenId: string, attrKey: string, stat: Stat) => {
+      const result = await contractRef.contract.removeStat(tokenId, attrKey, stat)
+      await result.wait()
+    },
 
-      return metadata.url.replace(/^ipfs:\/\//, "")
-      // const metadataURI = ref<string>(`${NFT_STORAGE_KEY}/${tokenID}.json`)
-      // const imageURI = ref<string>(`ipfs://${NFT_STORAGE_KEY}/${tokenId}.png`)
+    setAttribute: async (tokenId: string, attribute: Attr) => {
+      const result = await contractRef.contract.setAttribute(tokenId, attribute)
+      await result.wait()
+    },
+
+    setStat: async (tokenId: string, attrKey: string, stat: Stat) => {
+      const result = await contractRef.contract.setAttribute(tokenId, attrKey, stat)
+      await result.wait()
     },
 
     // updates metadataURI in supabase (should we use all metadata from store() ??
-    updateSupabase: async (tokenId: number, id: number, owner: string) => {
+    updateSupabase: async (id: number, tokenId: number, owner: string) => {
       await useSupabaseClient()
         .from("items")
         .update({ owner, tokenId })

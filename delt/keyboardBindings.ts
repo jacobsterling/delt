@@ -13,6 +13,7 @@ export interface IMovementSettings {
     Keys: number[];
     Textures: string[];
     Math: (entity: Entity, t: number, dt: number) => void;
+    isDefault?: boolean;
 }
 
 const keyFinder = (key: Phaser.Input.Keyboard.Key, movement: IMovementSettings) =>
@@ -25,9 +26,9 @@ export const checkDirection = (entity: Entity, movement: IMovementSettings, t: n
         for (let i = textures.length - 1; i >= 0; i--) {
             const thisSection = i * (entity.interval / textures.length);
             const tickCount = t % entity.interval;
-
+            entity.sprite.setTexture(movement.Textures[i]);
             if (tickCount > thisSection) {
-                entity.sprite.setTexture(textures[i]);
+                entity.sprite.setTexture(movement.Textures[i]);
                 return true;
             }
         }

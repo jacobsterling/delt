@@ -3,10 +3,31 @@ const MESSAGE_TYPE = {
 	KILL_OBJECT: 'kill.object',
 	ACTION_START: 'action.start',
 	ACTION_STOP: 'action.stop'
-
 }
 
 // Based on: https://github.com/joemoe/phaser-websocket-multiplayer-plugin
+
+const deserializeJsonToBasicMessage = (data: string): BasicMessage | null => {
+	try {
+		return JSON.parse(data);
+	}
+	catch {
+		console.error(`Did not receive JSON. Insead, received \'${data}\'`);
+		return null;
+	}
+}
+
+export type BasicMessage = {
+	id: string;
+	objects: any;
+	type: string;
+	actionType: string;
+};
+
+export type BasicMessageReceived = {
+	id: string;
+	data: any;
+}
 
 export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.BasePlugin  {
     event: Phaser.Events.EventEmitter;
@@ -15,8 +36,8 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
     name!: string;
     localObject: any;
     featureExtractor: any;
-    broadcastInterval!: number;
-    checkTimeoutsInterval!: number;
+    broadcastInterval!: NodeJS.Timer;
+    checkTimeoutsInterval!: NodeJS.Timer;
     objectRegistry: { [id: string] : any; } = {};
     objectLastseen: { [id: string] : any; } = {};
     config: {
@@ -52,6 +73,11 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 	init(config = {}) {
 		this.config = Object.assign(this.config, config);
 		if(this.config.autoConnect) this.connect();
+		
+		if (this.config.debug)
+		{
+			console.log(`I am ${this.id}`);
+		}
 	}
 
 	connect(url = '') {
@@ -72,9 +98,11 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 	}
 
 	onSocketMessage(event: any) {
-		let data = JSON.parse(event.data);
-		
-		if(data.id == this.id) return;
+		const data: BasicMessage | null = deserializeJsonToBasicMessage(event?.data ?? '');
+		if (data == null) return;
+				
+		// You already know your data, so no need to update yourself
+		if(data?.id == this.id) return;
 
 		switch(data.type) {
 			case MESSAGE_TYPE.UPDATE_OBJECT:
@@ -86,7 +114,7 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 			case MESSAGE_TYPE.ACTION_START:
 				let objects = [];
 
-				for(let i = 0; i < data.objects.length; i++) {
+				for(let i = 0; i < data?.objects?.length ?? 0; i++) {
 					if(this.objectRegistry[data.objects[i]])
 						objects.push(this.objectRegistry[data.objects[i]]);
 				}
@@ -111,6 +139,9 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 
 	checkTimeouts() {
 		let currentTime = (new Date()).getTime();
+		
+		this.socket.send('heartbeat');
+		
 		Object.entries(this.objectLastseen).forEach(([key, value]) => {
             if (typeof value != "number") return
     		if(currentTime - value > this.config.pauseTimeout)
@@ -123,7 +154,6 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 	setName(name: string) {
 		this.name = name;
 	}
-
 
 	registerObject(id: string, object: any) {
 		this.objectRegistry[id] = object;
@@ -141,17 +171,22 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 	}
 
 	updateObject(data: any) {
-		if(!this.objectRegistry[data.id]) {
-			this.objectRegistry[data.id] = true;
-			this.event.emit('object.create', data.data, data.id);
-			this.log('create', data.data);
-		}
-		if(this.objectRegistry[data.id] && this.objectRegistry[data.id] !== true)
-			this.event.emit('object.update', this.objectRegistry[data.id], data.data, data.id);
-		this.objectLastseen[data.id] = (new Date()).getTime();
+		const { objects } = data;
+		if ((objects?.length ?? 0) < 1 ) return;
+		objects?.forEach((element: BasicMessageReceived ) => {
+			if(!this.objectRegistry[element.id]) {
+				this.objectRegistry[element.id] = true;
+				this.event.emit('object.create', element);
+				this.log('create', element.data);
+			}
+			else
+			{
+				this.event.emit('object.update', this.objectRegistry[element.id], element.data, element.id);
+			}
+			this.objectLastseen[element.id] = (new Date()).getTime();
+		});
 
 	}
-
 
 	track(object: any, featureExtractor: any) {
 		this.localObject = object;

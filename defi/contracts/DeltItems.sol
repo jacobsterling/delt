@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
@@ -35,30 +35,20 @@ contract DeltItems is
 
     mapping(uint256 => string) public itemId;
     mapping(string => uint256) public tokenIdlookup;
-    mapping(uint256 => mapping(string => mapping(string => StatValue)))
-        public attributes;
-    mapping(uint256 => mapping(string => string[])) public statKeys;
+    mapping(string => bool) public exists;
+    mapping(uint256 => mapping(string => Stat[])) public attributes;
     mapping(uint256 => string[]) public attrKeys;
 
-    struct Attribute {
+    struct Attr {
         string attrKey;
-        StatInput[] stats;
+        Stat[] stats;
     }
 
-    struct StatInput {
+    struct Stat {
         string statKey;
-        StatValue stat;
-    }
-
-    struct StatValue {
         uint32 value;
         string desc;
         string rarity;
-    }
-
-    struct AttrId {
-        uint256 tokenId;
-        string attrKey;
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -98,96 +88,77 @@ contract DeltItems is
         return tokenIdlookup[_itemId];
     }
 
-    function setStat(
-        uint256 _tokenId,
-        string memory _attrKey,
-        StatInput memory _stat
-    ) public onlyRole(MINTER_ROLE) {
-        {
-            statKeys[_tokenId][_attrKey].push(_stat.statKey);
-            attributes[_tokenId][_attrKey][_stat.statKey] = _stat.stat;
+    function setAttribute(uint256 _tokenId, Attr memory _attribute)
+        public
+        onlyRole(MINTER_ROLE)
+    {
+        bool push = true;
+        for (uint256 i = 0; i < attrKeys[_tokenId].length; i++) {
+            if (
+                keccak256(abi.encode(attrKeys[_tokenId][i])) ==
+                keccak256(abi.encode(_attribute.attrKey))
+            ) {
+                for (uint256 j = 0; j < _attribute.stats.length; j++) {
+                    attributes[_tokenId][_attribute.attrKey].push(
+                        _attribute.stats[j]
+                    );
+                }
+                push = false;
+                break;
+            }
         }
-        bool add = true;
+        if (push) {
+            attrKeys[_tokenId].push(_attribute.attrKey);
+        }
+    }
+
+    function removeAttribute(uint256 _tokenId, string memory _attrKey)
+        public
+        onlyRole(MINTER_ROLE)
+    {
+        delete attributes[_tokenId][_attrKey];
         for (uint256 i = 0; i < attrKeys[_tokenId].length; i++) {
             if (
                 keccak256(abi.encode(attrKeys[_tokenId][i])) ==
                 keccak256(abi.encode(_attrKey))
             ) {
-                add = false;
+                delete attrKeys[_tokenId][i];
+                break;
             }
         }
-        if (add) {
-            attrKeys[_tokenId].push(_attrKey);
+    }
+
+    function setStat(
+        uint256 _tokenId,
+        string memory _attrKey,
+        Stat memory _stat
+    ) public onlyRole(MINTER_ROLE) {
+        bool push = true;
+        for (uint256 i = 0; i < attributes[_tokenId][_attrKey].length; i++) {
+            if (
+                keccak256(abi.encode(attributes[_tokenId][_attrKey][i])) ==
+                keccak256(abi.encode(_stat.statKey))
+            ) {
+                attributes[_tokenId][_attrKey][i] = _stat;
+                push = false;
+            }
+        }
+        if (push) {
+            attributes[_tokenId][_attrKey].push(_stat);
         }
     }
 
     function removeStat(
         uint256 _tokenId,
         string memory _attrKey,
-        string memory _statKey
+        Stat memory _stat
     ) public onlyRole(MINTER_ROLE) {
-        for (uint256 i = 0; i < statKeys[_tokenId][_attrKey].length; i++) {
+        for (uint256 i = 0; i < attributes[_tokenId][_attrKey].length; i++) {
             if (
-                keccak256(abi.encode(statKeys[_tokenId][_attrKey][i])) ==
-                keccak256(abi.encode(_statKey))
+                keccak256(abi.encode(attributes[_tokenId][_attrKey][i])) ==
+                keccak256(abi.encode(_stat.statKey))
             ) {
-                delete statKeys[_tokenId][_attrKey][i];
-                delete attributes[_tokenId][_attrKey][_statKey];
-            }
-        }
-    }
-
-    function createItem(
-        uint256 _tokenId,
-        string memory _itemId,
-        Attribute[] memory _attributes
-    ) internal onlyRole(MINTER_ROLE) {
-        {
-            itemId[_tokenId] = _itemId;
-            tokenIdlookup[_itemId] = _tokenId;
-        }
-        string[] memory _attrKeys = new string[](_attributes.length);
-        for (uint256 i = 0; i < _attributes.length; i++) {
-            _attrKeys[i] = _attributes[i].attrKey;
-
-            // StatInput[] memory _stats = _attribute.stats;
-            {
-                string[] memory _statKeys = new string[](
-                    _attributes[i].stats.length
-                );
-                for (uint256 j = 0; j < _attributes[i].stats.length; j++) {
-                    StatInput memory _stat = _attributes[i].stats[j];
-                    _statKeys[j] = _stat.statKey;
-                    attributes[_tokenId][_attributes[i].attrKey][
-                        _stat.statKey
-                    ] = _stat.stat;
-                }
-                statKeys[_tokenId][_attributes[i].attrKey] = _statKeys;
-            }
-        }
-        attrKeys[_tokenId] = _attrKeys;
-    }
-
-    function burnItem(uint256 _tokenId) public onlyRole(BURNER_ROLE) {
-        {
-            string memory _itemId = getItemId(_tokenId);
-            delete itemId[_tokenId];
-            delete tokenIdlookup[_itemId];
-        }
-        {
-            for (uint256 i = 0; i < attrKeys[_tokenId].length; i++) {
-                string memory _attrKey = attrKeys[_tokenId][i];
-                for (
-                    uint256 j = 0;
-                    j < statKeys[_tokenId][_attrKey].length;
-                    j++
-                ) {
-                    delete attributes[_tokenId][_attrKey][
-                        statKeys[_tokenId][_attrKey][j]
-                    ];
-                    delete statKeys[_tokenId][_attrKey][j];
-                }
-                delete attrKeys[_tokenId][i];
+                delete attributes[_tokenId][_attrKey][i];
             }
         }
     }
@@ -196,9 +167,9 @@ contract DeltItems is
         address player,
         string memory _itemId,
         string memory _tokenSVG,
-        Attribute[] memory _attributes
+        Attr[] memory _attributes
     ) public returns (uint256) {
-        require(tokenIdlookup[_itemId] == 0, "NFT name already minted");
+        require(!exists[_itemId], "NFT name already minted");
 
         uint256 newTokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
@@ -207,7 +178,22 @@ contract DeltItems is
 
         _setTokenURI(newTokenId, _tokenSVG);
 
-        createItem(newTokenId, _itemId, _attributes);
+        itemId[newTokenId] = _itemId;
+        tokenIdlookup[_itemId] = newTokenId;
+        exists[_itemId] = true;
+
+        string[] memory _attrKeys = new string[](_attributes.length);
+
+        for (uint256 i = 0; i < _attributes.length; i++) {
+            Attr memory _attr = _attributes[i];
+            _attrKeys[i] = _attr.attrKey;
+
+            for (uint256 j = 0; j < _attr.stats.length; j++) {
+                attributes[newTokenId][_attr.attrKey].push(_attr.stats[j]);
+            }
+        }
+
+        attrKeys[newTokenId] = _attrKeys;
 
         return newTokenId;
     }
@@ -216,9 +202,9 @@ contract DeltItems is
         address player,
         string memory _itemId,
         string memory _tokenSVG,
-        Attribute[] memory _attributes
+        Attr[] memory _attributes
     ) public payable returns (uint256) {
-        require(tokenIdlookup[_itemId] == 0, "NFT name already minted");
+        require(!exists[_itemId], "NFT name already minted");
         require(msg.value > 0 ether, "you need to payup");
 
         uint256 newTokenId = _tokenIdCounter.current();
@@ -228,7 +214,22 @@ contract DeltItems is
 
         _setTokenURI(newTokenId, _tokenSVG);
 
-        createItem(newTokenId, _itemId, _attributes);
+        itemId[newTokenId] = _itemId;
+        tokenIdlookup[_itemId] = newTokenId;
+        exists[_itemId] = true;
+
+        string[] memory _attrKeys = new string[](_attributes.length);
+
+        for (uint256 i = 0; i < _attributes.length; i++) {
+            Attr memory _attr = _attributes[i];
+            _attrKeys[i] = _attr.attrKey;
+
+            for (uint256 j = 0; j < _attr.stats.length; j++) {
+                attributes[newTokenId][_attr.attrKey].push(_attr.stats[j]);
+            }
+        }
+
+        attrKeys[newTokenId] = _attrKeys;
 
         return newTokenId;
     }
@@ -255,54 +256,24 @@ contract DeltItems is
         super._afterTokenTransfer(from, to, tokenId);
     }
 
+    function burn(uint256 _tokenId) public override onlyRole(BURNER_ROLE) {
+        _burn(_tokenId);
+    }
+
     function _burn(uint256 _tokenId)
         internal
         override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
+        onlyRole(BURNER_ROLE)
     {
-        burnItem(_tokenId);
-        super._burn(_tokenId);
-    }
+        exists[getItemId(_tokenId)] = false;
+        delete tokenIdlookup[getItemId(_tokenId)];
+        delete itemId[_tokenId];
 
-    function getStats(AttrId memory _attrId)
-        internal
-        view
-        returns (string memory)
-    {
-        string memory _stats = "";
-        for (
-            uint256 j = 0;
-            j < statKeys[_attrId.tokenId][_attrId.attrKey].length;
-            j++
-        ) {
-            {
-                string memory _statKey = statKeys[_attrId.tokenId][
-                    _attrId.attrKey
-                ][j];
-                StatValue memory _stat = attributes[_attrId.tokenId][
-                    _attrId.attrKey
-                ][_statKey];
-                _stats = string(
-                    abi.encodePacked(
-                        _stats,
-                        '["',
-                        _statKey,
-                        '", ',
-                        Base64.uint2str(_stat.value),
-                        ", ",
-                        '"',
-                        _stat.desc,
-                        '", ',
-                        '"',
-                        _stat.rarity,
-                        '"]'
-                    )
-                );
-                if (j < statKeys[_attrId.tokenId][_attrId.attrKey].length - 1) {
-                    _stats = string(abi.encodePacked(_stats, ","));
-                }
-            }
+        for (uint256 i = 0; i < attrKeys[_tokenId].length; i++) {
+            delete attributes[_tokenId][attrKeys[_tokenId][i]];
         }
-        return _stats;
+
+        super._burn(_tokenId);
     }
 
     function tokenURI(uint256 _tokenId)
@@ -311,29 +282,40 @@ contract DeltItems is
         override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
         returns (string memory)
     {
-        string memory _attributes = "[";
-        {
-            for (uint256 i = 0; i < attrKeys[_tokenId].length; i++) {
-                {
-                    string memory _attrKey = attrKeys[_tokenId][i];
-                    _attributes = string(
-                        abi.encodePacked(
-                            _attributes,
-                            '"',
-                            _attrKey,
-                            '": [',
-                            getStats(AttrId(_tokenId, _attrKey)),
-                            "]"
-                        )
-                    );
-                    if (i < attrKeys[_tokenId].length - 1) {
-                        _attributes = string(
-                            abi.encodePacked(_attributes, ",")
-                        );
-                    }
+        string memory _attributes = "";
+        for (uint256 i = 0; i < attrKeys[_tokenId].length; i++) {
+            string memory _attrKey = attrKeys[_tokenId][i];
+            _attributes = string(
+                abi.encodePacked(_attributes, '"', _attrKey, '":  {')
+            );
+            for (
+                uint256 j = 0;
+                j < attributes[_tokenId][_attrKey].length;
+                j++
+            ) {
+                Stat memory _stat = attributes[_tokenId][_attrKey][j];
+                _attributes = string(
+                    abi.encodePacked(
+                        _attributes,
+                        '"',
+                        _stat.statKey,
+                        '":  {"value": ',
+                        Base64.uint2str(_stat.value),
+                        ',  "desc": "',
+                        _stat.desc,
+                        '",  "rarity": "',
+                        _stat.rarity,
+                        '"}'
+                    )
+                );
+                if (j < attributes[_tokenId][_attrKey].length - 1) {
+                    _attributes = string(abi.encodePacked(_attributes, ", "));
                 }
             }
-            _attributes = string(abi.encodePacked(_attributes, "]"));
+            _attributes = string(abi.encodePacked(_attributes, "}"));
+            if (i < attrKeys[_tokenId].length - 1) {
+                _attributes = string(abi.encodePacked(_attributes, ", "));
+            }
         }
         string memory json = Base64.encode(
             bytes(
@@ -341,13 +323,13 @@ contract DeltItems is
                     abi.encodePacked(
                         '{"name": "',
                         getItemId(_tokenId),
-                        '",',
+                        '",  ',
                         '"image_data": "',
                         super.tokenURI(_tokenId),
-                        '",',
-                        '"attributes": ',
+                        '",  ',
+                        '"attributes": {',
                         _attributes,
-                        "}"
+                        "}}"
                     )
                 )
             )

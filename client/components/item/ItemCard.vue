@@ -41,21 +41,18 @@ const image = getItemImage(props.item.slug)
 const tokenURI = ref<string>(undefined)
 const status = ref<string>("get URI")
 
-if (wallet) {
-  const contract = contractRef.read(wallet.signer)
-  try {
-    const tokenId = await contract.getTokenId(props.item.slug)
-    console.log(tokenId)
-    tokenURI.value = await contract.tokenURI(tokenId)
-  } catch (Error) {
-    console.log(Error)
-    status.value = "Unminted"
+const getURI = async () => {
+  if (wallet) {
+    const contract = contractRef.read(wallet.provider)
+    try {
+      const tokenId = await contract.getTokenId(props.item.slug)
+      tokenURI.value = await contract.tokenURI(tokenId)
+    } catch (Error) {
+      console.log(Error)
+      status.value = "Unminted"
+    }
+    // Buffer.from(base64, "base64").toString("binary")
   }
-  console.log(tokenURI.value)
-  // Buffer.from(base64, "base64").toString("binary")
-}
-
-const getURI = () => {
   window.open(tokenURI.value)
 }
 

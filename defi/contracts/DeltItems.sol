@@ -45,10 +45,10 @@ contract DeltItems is
     }
 
     struct Stat {
-        string statKey;
-        uint32 value;
         string desc;
         string rarity;
+        string statKey;
+        uint32 value;
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -98,10 +98,16 @@ contract DeltItems is
                 keccak256(abi.encode(attrKeys[_tokenId][i])) ==
                 keccak256(abi.encode(_attribute.attrKey))
             ) {
-                for (uint256 j = 0; j < _attribute.stats.length; j++) {
-                    attributes[_tokenId][_attribute.attrKey].push(
-                        _attribute.stats[j]
-                    );
+                if (_attribute.stats.length == 0) {
+                    delete attributes[_tokenId][_attribute.attrKey];
+                    if (i == attrKeys[_tokenId].length - 1) {
+                        delete attrKeys[_tokenId][i];
+                    } else {
+                        attrKeys[_tokenId][i] = attrKeys[_tokenId][
+                            attrKeys[_tokenId].length - 1
+                        ];
+                    }
+                    attrKeys[_tokenId].pop();
                 }
                 push = false;
                 break;
@@ -110,21 +116,8 @@ contract DeltItems is
         if (push) {
             attrKeys[_tokenId].push(_attribute.attrKey);
         }
-    }
-
-    function removeAttribute(uint256 _tokenId, string memory _attrKey)
-        public
-        onlyRole(MINTER_ROLE)
-    {
-        delete attributes[_tokenId][_attrKey];
-        for (uint256 i = 0; i < attrKeys[_tokenId].length; i++) {
-            if (
-                keccak256(abi.encode(attrKeys[_tokenId][i])) ==
-                keccak256(abi.encode(_attrKey))
-            ) {
-                delete attrKeys[_tokenId][i];
-                break;
-            }
+        if (_attribute.stats.length > 0) {
+            setStats(_tokenId, _attribute.attrKey, _attribute.stats);
         }
     }
 
@@ -136,11 +129,24 @@ contract DeltItems is
         bool push = true;
         for (uint256 i = 0; i < attributes[_tokenId][_attrKey].length; i++) {
             if (
-                keccak256(abi.encode(attributes[_tokenId][_attrKey][i])) ==
-                keccak256(abi.encode(_stat.statKey))
+                keccak256(
+                    abi.encode(attributes[_tokenId][_attrKey][i].statKey)
+                ) == keccak256(abi.encode(_stat.statKey))
             ) {
-                attributes[_tokenId][_attrKey][i] = _stat;
+                if (_stat.value > 0) {
+                    attributes[_tokenId][_attrKey][i] = _stat;
+                } else {
+                    uint256 attrLen = attributes[_tokenId][_attrKey].length - 1;
+                    if (i < attrLen) {
+                        attributes[_tokenId][_attrKey][i] = attributes[
+                            _tokenId
+                        ][_attrKey][attrLen];
+                    }
+
+                    attributes[_tokenId][_attrKey].pop();
+                }
                 push = false;
+                break;
             }
         }
         if (push) {
@@ -148,18 +154,13 @@ contract DeltItems is
         }
     }
 
-    function removeStat(
+    function setStats(
         uint256 _tokenId,
         string memory _attrKey,
-        Stat memory _stat
+        Stat[] memory _stats
     ) public onlyRole(MINTER_ROLE) {
-        for (uint256 i = 0; i < attributes[_tokenId][_attrKey].length; i++) {
-            if (
-                keccak256(abi.encode(attributes[_tokenId][_attrKey][i])) ==
-                keccak256(abi.encode(_stat.statKey))
-            ) {
-                delete attributes[_tokenId][_attrKey][i];
-            }
+        for (uint256 i = 0; i < _stats.length; i++) {
+            setStat(_tokenId, _attrKey, _stats[i]);
         }
     }
 
@@ -169,32 +170,7 @@ contract DeltItems is
         string memory _tokenSVG,
         Attr[] memory _attributes
     ) public returns (uint256) {
-        require(!exists[_itemId], "NFT name already minted");
-
-        uint256 newTokenId = _tokenIdCounter.current();
-        _tokenIdCounter.increment();
-
-        _safeMint(player, newTokenId);
-
-        _setTokenURI(newTokenId, _tokenSVG);
-
-        itemId[newTokenId] = _itemId;
-        tokenIdlookup[_itemId] = newTokenId;
-        exists[_itemId] = true;
-
-        string[] memory _attrKeys = new string[](_attributes.length);
-
-        for (uint256 i = 0; i < _attributes.length; i++) {
-            Attr memory _attr = _attributes[i];
-            _attrKeys[i] = _attr.attrKey;
-
-            for (uint256 j = 0; j < _attr.stats.length; j++) {
-                attributes[newTokenId][_attr.attrKey].push(_attr.stats[j]);
-            }
-        }
-
-        attrKeys[newTokenId] = _attrKeys;
-
+        uint256 newTokenId = mintItem(player, _itemId, _tokenSVG, _attributes);
         return newTokenId;
     }
 
@@ -204,32 +180,35 @@ contract DeltItems is
         string memory _tokenSVG,
         Attr[] memory _attributes
     ) public payable returns (uint256) {
-        require(!exists[_itemId], "NFT name already minted");
         require(msg.value > 0 ether, "you need to payup");
+        uint256 newTokenId = mintItem(player, _itemId, _tokenSVG, _attributes);
+        return newTokenId;
+    }
+
+    function mintItem(
+        address player,
+        string memory _itemId,
+        string memory _tokenSVG,
+        Attr[] memory _attributes
+    ) internal onlyRole(MINTER_ROLE) returns (uint256) {
+        require(!exists[_itemId], "NFT name already minted");
 
         uint256 newTokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
 
         _safeMint(player, newTokenId);
 
-        _setTokenURI(newTokenId, _tokenSVG);
+        string memory encodedSVG = Base64.encode(bytes(string(_tokenSVG)));
+
+        _setTokenURI(newTokenId, encodedSVG);
 
         itemId[newTokenId] = _itemId;
         tokenIdlookup[_itemId] = newTokenId;
         exists[_itemId] = true;
 
-        string[] memory _attrKeys = new string[](_attributes.length);
-
         for (uint256 i = 0; i < _attributes.length; i++) {
-            Attr memory _attr = _attributes[i];
-            _attrKeys[i] = _attr.attrKey;
-
-            for (uint256 j = 0; j < _attr.stats.length; j++) {
-                attributes[newTokenId][_attr.attrKey].push(_attr.stats[j]);
-            }
+            setAttribute(newTokenId, _attributes[i]);
         }
-
-        attrKeys[newTokenId] = _attrKeys;
 
         return newTokenId;
     }
@@ -270,7 +249,8 @@ contract DeltItems is
         delete itemId[_tokenId];
 
         for (uint256 i = 0; i < attrKeys[_tokenId].length; i++) {
-            delete attributes[_tokenId][attrKeys[_tokenId][i]];
+            Stat[] memory eStat;
+            setAttribute(_tokenId, Attr(attrKeys[_tokenId][i], eStat));
         }
 
         super._burn(_tokenId);
@@ -299,13 +279,13 @@ contract DeltItems is
                         _attributes,
                         '"',
                         _stat.statKey,
-                        '":  {"value": ',
-                        Base64.uint2str(_stat.value),
-                        ',  "desc": "',
+                        '":  {"desc": "',
                         _stat.desc,
                         '",  "rarity": "',
                         _stat.rarity,
-                        '"}'
+                        '",  "value": ',
+                        Base64.uint2str(_stat.value),
+                        "}"
                     )
                 );
                 if (j < attributes[_tokenId][_attrKey].length - 1) {
@@ -325,7 +305,7 @@ contract DeltItems is
                         getItemId(_tokenId),
                         '",  ',
                         '"image_data": "',
-                        super.tokenURI(_tokenId),
+                        getSvg(_tokenId),
                         '",  ',
                         '"attributes": {',
                         _attributes,
@@ -335,6 +315,14 @@ contract DeltItems is
             )
         );
         return string(abi.encodePacked("data:application/json;base64,", json));
+    }
+
+    function getSvg(uint256 _tokenId) public view returns (bytes memory) {
+        string memory encodedSVG = super.tokenURI(_tokenId);
+
+        bytes memory decodedSVG = Base64.decode(encodedSVG);
+
+        return decodedSVG;
     }
 
     function supportsInterface(bytes4 interfaceId)

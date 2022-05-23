@@ -11,12 +11,9 @@ import WizardDead2 from "./Wizard10.png";
 import WizardDead3 from "./Wizard11.png";
 import WizardDead4 from "./Wizard12.png";
 import WizardUp from "./Wizard13.png";
+import { ITextureList } from "../../entities/wizard";
 
-interface IWizard {
-    [key: string]: string
-}
-
-const Wizard: IWizard = {
+const WizardMap: ITextureList = {
     "Down": WizardD,
     "Right": WizardR,
     "RightAlt": WizardRAlt,
@@ -32,4 +29,4 @@ const Wizard: IWizard = {
     "Up": WizardUp
 }
 
-export default Wizard;
+export default WizardMap;

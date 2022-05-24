@@ -3,6 +3,7 @@
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
+    "devSockets": "concurrently \"nuxt dev\" \"yarn --cwd ../delt-server/ br\"",
     "generate": "nuxt generate",
     "preview": "nuxt preview"
   },
@@ -19,6 +20,7 @@
     "@unocss/nuxt": "^0.31.13",
     "@vueuse/core": "^8.3.1",
     "@vueuse/nuxt": "^8.3.1",
+    "concurrently": "^7.2.1",
     "eslint": "^8.14.0",
     "eslint-plugin-nuxt": "^3.2.0",
     "eslint-plugin-vue": "^8.7.1",

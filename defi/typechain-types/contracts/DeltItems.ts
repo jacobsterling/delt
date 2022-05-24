@@ -29,17 +29,17 @@ import type {
 
 export declare namespace DeltItems {
   export type StatStruct = {
+    desc: string;
+    rarity: string;
     statKey: string;
     value: BigNumberish;
-    desc: string;
-    rarity: string;
   };
 
-  export type StatStructOutput = [string, number, string, string] & {
-    statKey: string;
-    value: number;
+  export type StatStructOutput = [string, string, string, number] & {
     desc: string;
     rarity: string;
+    statKey: string;
+    value: number;
   };
 
   export type AttrStruct = { attrKey: string; stats: DeltItems.StatStruct[] };
@@ -60,7 +60,7 @@ export interface DeltItemsInterface extends utils.Interface {
     "approve(address,uint256)": FunctionFragment;
     "attrKeys(uint256,uint256)": FunctionFragment;
     "attributes(uint256,string,uint256)": FunctionFragment;
-    "awardItem(address,string,string,(string,(string,uint32,string,string)[])[])": FunctionFragment;
+    "awardItem(address,string,string,(string,(string,string,string,uint32)[])[])": FunctionFragment;
     "balanceOf(address)": FunctionFragment;
     "burn(uint256)": FunctionFragment;
     "delegate(address)": FunctionFragment;
@@ -72,6 +72,7 @@ export interface DeltItemsInterface extends utils.Interface {
     "getPastTotalSupply(uint256)": FunctionFragment;
     "getPastVotes(address,uint256)": FunctionFragment;
     "getRoleAdmin(bytes32)": FunctionFragment;
+    "getSvg(uint256)": FunctionFragment;
     "getTokenId(string)": FunctionFragment;
     "getVotes(address)": FunctionFragment;
     "grantRole(bytes32,address)": FunctionFragment;
@@ -84,16 +85,15 @@ export interface DeltItemsInterface extends utils.Interface {
     "ownerOf(uint256)": FunctionFragment;
     "pause()": FunctionFragment;
     "paused()": FunctionFragment;
-    "payToMintItem(address,string,string,(string,(string,uint32,string,string)[])[])": FunctionFragment;
-    "removeAttribute(uint256,string)": FunctionFragment;
-    "removeStat(uint256,string,(string,uint32,string,string))": FunctionFragment;
+    "payToMintItem(address,string,string,(string,(string,string,string,uint32)[])[])": FunctionFragment;
     "renounceRole(bytes32,address)": FunctionFragment;
     "revokeRole(bytes32,address)": FunctionFragment;
     "safeTransferFrom(address,address,uint256)": FunctionFragment;
     "safeTransferFrom(address,address,uint256,bytes)": FunctionFragment;
     "setApprovalForAll(address,bool)": FunctionFragment;
-    "setAttribute(uint256,(string,(string,uint32,string,string)[]))": FunctionFragment;
-    "setStat(uint256,string,(string,uint32,string,string))": FunctionFragment;
+    "setAttribute(uint256,(string,(string,string,string,uint32)[]))": FunctionFragment;
+    "setStat(uint256,string,(string,string,string,uint32))": FunctionFragment;
+    "setStats(uint256,string,(string,string,string,uint32)[])": FunctionFragment;
     "supportsInterface(bytes4)": FunctionFragment;
     "symbol()": FunctionFragment;
     "tokenByIndex(uint256)": FunctionFragment;
@@ -127,6 +127,7 @@ export interface DeltItemsInterface extends utils.Interface {
       | "getPastTotalSupply"
       | "getPastVotes"
       | "getRoleAdmin"
+      | "getSvg"
       | "getTokenId"
       | "getVotes"
       | "grantRole"
@@ -140,8 +141,6 @@ export interface DeltItemsInterface extends utils.Interface {
       | "pause"
       | "paused"
       | "payToMintItem"
-      | "removeAttribute"
-      | "removeStat"
       | "renounceRole"
       | "revokeRole"
       | "safeTransferFrom(address,address,uint256)"
@@ -149,6 +148,7 @@ export interface DeltItemsInterface extends utils.Interface {
       | "setApprovalForAll"
       | "setAttribute"
       | "setStat"
+      | "setStats"
       | "supportsInterface"
       | "symbol"
       | "tokenByIndex"
@@ -232,6 +232,10 @@ export interface DeltItemsInterface extends utils.Interface {
     functionFragment: "getRoleAdmin",
     values: [BytesLike]
   ): string;
+  encodeFunctionData(
+    functionFragment: "getSvg",
+    values: [BigNumberish]
+  ): string;
   encodeFunctionData(functionFragment: "getTokenId", values: [string]): string;
   encodeFunctionData(functionFragment: "getVotes", values: [string]): string;
   encodeFunctionData(
@@ -267,14 +271,6 @@ export interface DeltItemsInterface extends utils.Interface {
     values: [string, string, string, DeltItems.AttrStruct[]]
   ): string;
   encodeFunctionData(
-    functionFragment: "removeAttribute",
-    values: [BigNumberish, string]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "removeStat",
-    values: [BigNumberish, string, DeltItems.StatStruct]
-  ): string;
-  encodeFunctionData(
     functionFragment: "renounceRole",
     values: [BytesLike, string]
   ): string;
@@ -301,6 +297,10 @@ export interface DeltItemsInterface extends utils.Interface {
   encodeFunctionData(
     functionFragment: "setStat",
     values: [BigNumberish, string, DeltItems.StatStruct]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "setStats",
+    values: [BigNumberish, string, DeltItems.StatStruct[]]
   ): string;
   encodeFunctionData(
     functionFragment: "supportsInterface",
@@ -383,6 +383,7 @@ export interface DeltItemsInterface extends utils.Interface {
     functionFragment: "getRoleAdmin",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "getSvg", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "getTokenId", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "getVotes", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
@@ -402,11 +403,6 @@ export interface DeltItemsInterface extends utils.Interface {
     functionFragment: "payToMintItem",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(
-    functionFragment: "removeAttribute",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: "removeStat", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "renounceRole",
     data: BytesLike
@@ -429,6 +425,7 @@ export interface DeltItemsInterface extends utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "setStat", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "setStats", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "supportsInterface",
     data: BytesLike
@@ -658,11 +655,11 @@ export interface DeltItems extends BaseContract {
       arg2: BigNumberish,
       overrides?: CallOverrides
     ): Promise<
-      [string, number, string, string] & {
-        statKey: string;
-        value: number;
+      [string, string, string, number] & {
         desc: string;
         rarity: string;
+        statKey: string;
+        value: number;
       }
     >;
 
@@ -723,6 +720,11 @@ export interface DeltItems extends BaseContract {
 
     getRoleAdmin(role: BytesLike, overrides?: CallOverrides): Promise<[string]>;
 
+    getSvg(
+      _tokenId: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[string]>;
+
     getTokenId(
       _itemId: string,
       overrides?: CallOverrides
@@ -777,19 +779,6 @@ export interface DeltItems extends BaseContract {
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
-    removeAttribute(
-      _tokenId: BigNumberish,
-      _attrKey: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<ContractTransaction>;
-
-    removeStat(
-      _tokenId: BigNumberish,
-      _attrKey: string,
-      _stat: DeltItems.StatStruct,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<ContractTransaction>;
-
     renounceRole(
       role: BytesLike,
       account: string,
@@ -833,6 +822,13 @@ export interface DeltItems extends BaseContract {
       _tokenId: BigNumberish,
       _attrKey: string,
       _stat: DeltItems.StatStruct,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
+    setStats(
+      _tokenId: BigNumberish,
+      _attrKey: string,
+      _stats: DeltItems.StatStruct[],
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
@@ -906,11 +902,11 @@ export interface DeltItems extends BaseContract {
     arg2: BigNumberish,
     overrides?: CallOverrides
   ): Promise<
-    [string, number, string, string] & {
-      statKey: string;
-      value: number;
+    [string, string, string, number] & {
       desc: string;
       rarity: string;
+      statKey: string;
+      value: number;
     }
   >;
 
@@ -968,6 +964,8 @@ export interface DeltItems extends BaseContract {
 
   getRoleAdmin(role: BytesLike, overrides?: CallOverrides): Promise<string>;
 
+  getSvg(_tokenId: BigNumberish, overrides?: CallOverrides): Promise<string>;
+
   getTokenId(_itemId: string, overrides?: CallOverrides): Promise<BigNumber>;
 
   getVotes(account: string, overrides?: CallOverrides): Promise<BigNumber>;
@@ -1016,19 +1014,6 @@ export interface DeltItems extends BaseContract {
     overrides?: PayableOverrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
-  removeAttribute(
-    _tokenId: BigNumberish,
-    _attrKey: string,
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
-
-  removeStat(
-    _tokenId: BigNumberish,
-    _attrKey: string,
-    _stat: DeltItems.StatStruct,
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
-
   renounceRole(
     role: BytesLike,
     account: string,
@@ -1072,6 +1057,13 @@ export interface DeltItems extends BaseContract {
     _tokenId: BigNumberish,
     _attrKey: string,
     _stat: DeltItems.StatStruct,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
+  setStats(
+    _tokenId: BigNumberish,
+    _attrKey: string,
+    _stats: DeltItems.StatStruct[],
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
@@ -1139,11 +1131,11 @@ export interface DeltItems extends BaseContract {
       arg2: BigNumberish,
       overrides?: CallOverrides
     ): Promise<
-      [string, number, string, string] & {
-        statKey: string;
-        value: number;
+      [string, string, string, number] & {
         desc: string;
         rarity: string;
+        statKey: string;
+        value: number;
       }
     >;
 
@@ -1198,6 +1190,8 @@ export interface DeltItems extends BaseContract {
 
     getRoleAdmin(role: BytesLike, overrides?: CallOverrides): Promise<string>;
 
+    getSvg(_tokenId: BigNumberish, overrides?: CallOverrides): Promise<string>;
+
     getTokenId(_itemId: string, overrides?: CallOverrides): Promise<BigNumber>;
 
     getVotes(account: string, overrides?: CallOverrides): Promise<BigNumber>;
@@ -1242,19 +1236,6 @@ export interface DeltItems extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
-    removeAttribute(
-      _tokenId: BigNumberish,
-      _attrKey: string,
-      overrides?: CallOverrides
-    ): Promise<void>;
-
-    removeStat(
-      _tokenId: BigNumberish,
-      _attrKey: string,
-      _stat: DeltItems.StatStruct,
-      overrides?: CallOverrides
-    ): Promise<void>;
-
     renounceRole(
       role: BytesLike,
       account: string,
@@ -1298,6 +1279,13 @@ export interface DeltItems extends BaseContract {
       _tokenId: BigNumberish,
       _attrKey: string,
       _stat: DeltItems.StatStruct,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    setStats(
+      _tokenId: BigNumberish,
+      _attrKey: string,
+      _stats: DeltItems.StatStruct[],
       overrides?: CallOverrides
     ): Promise<void>;
 
@@ -1527,6 +1515,11 @@ export interface DeltItems extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
+    getSvg(
+      _tokenId: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
     getTokenId(_itemId: string, overrides?: CallOverrides): Promise<BigNumber>;
 
     getVotes(account: string, overrides?: CallOverrides): Promise<BigNumber>;
@@ -1578,19 +1571,6 @@ export interface DeltItems extends BaseContract {
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
-    removeAttribute(
-      _tokenId: BigNumberish,
-      _attrKey: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<BigNumber>;
-
-    removeStat(
-      _tokenId: BigNumberish,
-      _attrKey: string,
-      _stat: DeltItems.StatStruct,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<BigNumber>;
-
     renounceRole(
       role: BytesLike,
       account: string,
@@ -1634,6 +1614,13 @@ export interface DeltItems extends BaseContract {
       _tokenId: BigNumberish,
       _attrKey: string,
       _stat: DeltItems.StatStruct,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
+    setStats(
+      _tokenId: BigNumberish,
+      _attrKey: string,
+      _stats: DeltItems.StatStruct[],
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
@@ -1777,6 +1764,11 @@ export interface DeltItems extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
+    getSvg(
+      _tokenId: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
     getTokenId(
       _itemId: string,
       overrides?: CallOverrides
@@ -1840,19 +1832,6 @@ export interface DeltItems extends BaseContract {
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
-    removeAttribute(
-      _tokenId: BigNumberish,
-      _attrKey: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<PopulatedTransaction>;
-
-    removeStat(
-      _tokenId: BigNumberish,
-      _attrKey: string,
-      _stat: DeltItems.StatStruct,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<PopulatedTransaction>;
-
     renounceRole(
       role: BytesLike,
       account: string,
@@ -1896,6 +1875,13 @@ export interface DeltItems extends BaseContract {
       _tokenId: BigNumberish,
       _attrKey: string,
       _stat: DeltItems.StatStruct,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    setStats(
+      _tokenId: BigNumberish,
+      _attrKey: string,
+      _stats: DeltItems.StatStruct[],
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 

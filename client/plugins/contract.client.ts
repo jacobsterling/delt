@@ -4,16 +4,15 @@ import DeltItems from "../../defi/artifacts/contracts/DeltItems.sol/DeltItems.js
 import { Wallet } from "./wallet.client"
 
 export interface Stat {
-  statKey: string,
-  value: number,
   desc: string,
-  rarity: string
+  rarity: string,
+  statKey: string,
+  value: number
 }
 export interface Attr {
   attrKey: string,
-  stats: Stat[],
+  stats: any[],
 }
-
 export interface Item {
   id: number,
   attributes: JSON,
@@ -30,8 +29,6 @@ export interface ContractRef {
   burnItem: (wallet: Wallet, item: Item) => Promise<void>,
   read: (provider: providers.Web3Provider, contractAbi: ContractInterface) => Contract,
   connect: (signer: Signer, contractAbi: ContractInterface) => void,
-  removeAttribute: (tokenId: string, attrKey: string) => Promise<void>,
-  removeStat: (tokenId: string, attrKey: string, stat: Stat) => Promise<void>,
   setAttribute: (tokenId: string, attribute: Attr) => Promise<void>,
   setStat: (tokenId: string, attrKey: string, stat: Stat) => Promise<void>,
   getAddress: () => string,
@@ -48,8 +45,6 @@ export default defineNuxtPlugin(() => {
         const newTokenId = await contractRef.contract.awardItem(wallet.account, item.slug, image, item.attributes)
 
         await newTokenId.wait()
-
-        console.log(newTokenId.value.toNumber())
 
         await contractRef.updateSupabase(item.id, newTokenId.value.toNumber(), wallet.account)
 
@@ -75,7 +70,7 @@ export default defineNuxtPlugin(() => {
     contract: undefined,
 
     getAddress: () => {
-      return "0x67d269191c92Caf3cD7723F116c85e6E9bf55933"
+      return "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
     },
 
     getURI: async (tokenId: number) => {
@@ -88,23 +83,13 @@ export default defineNuxtPlugin(() => {
       return markRaw(new ethers.Contract(contractRef.getAddress(), contractAbi, provider))
     },
 
-    removeAttribute: async (tokenId: string, attrKey: string) => {
-      const result = await contractRef.contract.removeAttribute(tokenId, attrKey)
-      await result.wait()
-    },
-
-    removeStat: async (tokenId: string, attrKey: string, stat: Stat) => {
-      const result = await contractRef.contract.removeStat(tokenId, attrKey, stat)
-      await result.wait()
-    },
-
     setAttribute: async (tokenId: string, attribute: Attr) => {
-      const result = await contractRef.contract.setAttribute(tokenId, attribute)
+      const result = await contractRef.contract.setAttribute(tokenId, Object.values(attribute))
       await result.wait()
     },
 
     setStat: async (tokenId: string, attrKey: string, stat: Stat) => {
-      const result = await contractRef.contract.setAttribute(tokenId, attrKey, stat)
+      const result = await contractRef.contract.setStat(tokenId, attrKey, Object.values(stat))
       await result.wait()
     },
 

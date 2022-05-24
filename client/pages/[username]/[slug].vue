@@ -17,7 +17,7 @@ const { data: url } = client.storage.from("items").getPublicUrl(`${item.slug}.sv
 const tokenURI = ref<string>("Connect wallet to see metadataURI")
 
 if (wallet) {
-  const contract = contractRef.readContract(wallet.signer)
+  const contract = contractRef.read(wallet.provider)
   tokenURI.value = await contract.tokenURI(item.tokenId)
   // Buffer.from(base64, "base64").toString("binary")
 }

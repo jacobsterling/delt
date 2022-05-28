@@ -1,5 +1,5 @@
 {
-    "debug": false,
+    "debug": true,
     "gameConfig": {
         "type": 0,
         "width": 1080,
@@ -16,13 +16,13 @@
                     "mapping": "multiplayer",
                     "start": true,
                     "data": {                
-                        "url": "wss://127.0.0.1:42069",
+                        "url": "ws://127.0.0.1:42069",
                         "broadcastInterval": 16,
                         "pauseTimeout": 5000,
                         "deadTimeout": 15000,
                         "checkTimeoutsInterval": 100,
                         "autoConnect": false,
-                        "debug": false
+                        "debug": true
                     }
                 }
             ]

@@ -1,3 +1,4 @@
+import { Entity } from "./entities/entity";
 import { Wizard } from "./entities/wizard";
 import MainScene from "./scenes/mainScene";
 
@@ -25,6 +26,10 @@ const establishMultiplayer = (scene: MainScene) => {
 	);
 	scene.multiplayer.event.on('object.update', (_: any, obj: any, __: any) => {
 		updateObjects(obj, scene);
+	}, scene.multiplayer);
+
+	scene.multiplayer.event.on('object.kill', (_: any, objId: string) => {
+		killObjects(objId, scene)
 	}, scene.multiplayer);
 
 	scene.multiplayer.track(scene.player.sprite, featureExtractor);
@@ -76,6 +81,16 @@ const updateObjects = (obj: any, scene: MainScene) => {
 
 const initConnection = (scene: MainScene) => {
 	scene.multiplayer.startBroadcast();
+}
+
+const killObjects = (killId: string, scene: MainScene) => {
+	const obj: Entity = scene.gameObjects.find(x=>x.id === killId);
+	if (!(obj instanceof Entity)) {
+		console.log(`Tried deleting non-entity object ${killId}`);
+		return;
+	}
+	obj.destroy();
+	scene.gameObjects = scene.gameObjects.filter(x=>x !== obj);
 }
 
 export default establishMultiplayer;

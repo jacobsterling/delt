@@ -1,5 +1,6 @@
 import Config from './config';
 import {useStore} from './store';
+import {sendKillUpdate} from './update';
 
 // Heartbeat interval
 const heartbeat = () => {
@@ -11,6 +12,7 @@ const heartbeat = () => {
         wss.emit('customClose', clnt.hashedId);
         clnt.ws.close();
         clientList.splice(index, 1);
+        sendKillUpdate(clnt.hashedId);
       }
       clnt.isAlive = false;
     });

@@ -1,4 +1,4 @@
-import {Server, WebSocket} from 'ws';
+import {useStore} from '.';
 import Config from './config';
 import {Client, MessageTypes} from './messageTypes';
 
@@ -12,8 +12,9 @@ const updateMessage = (clientList: Client[]) => ({
   objects: getClients(clientList),
 });
 
-const update = (clientList: Client[], wss: Server<WebSocket>) => {
+const update = () => {
   setInterval(()=> {
+    const {wss, clientList} = useStore();
     const update = updateMessage(clientList);
     const json = JSON.stringify(update);
     wss.clients.forEach((client) => client.send(json));

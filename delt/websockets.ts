@@ -1,3 +1,5 @@
+import "phaser";
+
 const MESSAGE_TYPE = {
 	UPDATE_OBJECT: 'update.object',
 	KILL_OBJECT: 'kill.object',

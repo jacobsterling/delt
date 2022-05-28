@@ -1,7 +1,8 @@
+import {useStore} from '.';
 import {BasicMessageReceived, Client, DeltSocket} from './messageTypes';
 
-const listeners = (ws: DeltSocket, clientList: Client[]) => {
-  ws.on('message', (data: any) => message(ws, clientList, data));
+const listeners = (ws: DeltSocket) => {
+  ws.on('message', (data: any) => message(ws, useStore().clientList, data));
 };
 
 const isHeartBeat = (message: string): boolean => (

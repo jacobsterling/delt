@@ -7,17 +7,30 @@ import listeners from './listeners';
 import initializeClient from './initializeClient';
 
 const clientList: Client[] = [];
+const wss = new WebSocketServer(Config.wsConfig);
 
-export const launch = () => {
+export interface IStore {
+  clientList: Client[];
+  wss: WebSocketServer;
+}
+
+const getClientList = () => clientList;
+const getWss = () => wss;
+export const useStore = () => ({
+  clientList: getClientList(),
+  wss: getWss(),
+});
+
+
+const launch = () => {
   console.log('Starting sockets');
-  const wss = new WebSocketServer(Config.wsConfig);
   console.log('Sockets set up. Waiting for connection...');
   wss.on('connection', (ws: WebSocket & Listeners) => {
     console.log('connection established!');
-    listeners(ws, clientList);
-    initializeClient(ws, clientList);
-    update(clientList, wss);
-    heartbeat(clientList, wss);
+    listeners(ws);
+    initializeClient(ws);
+    update();
+    heartbeat();
   });
 };
 

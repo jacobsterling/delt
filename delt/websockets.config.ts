@@ -45,10 +45,10 @@ const createObject = (data: any, scene: MainScene) => {
 
 const updateObjects = (obj: any, scene: MainScene) => {
 	const {id, data} = obj;
-	const {x, y} = data;
 	if (id) {
 		const res = scene.gameObjects.find(x=>x.id === id);
 		if (!res) return;
+		const {x, y} = data;
 		res?.sprite.setPosition(x, y);
 	}
 }

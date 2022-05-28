@@ -1,3 +1,4 @@
+import {useStore} from '.';
 import {Client, DeltSocket, MessageTypes} from './messageTypes';
 
 const initializationMessage = (clientList: Client[]) => {
@@ -7,8 +8,8 @@ const initializationMessage = (clientList: Client[]) => {
   };
 };
 
-const initializeClient = (ws: DeltSocket, clientList: Client[] ) => {
-  ws.send(JSON.stringify(initializationMessage(clientList)));
+const initializeClient = (ws: DeltSocket) => {
+  ws.send(JSON.stringify(initializationMessage(useStore().clientList)));
 };
 
 export default initializeClient;

@@ -133,4 +133,9 @@ export class Wizard extends Entity {
         this.movement?.forEach(direction => checkDirection(this, direction, t, dt));
         this.projectiles.forEach(x => x.update(t, dt));
     }
+
+    public destroy = () => {
+        this.sprite.destroy(true);
+        this.projectiles.forEach(x => x.emitter.remove());
+    }
 }

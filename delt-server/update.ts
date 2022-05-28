@@ -1,6 +1,11 @@
 import {useStore} from './store';
 import Config from './config';
-import {BasicMessageSend, Client, MessageTypes} from './messageTypes';
+import {
+  BasicKillSend,
+  BasicMessageSend,
+  Client,
+  MessageTypes,
+} from './messageTypes';
 import initializeClient from './initializeClient';
 
 const interval = 1000 / Config.tick;
@@ -18,6 +23,18 @@ const updateMessage = (clientList: Client[], client: Client) => ({
   type: MessageTypes.UPDATE_OBJECT,
   objects: getClients(clientList, client),
 });
+
+const getKillMessage = (client: Client, hashedId: string): BasicKillSend => ({
+  type: MessageTypes.KILL_OBJECT,
+  id: hashedId == client.hashedId ? client.id : hashedId,
+});
+
+export const sendKillUpdate = (hashedId: string) => {
+  const {clientList} = useStore();
+  clientList.forEach((x) => {
+    x.ws.send(JSON.stringify(getKillMessage(x, hashedId)));
+  });
+};
 
 const update = () => {
   setInterval(()=> {

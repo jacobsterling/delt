@@ -23,6 +23,11 @@ export type BasicMessageSend = BasicMessage & {
 
 };
 
+export type BasicKillSend = {
+    id: string;
+    type: string;
+};
+
 export interface Listeners {
     on: (message: string, predicate: (data: any) => void) => void
 }

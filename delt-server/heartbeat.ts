@@ -1,5 +1,5 @@
 import Config from './config';
-import {useStore} from '.';
+import {useStore} from './store';
 
 // Heartbeat interval
 const heartbeat = () => {
@@ -7,8 +7,8 @@ const heartbeat = () => {
     const {wss, clientList} = useStore();
     clientList.forEach((clnt, index) => {
       if (clnt.isAlive === false) {
-        console.log('[-]', clnt.id, 'has Disconnected.');
-        wss.emit('customClose', clnt.id);
+        console.log(`[-]' ${clnt.id} (${clnt.hashedId}) 'has Disconnected.`);
+        wss.emit('customClose', clnt.hashedId);
         clnt.ws.close();
         clientList.splice(index, 1);
       }

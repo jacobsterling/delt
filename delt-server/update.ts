@@ -1,23 +1,36 @@
-import {useStore} from '.';
+import {useStore} from './store';
 import Config from './config';
-import {Client, MessageTypes} from './messageTypes';
+import {BasicMessageSend, Client, MessageTypes} from './messageTypes';
+import initializeClient from './initializeClient';
 
 const interval = 1000 / Config.tick;
 
-const getClients = (clientList: Client[]) =>
-  clientList.map((x) => ({id: x.id, data: x.data}));
+const constructData = (clnt: Client, to: Client): BasicMessageSend => ({
+  id: clnt.id == to.id ? clnt.id : clnt.hashedId,
+  data: clnt.data,
+});
 
-const updateMessage = (clientList: Client[]) => ({
+const getClients = (clientList: Client[], client: Client) => (
+  clientList.map((x) => constructData(x, client))
+);
+
+const updateMessage = (clientList: Client[], client: Client) => ({
   type: MessageTypes.UPDATE_OBJECT,
-  objects: getClients(clientList),
+  objects: getClients(clientList, client),
 });
 
 const update = () => {
   setInterval(()=> {
-    const {wss, clientList} = useStore();
-    const update = updateMessage(clientList);
-    const json = JSON.stringify(update);
-    wss.clients.forEach((client) => client.send(json));
+    const {clientList} = useStore();
+    clientList.forEach((client) => {
+      const update = updateMessage(clientList, client);
+      const json = JSON.stringify(update);
+      if (!client.hasInitialized) {
+        initializeClient(client);
+        return;
+      }
+      client.ws.send(json);
+    });
   }, interval);
 };
 

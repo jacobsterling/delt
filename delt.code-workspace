@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "delt"
+		},
+		{
+			"path": "delt-server"
 		}
 	]
 }

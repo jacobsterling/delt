@@ -31,7 +31,7 @@ const config: HardhatUserConfig = {
       optimizer: {
         enabled: true,
         runs: 200
-      }
+      },
     }
   },
 
@@ -47,8 +47,8 @@ const config: HardhatUserConfig = {
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
-
   },
+
   // gasReporter: {
   //   enabled: process.env.REPORT_GAS !== undefined,
   //   currency: "USD",

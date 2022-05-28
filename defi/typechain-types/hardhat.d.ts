@@ -153,13 +153,17 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IERC165__factory>;
     getContractFactory(
-      name: "_DeltItems",
+      name: "DeltAttributes",
       signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts._DeltItems__factory>;
+    ): Promise<Contracts.DeltAttributes__factory>;
     getContractFactory(
       name: "DeltItems",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.DeltItems__factory>;
+    getContractFactory(
+      name: "DeltTrader",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.DeltTrader__factory>;
 
     getContractAt(
       name: "AccessControlUpgradeable",
@@ -337,15 +341,20 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.IERC165>;
     getContractAt(
-      name: "_DeltItems",
+      name: "DeltAttributes",
       address: string,
       signer?: ethers.Signer
-    ): Promise<Contracts._DeltItems>;
+    ): Promise<Contracts.DeltAttributes>;
     getContractAt(
       name: "DeltItems",
       address: string,
       signer?: ethers.Signer
     ): Promise<Contracts.DeltItems>;
+    getContractAt(
+      name: "DeltTrader",
+      address: string,
+      signer?: ethers.Signer
+    ): Promise<Contracts.DeltTrader>;
 
     // default types
     getContractFactory(

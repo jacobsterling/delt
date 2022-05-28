@@ -51,6 +51,9 @@ const userLoginModal = ref<InstanceType<typeof UserLoginModal>>()
           <NuxtLink to="/Market" class="d-header-link d-link-emerald">
             Market
           </NuxtLink>
+          <NuxtLink to="/Craft" class="d-header-link d-link-emerald">
+            Craft
+          </NuxtLink>
           <NuxtLink to="/Roadmap" class="d-header-link d-link-emerald">
             Roadmap
           </NuxtLink>

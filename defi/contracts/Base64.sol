@@ -194,3 +194,22 @@ library Base64 {
         return string(bstr);
     }
 }
+
+//require(msg.value >= itemId[_tokenId].mod);
+// for (uint256 i = 0; i < attrKeys[_tokenId].length; i++) {
+//     for (
+//         uint256 j = 0;
+//         j < attributes[_tokenId][attrKeys[_tokenId][i].attrKey].length;
+//         j++
+//     ) {
+//         itemId[_tokenId].mod += attributes[_tokenId][
+//             attrKeys[_tokenId][i].attrKey
+//         ][j].value;
+//     }
+//     delete attributes[_tokenId][attrKeys[_tokenId][i].attrKey];
+// }
+
+// exists[getItemId(_tokenId).itemName] = false;
+// delete tokenIdlookup[getItemId(_tokenId).itemName];
+// delete itemId[_tokenId];
+// delete attrKeys[_tokenId];

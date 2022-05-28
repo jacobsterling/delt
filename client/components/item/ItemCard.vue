@@ -16,7 +16,7 @@ const props = defineProps({
 
 const { $wallet: wallet, $contractRef: contractRef } = useNuxtApp()
 
-const { username: owner, accountCompact: ownerAcc, type: ownerType, imageURL: ownerPp, level: ownerLvl } = await useAccount(props.item.owner)
+const { username: owner, accountCompact: ownerAcc, imageURL: ownerPp, level: ownerLvl } = await useAccount(props.item.owner)
 
 const client = useSupabaseClient()
 
@@ -37,21 +37,15 @@ const getItemImage = (slug: string) => {
 }
 
 const image = getItemImage(props.item.slug)
-
 const tokenURI = ref<string>(undefined)
 const status = ref<string>("get URI")
 
 const getURI = async () => {
-  if (wallet) {
-    const contract = contractRef.read(wallet.provider)
-    try {
-      const tokenId = await contract.getTokenId(props.item.slug)
-      tokenURI.value = await contract.tokenURI(tokenId)
-    } catch (Error) {
-      console.log(Error)
-      status.value = "Unminted"
-    }
-    // Buffer.from(base64, "base64").toString("binary")
+  try {
+    tokenURI.value = await contractRef.readDeltItems(wallet.provider).tokenURI(props.item.tokenId)
+  } catch (Error) {
+    console.log(Error)
+    status.value = "Unminted"
   }
   window.open(tokenURI.value)
 }
@@ -60,23 +54,23 @@ const getURI = async () => {
 
 <template>
   <div class="p-2 m-5 flex-block shadow-2xl rounded-2xl w-280px">
-    <img :src="image" height="200">
+    <img :src="image" height="200" @click="router.push(`/${owner}/${props.item.slug}`)">
     <footer class="text-xs border-top my-1 flex justify-around content-center">
       <ul class="grid justify-items-start">
         <li class="text-base">
           <h1>{{ props.item.slug }}</h1>
         </li>
         <li>
-          <!-- <NuxtLink :to="owner"> -->
-          <div class="flex-inline">
-            Owned by:
-            <img :src="ownerPp || '../../assets/knight-helmet.svg'" size="5px" class="d-icon-5 flex">
-            {{ owner || ownerAcc }}
-            <div class="d-icon-4 flex mx-1">
-              {{ ownerLvl || "??" }}
+          <NuxtLink :to="owner">
+            <div class="flex-inline">
+              Owned by:
+              <img :src="ownerPp || '../../assets/knight-helmet.svg'" size="5px" class="d-icon-5 flex">
+              {{ owner || ownerAcc }}
+              <div class="d-icon-4 flex mx-1">
+                {{ ownerLvl || "??" }}
+              </div>
             </div>
-          </div>
-          <!-- </NuxtLink> -->
+          </NuxtLink>
         </li>
         <li>
           <DeltButton class="d-button-rose" @click="getURI">
@@ -85,7 +79,7 @@ const getURI = async () => {
         </li>
       </ul>
       <aside class="flex float:right">
-        <ul class="grid justify-items-end my-2">
+        <ul v-if="wallet" class="grid justify-items-end my-2">
           <slot />
         </ul>
       </aside>

@@ -32,35 +32,28 @@ const mint = async (item: Item) => {
   loadingMint.value = true
   const image = await getItemImage(item.slug)
   if (wallet) {
-    await contractRef.connect(wallet.signer)
-    const mintResult = await contractRef.awardItem(wallet, item, svg.value)
-    isMinted.value = mintResult
+    isMinted.value = await contractRef.awardItem(wallet, item, svg.value)
   }
   loadingMint.value = false
 }
 
 const burn = async (item: Item) => {
-  if (wallet) {
-    await contractRef.connect(wallet.signer)
-    await contractRef.burnItem(wallet, item)
-    isMinted.value = false
-  }
+  await contractRef.burnItem(wallet, item)
+  isMinted.value = false
 }
 
 const setAttribute = async (item: Item) => {
   const stat: Stat = {
     desc: "ultra light weight",
-    rarity: "common",
     statKey: "cloth",
+    tier: 1,
     value: 1
   }
-  const attribute = {
+  const attribute: Attr = {
     attrKey: "weight",
-    stats: [Object.values(stat)]
+    stats: [stat]
   }
-
-  await contractRef.connect(wallet.signer)
-  await contractRef.setAttribute(item.tokenId, attribute)
+  await contractRef.modifiyItem(wallet, item, 1, attribute)
 }
 
 const removeAttribute = async (item: Item) => {
@@ -68,54 +61,58 @@ const removeAttribute = async (item: Item) => {
     attrKey: "weight",
     stats: []
   }
-
-  await contractRef.connect(wallet.signer)
-  await contractRef.setAttribute(item.tokenId, attribute)
+  await contractRef.modifiyItem(wallet, item, 1, attribute)
 }
 
 const setStat = async (item: Item) => {
-  const attrKey = "defence"
   const stat: Stat = {
     desc: "flaming silk worm",
-    rarity: "common",
     statKey: "fire",
+    tier: 1,
     value: 1
   }
-  await contractRef.connect(wallet.signer)
-  await contractRef.setStat(item.tokenId, attrKey, stat)
+  const attribute: Attr = {
+    attrKey: "defence",
+    stats: [stat]
+  }
+  await contractRef.modifiyItem(wallet, item, 1, attribute)
 }
 
 const removeStat = async (item: Item) => {
-  const attrKey = "defence"
   const stat: Stat = {
     desc: "flaming silk worm",
-    rarity: "rare",
     statKey: "fire",
+    tier: 1,
     value: 0
   }
-  await contractRef.connect(wallet.signer)
-  await contractRef.setStat(item.tokenId, attrKey, stat)
+  const attribute: Attr = {
+    attrKey: "defence",
+    stats: [stat]
+  }
+  await contractRef.modifiyItem(wallet, item, 0, attribute)
 }
 
-const allTokens = ref<any>("Get All Tokens")
+const modValue = ref<number>(0)
 
-const getAllTokens = async () => {
-  const contract = contractRef.read(wallet.provider)
-  allTokens.value = await contract.totalSupply()
+const getUpgradeValue = async (item: Item) => {
+  modValue.value = await contractRef.readDeltItems(wallet.provider).opMod()
+  // .getOpMod(item.tokenId, modValue.value)
 }
 
+const tokenId = ref<number>(undefined)
+const getTokenId = async (item: Item) => {
+  tokenId.value = await contractRef.readDeltItems(wallet.provider).getTokenId(item.slug)
+}
 </script>
 
 <template>
   <div>
     <ClientOnly>
-      <NuxtLink :href="`https://ropsten.etherscan.io/address/${contractRef.getAddress()}`" class="d-button-emerald">
-        Pointed at contract: {{ contractRef.getAddress() }}
+      <NuxtLink :href="`https://ropsten.etherscan.io/address/${contractRef.deltItemsAddress()}`"
+        class="d-button-emerald">
+        Pointed at contract: {{ contractRef.deltItemsAddress() }}
       </NuxtLink>
     </ClientOnly>
-    <div class="d-button-emerald my-2" @click="getAllTokens()">
-      {{ allTokens }}
-    </div>
     <div class="justify-center flex-no-shrink w-90%">
       <ItemCard v-for="item in items" :key="item.id" :item="item">
         <button v-if="!isMinted" class="d-button-emerald" @click="mint(item)">
@@ -136,6 +133,13 @@ const getAllTokens = async () => {
         <button class="d-button-indigo" @click="setStat(item)">
           setStat
         </button>
+        <div class="d-button-emerald" @click="getUpgradeValue(item)">
+          {{ modValue }}
+        </div>
+        <input type="number" :v-model="modValue" placeholder="Upgrade Value">
+        <div class="d-button-emerald" @click="getTokenId(item)">
+          {{ tokenId }}
+        </div>
       </ItemCard>
     </div>
   </div>

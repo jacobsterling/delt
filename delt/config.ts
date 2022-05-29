@@ -4,7 +4,7 @@ import MainScene from "./scenes/mainScene";
 
 interface IConfig {
 	debug: boolean,
-	gameConfig: Phaser.Types.Core.GameConfig,
+	gameConfig: Phaser.Types.Core.GameConfig
 }
 
 type PluginObject = Phaser.Types.Core.PluginObject;
@@ -28,13 +28,12 @@ const insertPluginClass = (key: string, className: Class, conf: IConfig) => {
 	}
 }
 
-const GetConfig = (): IConfig => {
+const GetConfig = (containerId: string): IConfig => {
 	const conf: IConfig = ConfigJson
 	conf.gameConfig.scene = [MainScene];
 	insertPluginClass("websocket-multiplayer", PhaserWebsocketMultiplayerPlugin, conf);
+	conf.gameConfig.parent = containerId;
 	return conf;
 };
 
-const Config: IConfig = GetConfig();
-
-export default Config;
+export default GetConfig;

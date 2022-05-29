@@ -1,28 +1,21 @@
-<script>
-export default {
-  data () {
-    return {
-      containerId: "game-container",
-      downloaded: false,
-      gameInstance: null
-    }
-  },
-  async mounted () {
-    const game = await import(/* webpackChunkName: "game" */ "../../delt/game.ts")
-    this.downloaded = true
-    this.$nextTick(() => {
-      this.gameInstance = game.launch(this.containerId)
-    })
-  },
-  unmounted () {
-    this.gameInstance.destroy(false)
+<script setup lang="ts">
+const gameInstance = ref()
+const downloaded = ref(false)
+
+onMounted(async () => {
+  if (process.client) {
+    downloaded.value = true
+    const game = await import("../../delt/game")
+    gameInstance.value = game.launch("delt-container")
   }
-}
+})
 </script>
 
 <template>
-  <div v-if="downloaded" :id="gameInstance" />
-  <div v-else class="placeholder">
-    Downloading ...
+  <div>
+    <div v-if="downloaded" id="delt-container" />
+    <div v-else>
+      Downloading...
+    </div>
   </div>
 </template>

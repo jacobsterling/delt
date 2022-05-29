@@ -5,7 +5,7 @@ import { DeltUnocssNuxtOptions } from "./unocss.config"
 // https://v3.nuxtjs.org/api/configuration/nuxt.config
 export default defineNuxtConfig({
   build: {
-    transpile: ["@heroicons/vue", "phaser"]
+    transpile: ["@heroicons/vue"]
   },
   css: [
     "@unocss/reset/tailwind.css"
@@ -29,6 +29,13 @@ export default defineNuxtConfig({
 
   unocss: DeltUnocssNuxtOptions,
   vite: {
+    build: {
+      rollupOptions: {
+        external: [
+          "phaser"
+        ]
+      }
+    },
     optimizeDeps: {
       exclude: ["hardhat"]
     }

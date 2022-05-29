@@ -6,5 +6,6 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
+    "typeRoots": ["./node_modules/phaser/types/phaser.d.ts"]
   }
 }

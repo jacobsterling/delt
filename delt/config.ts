@@ -1,4 +1,5 @@
-import PhaserWebsocketMultiplayerPlugin from "./websockets"
+import 'phaser';
+import PhaserWebsocketMultiplayerPlugin from "./websockets";
 import ConfigJson from './config.Debug.json';
 import MainScene from "./scenes/mainScene";
 

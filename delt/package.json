@@ -3,7 +3,9 @@
     "@types/node": "^17.0.35",
     "eslint": "^8.16.0",
     "eslint-config-prettier": "^8.5.0",
-    "phaser": "^3.55.2",
     "prettier": "^2.6.2"
+  },
+  "dependencies": {
+    "phaser": "^3.55.2"
   }
 }

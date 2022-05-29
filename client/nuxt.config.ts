@@ -26,7 +26,6 @@ export default defineNuxtConfig({
   typescript: {
     shim: false
   },
-
   unocss: DeltUnocssNuxtOptions,
   vite: {
     build: {

@@ -29,11 +29,7 @@ export default defineNuxtConfig({
   unocss: DeltUnocssNuxtOptions,
   vite: {
     build: {
-      rollupOptions: {
-        external: [
-          "phaser"
-        ]
-      }
+      assetsInlineLimit: 0 // change later
     },
     optimizeDeps: {
       exclude: ["hardhat"]

@@ -23,6 +23,7 @@
     "@typescript-eslint"
   ],
   "root": true,
+  "ignorePatterns": [".out/*.*", ".nuxt/*.*", "node_modules/*.*"],
   "rules": {
     "indent": [
       "error",

@@ -7,7 +7,7 @@ export default {
       gameInstance: null
     }
   },
-  mounted () {
+  async mounted () {
     const game = await import(/* webpackChunkName: "game" */ "../../delt/game.ts")
     this.downloaded = true
     this.$nextTick(() => {

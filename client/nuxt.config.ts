@@ -28,6 +28,9 @@ export default defineNuxtConfig({
   },
   unocss: DeltUnocssNuxtOptions,
   vite: {
+    build: {
+      assetsInlineLimit: 0 // change later
+    },
     optimizeDeps: {
       exclude: ["hardhat"]
     }

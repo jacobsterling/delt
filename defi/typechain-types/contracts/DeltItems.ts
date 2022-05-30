@@ -32,25 +32,25 @@ export declare namespace DeltAttributes {
     awarded: boolean;
     itemName: string;
     itemType: string;
-    mod: BigNumberish;
+    lvl: BigNumberish;
   };
 
   export type ItemIdStructOutput = [boolean, string, string, BigNumber] & {
     awarded: boolean;
     itemName: string;
     itemType: string;
-    mod: BigNumber;
+    lvl: BigNumber;
   };
 
   export type StatStruct = {
-    desc: string;
+    trait: string;
     statKey: string;
     tier: BigNumberish;
     value: BigNumberish;
   };
 
   export type StatStructOutput = [string, string, BigNumber, BigNumber] & {
-    desc: string;
+    trait: string;
     statKey: string;
     tier: BigNumber;
     value: BigNumber;
@@ -83,8 +83,9 @@ export interface DeltItemsInterface extends utils.Interface {
     "exists(string)": FunctionFragment;
     "getApproved(uint256)": FunctionFragment;
     "getItemId(uint256)": FunctionFragment;
-    "getOpMod(uint256,int256)": FunctionFragment;
+    "getOpPrice(uint256,int256)": FunctionFragment;
     "getRoleAdmin(bytes32)": FunctionFragment;
+    "getTier(string)": FunctionFragment;
     "getTokenId(string)": FunctionFragment;
     "grantRole(bytes32,address)": FunctionFragment;
     "hasRole(bytes32,address)": FunctionFragment;
@@ -103,6 +104,7 @@ export interface DeltItemsInterface extends utils.Interface {
     "safeTransferFrom(address,address,uint256)": FunctionFragment;
     "safeTransferFrom(address,address,uint256,bytes)": FunctionFragment;
     "setApprovalForAll(address,bool)": FunctionFragment;
+    "setTier(string,uint256)": FunctionFragment;
     "supportsInterface(bytes4)": FunctionFragment;
     "symbol()": FunctionFragment;
     "tokenByIndex(uint256)": FunctionFragment;
@@ -110,6 +112,7 @@ export interface DeltItemsInterface extends utils.Interface {
     "tokenOfOwnerByIndex(address,uint256)": FunctionFragment;
     "tokenURI(uint256)": FunctionFragment;
     "totalSupply()": FunctionFragment;
+    "traitTier(string)": FunctionFragment;
     "transferFrom(address,address,uint256)": FunctionFragment;
     "unpause()": FunctionFragment;
   };
@@ -130,8 +133,9 @@ export interface DeltItemsInterface extends utils.Interface {
       | "exists"
       | "getApproved"
       | "getItemId"
-      | "getOpMod"
+      | "getOpPrice"
       | "getRoleAdmin"
+      | "getTier"
       | "getTokenId"
       | "grantRole"
       | "hasRole"
@@ -150,6 +154,7 @@ export interface DeltItemsInterface extends utils.Interface {
       | "safeTransferFrom(address,address,uint256)"
       | "safeTransferFrom(address,address,uint256,bytes)"
       | "setApprovalForAll"
+      | "setTier"
       | "supportsInterface"
       | "symbol"
       | "tokenByIndex"
@@ -157,6 +162,7 @@ export interface DeltItemsInterface extends utils.Interface {
       | "tokenOfOwnerByIndex"
       | "tokenURI"
       | "totalSupply"
+      | "traitTier"
       | "transferFrom"
       | "unpause"
   ): FunctionFragment;
@@ -211,13 +217,14 @@ export interface DeltItemsInterface extends utils.Interface {
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: "getOpMod",
+    functionFragment: "getOpPrice",
     values: [BigNumberish, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "getRoleAdmin",
     values: [BytesLike]
   ): string;
+  encodeFunctionData(functionFragment: "getTier", values: [string]): string;
   encodeFunctionData(functionFragment: "getTokenId", values: [string]): string;
   encodeFunctionData(
     functionFragment: "grantRole",
@@ -281,6 +288,10 @@ export interface DeltItemsInterface extends utils.Interface {
     values: [string, boolean]
   ): string;
   encodeFunctionData(
+    functionFragment: "setTier",
+    values: [string, BigNumberish]
+  ): string;
+  encodeFunctionData(
     functionFragment: "supportsInterface",
     values: [BytesLike]
   ): string;
@@ -305,6 +316,7 @@ export interface DeltItemsInterface extends utils.Interface {
     functionFragment: "totalSupply",
     values?: undefined
   ): string;
+  encodeFunctionData(functionFragment: "traitTier", values: [string]): string;
   encodeFunctionData(
     functionFragment: "transferFrom",
     values: [string, string, BigNumberish]
@@ -334,11 +346,12 @@ export interface DeltItemsInterface extends utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "getItemId", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "getOpMod", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "getOpPrice", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "getRoleAdmin",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "getTier", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "getTokenId", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "hasRole", data: BytesLike): Result;
@@ -378,6 +391,7 @@ export interface DeltItemsInterface extends utils.Interface {
     functionFragment: "setApprovalForAll",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "setTier", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "supportsInterface",
     data: BytesLike
@@ -400,6 +414,7 @@ export interface DeltItemsInterface extends utils.Interface {
     functionFragment: "totalSupply",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "traitTier", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "transferFrom",
     data: BytesLike
@@ -580,7 +595,7 @@ export interface DeltItems extends BaseContract {
       arg0: BigNumberish,
       arg1: string,
       overrides?: CallOverrides
-    ): Promise<[BigNumber, BigNumber] & { mod: BigNumber; index: BigNumber }>;
+    ): Promise<[BigNumber, BigNumber] & { lvl: BigNumber; index: BigNumber }>;
 
     attributes(
       arg0: BigNumberish,
@@ -589,7 +604,7 @@ export interface DeltItems extends BaseContract {
       overrides?: CallOverrides
     ): Promise<
       [string, string, BigNumber, BigNumber] & {
-        desc: string;
+        trait: string;
         statKey: string;
         tier: BigNumber;
         value: BigNumber;
@@ -623,13 +638,15 @@ export interface DeltItems extends BaseContract {
       overrides?: CallOverrides
     ): Promise<[DeltAttributes.ItemIdStructOutput]>;
 
-    getOpMod(
+    getOpPrice(
+      _lvl: BigNumberish,
       _mod: BigNumberish,
-      _opMod: BigNumberish,
       overrides?: CallOverrides
     ): Promise<[BigNumber]>;
 
     getRoleAdmin(role: BytesLike, overrides?: CallOverrides): Promise<[string]>;
+
+    getTier(_trait: string, overrides?: CallOverrides): Promise<[BigNumber]>;
 
     getTokenId(
       _itemId: string,
@@ -666,7 +683,7 @@ export interface DeltItems extends BaseContract {
         awarded: boolean;
         itemName: string;
         itemType: string;
-        mod: BigNumber;
+        lvl: BigNumber;
       }
     >;
 
@@ -732,6 +749,12 @@ export interface DeltItems extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
+    setTier(
+      _trait: string,
+      _tier: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
     supportsInterface(
       interfaceId: BytesLike,
       overrides?: CallOverrides
@@ -761,6 +784,8 @@ export interface DeltItems extends BaseContract {
     ): Promise<[string]>;
 
     totalSupply(overrides?: CallOverrides): Promise<[BigNumber]>;
+
+    traitTier(arg0: string, overrides?: CallOverrides): Promise<[BigNumber]>;
 
     transferFrom(
       from: string,
@@ -804,7 +829,7 @@ export interface DeltItems extends BaseContract {
     arg0: BigNumberish,
     arg1: string,
     overrides?: CallOverrides
-  ): Promise<[BigNumber, BigNumber] & { mod: BigNumber; index: BigNumber }>;
+  ): Promise<[BigNumber, BigNumber] & { lvl: BigNumber; index: BigNumber }>;
 
   attributes(
     arg0: BigNumberish,
@@ -813,7 +838,7 @@ export interface DeltItems extends BaseContract {
     overrides?: CallOverrides
   ): Promise<
     [string, string, BigNumber, BigNumber] & {
-      desc: string;
+      trait: string;
       statKey: string;
       tier: BigNumber;
       value: BigNumber;
@@ -847,13 +872,15 @@ export interface DeltItems extends BaseContract {
     overrides?: CallOverrides
   ): Promise<DeltAttributes.ItemIdStructOutput>;
 
-  getOpMod(
+  getOpPrice(
+    _lvl: BigNumberish,
     _mod: BigNumberish,
-    _opMod: BigNumberish,
     overrides?: CallOverrides
   ): Promise<BigNumber>;
 
   getRoleAdmin(role: BytesLike, overrides?: CallOverrides): Promise<string>;
+
+  getTier(_trait: string, overrides?: CallOverrides): Promise<BigNumber>;
 
   getTokenId(_itemId: string, overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -887,7 +914,7 @@ export interface DeltItems extends BaseContract {
       awarded: boolean;
       itemName: string;
       itemType: string;
-      mod: BigNumber;
+      lvl: BigNumber;
     }
   >;
 
@@ -950,6 +977,12 @@ export interface DeltItems extends BaseContract {
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
+  setTier(
+    _trait: string,
+    _tier: BigNumberish,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
   supportsInterface(
     interfaceId: BytesLike,
     overrides?: CallOverrides
@@ -973,6 +1006,8 @@ export interface DeltItems extends BaseContract {
   tokenURI(_tokenId: BigNumberish, overrides?: CallOverrides): Promise<string>;
 
   totalSupply(overrides?: CallOverrides): Promise<BigNumber>;
+
+  traitTier(arg0: string, overrides?: CallOverrides): Promise<BigNumber>;
 
   transferFrom(
     from: string,
@@ -1016,7 +1051,7 @@ export interface DeltItems extends BaseContract {
       arg0: BigNumberish,
       arg1: string,
       overrides?: CallOverrides
-    ): Promise<[BigNumber, BigNumber] & { mod: BigNumber; index: BigNumber }>;
+    ): Promise<[BigNumber, BigNumber] & { lvl: BigNumber; index: BigNumber }>;
 
     attributes(
       arg0: BigNumberish,
@@ -1025,7 +1060,7 @@ export interface DeltItems extends BaseContract {
       overrides?: CallOverrides
     ): Promise<
       [string, string, BigNumber, BigNumber] & {
-        desc: string;
+        trait: string;
         statKey: string;
         tier: BigNumber;
         value: BigNumber;
@@ -1056,13 +1091,15 @@ export interface DeltItems extends BaseContract {
       overrides?: CallOverrides
     ): Promise<DeltAttributes.ItemIdStructOutput>;
 
-    getOpMod(
+    getOpPrice(
+      _lvl: BigNumberish,
       _mod: BigNumberish,
-      _opMod: BigNumberish,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
     getRoleAdmin(role: BytesLike, overrides?: CallOverrides): Promise<string>;
+
+    getTier(_trait: string, overrides?: CallOverrides): Promise<BigNumber>;
 
     getTokenId(_itemId: string, overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -1094,7 +1131,7 @@ export interface DeltItems extends BaseContract {
         awarded: boolean;
         itemName: string;
         itemType: string;
-        mod: BigNumber;
+        lvl: BigNumber;
       }
     >;
 
@@ -1155,6 +1192,12 @@ export interface DeltItems extends BaseContract {
       overrides?: CallOverrides
     ): Promise<void>;
 
+    setTier(
+      _trait: string,
+      _tier: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
     supportsInterface(
       interfaceId: BytesLike,
       overrides?: CallOverrides
@@ -1181,6 +1224,8 @@ export interface DeltItems extends BaseContract {
     ): Promise<string>;
 
     totalSupply(overrides?: CallOverrides): Promise<BigNumber>;
+
+    traitTier(arg0: string, overrides?: CallOverrides): Promise<BigNumber>;
 
     transferFrom(
       from: string,
@@ -1334,9 +1379,9 @@ export interface DeltItems extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
-    getOpMod(
+    getOpPrice(
+      _lvl: BigNumberish,
       _mod: BigNumberish,
-      _opMod: BigNumberish,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
@@ -1344,6 +1389,8 @@ export interface DeltItems extends BaseContract {
       role: BytesLike,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
+
+    getTier(_trait: string, overrides?: CallOverrides): Promise<BigNumber>;
 
     getTokenId(_itemId: string, overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -1433,6 +1480,12 @@ export interface DeltItems extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
+    setTier(
+      _trait: string,
+      _tier: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
     supportsInterface(
       interfaceId: BytesLike,
       overrides?: CallOverrides
@@ -1459,6 +1512,8 @@ export interface DeltItems extends BaseContract {
     ): Promise<BigNumber>;
 
     totalSupply(overrides?: CallOverrides): Promise<BigNumber>;
+
+    traitTier(arg0: string, overrides?: CallOverrides): Promise<BigNumber>;
 
     transferFrom(
       from: string,
@@ -1545,14 +1600,19 @@ export interface DeltItems extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
-    getOpMod(
+    getOpPrice(
+      _lvl: BigNumberish,
       _mod: BigNumberish,
-      _opMod: BigNumberish,
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
     getRoleAdmin(
       role: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    getTier(
+      _trait: string,
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
@@ -1650,6 +1710,12 @@ export interface DeltItems extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
+    setTier(
+      _trait: string,
+      _tier: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
     supportsInterface(
       interfaceId: BytesLike,
       overrides?: CallOverrides
@@ -1679,6 +1745,11 @@ export interface DeltItems extends BaseContract {
     ): Promise<PopulatedTransaction>;
 
     totalSupply(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    traitTier(
+      arg0: string,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
 
     transferFrom(
       from: string,

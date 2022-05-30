@@ -25,25 +25,25 @@ export declare namespace DeltAttributes {
     awarded: boolean;
     itemName: string;
     itemType: string;
-    mod: BigNumberish;
+    lvl: BigNumberish;
   };
 
   export type ItemIdStructOutput = [boolean, string, string, BigNumber] & {
     awarded: boolean;
     itemName: string;
     itemType: string;
-    mod: BigNumber;
+    lvl: BigNumber;
   };
 
   export type StatStruct = {
-    desc: string;
+    trait: string;
     statKey: string;
     tier: BigNumberish;
     value: BigNumberish;
   };
 
   export type StatStructOutput = [string, string, BigNumber, BigNumber] & {
-    desc: string;
+    trait: string;
     statKey: string;
     tier: BigNumber;
     value: BigNumber;

@@ -2,9 +2,10 @@
 pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /// @custom:security-contact kciuq@protonmail.com
-contract DeltTrader {
+contract DeltTrader is ReentrancyGuard {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address _contractAddr) {
         contractAddr = _contractAddr;
@@ -46,127 +47,63 @@ contract DeltTrader {
         uint256 endAt;
     }
 
-    function bid(uint256 _tokenId) external payable {
-        require(activeAuctions[_tokenId], "auction is not active");
-        require(
-            msg.sender != auctions[_tokenId].seller,
-            "must not own the token"
-        );
-        require(
-            msg.value > auctions[_tokenId].highestBid,
-            "must pay more than the highest bid"
-        );
-
-        if (auctions[_tokenId].highestBidder != auctions[_tokenId].seller) {
-            balances[auctions[_tokenId].highestBidder] += auctions[_tokenId]
-                .highestBid;
-        }
-
-        auctions[_tokenId].highestBid = msg.value;
-        auctions[_tokenId].highestBidder = msg.sender;
-
-        emit BidPlaced(contractAddr, _tokenId, msg.value);
-    }
-
-    function startAuction(uint256 _tokenId, Transaction memory _item) internal {
-        //Auction memory _auction = Auction(_item.contractAddr, _item.seller, true,  _item.price,  _item.seller );
-        require(!activeAuctions[_tokenId], "auction is already active");
-
-        uint256 endAt = block.timestamp + 1 days;
-
-        auctions[_tokenId].seller = _item.seller;
-        auctions[_tokenId].highestBid = _item.price;
-        auctions[_tokenId].highestBidder = _item.seller;
-
-        emit AuctionStart(contractAddr, _tokenId, _item.price, endAt);
-
-        auctions[_tokenId].endAt = endAt;
-
-        activeAuctions[_tokenId] = true;
-    }
-
-    function getPrice(uint256 _tokenId) public view returns (uint256) {
-        require(
-            !transactions[_tokenId][transactions[_tokenId].length - 1]
-                .completed,
-            "not listed"
-        );
-        if (
-            transactions[_tokenId][transactions[_tokenId].length - 1].auctioned
-        ) {
-            return auctions[_tokenId].highestBid;
+    modifier isListed(uint256 _tokenId, bool isActive) {
+        if (isActive) {
+            if (transactions[_tokenId].length > 0) {
+                require(
+                    !transactions[_tokenId][transactions[_tokenId].length - 1]
+                        .completed,
+                    "token is not listed"
+                );
+            } else {
+                revert("token is not listed");
+            }
         } else {
-            return
-                transactions[_tokenId][transactions[_tokenId].length - 1].price;
+            if (transactions[_tokenId].length > 0) {
+                require(
+                    transactions[_tokenId][transactions[_tokenId].length - 1]
+                        .completed,
+                    "token is listed"
+                );
+            }
         }
+        _;
     }
 
-    function endAuction(uint256 _tokenId) public returns (address) {
-        require(activeAuctions[_tokenId], "auction for token is not active");
-        require(msg.sender == auctions[_tokenId].seller, "must own the token");
-
-        if (auctions[_tokenId].highestBidder == auctions[_tokenId].seller) {
-            transactions[_tokenId].pop();
+    modifier isAuctioned(uint256 _tokenId, bool isActive) {
+        if (isActive) {
+            require(
+                activeAuctions[_tokenId],
+                "auction for token is not active"
+            );
         } else {
-            //require(block.timestamp >= auctions[_tokenId].endAt, "auction is still ongoing");
-
-            transactions[_tokenId][transactions[_tokenId].length - 1]
-                .completed = true;
-            transactions[_tokenId][transactions[_tokenId].length - 1]
-                .buyer = auctions[_tokenId].highestBidder;
-            transactions[_tokenId][transactions[_tokenId].length - 1]
-                .price = auctions[_tokenId].highestBid;
-
-            ERC721 token = ERC721(contractAddr);
-
-            require(
-                auctions[_tokenId].highestBid <=
-                    balances[auctions[_tokenId].highestBidder],
-                "insufficent funds"
-            );
-            require(
-                token.ownerOf(_tokenId) == auctions[_tokenId].seller,
-                "caller must own given token"
-            );
-
-            // balances[auctions[_tokenId].highestBidder] -= auctions[_tokenId]
-            //     .highestBid;
-
-            auctions[_tokenId].seller.transfer(auctions[_tokenId].highestBid);
-
-            token.safeTransferFrom(
-                auctions[_tokenId].seller,
-                auctions[_tokenId].highestBidder,
-                _tokenId
-            );
+            require(!activeAuctions[_tokenId], "auction for token is active");
         }
-        activeAuctions[_tokenId] = false;
+        _;
+    }
 
-        delete auctions[_tokenId];
-
-        emit AuctionEnd(
-            contractAddr,
-            _tokenId,
-            auctions[_tokenId].highestBid,
-            auctions[_tokenId].highestBidder
-        );
-        return auctions[_tokenId].highestBidder;
+    modifier isOwner(uint256 _tokenId) {
+        if (ERC721(contractAddr).ownerOf(_tokenId) == msg.sender) {
+            _;
+        } else {
+            revert("not owner of given token");
+        }
     }
 
     function addListing(
         uint256 _tokenId,
         uint256 _price,
         bool _auction
-    ) public {
-        ERC721 token = ERC721(contractAddr);
+    ) public isOwner(_tokenId) isListed(_tokenId, false) {
+        unchecked {
+            require(_price > 0, "price must be greater than 0");
+        }
+
         require(
-            token.ownerOf(_tokenId) == msg.sender,
-            "caller must own given token"
-        );
-        require(
-            token.isApprovedForAll(msg.sender, address(this)),
+            ERC721(contractAddr).isApprovedForAll(msg.sender, address(this)),
             "contract must be approved"
         );
+
         Transaction memory item = Transaction(
             address(this),
             payable(msg.sender),
@@ -178,26 +115,163 @@ contract DeltTrader {
         transactions[_tokenId].push(item);
 
         if (_auction) {
-            startAuction(_tokenId, item);
+            uint256 endAt = block.timestamp + 1 days;
+
+            auctions[_tokenId].seller = item.seller;
+            unchecked {
+                auctions[_tokenId].highestBid = item.price;
+            }
+
+            auctions[_tokenId].highestBidder = item.seller;
+
+            emit AuctionStart(contractAddr, _tokenId, item.price, endAt);
+
+            auctions[_tokenId].endAt = endAt;
+
+            activeAuctions[_tokenId] = true;
         }
     }
 
-    function removeListing(uint256 _tokenId) public {
-        ERC721 token = ERC721(contractAddr);
-        require(
-            token.ownerOf(_tokenId) == msg.sender,
-            "caller must own given token"
-        );
-        require(
-            token.isApprovedForAll(msg.sender, address(this)),
-            "contract must be approved"
-        );
-        require(
-            !transactions[_tokenId][transactions[_tokenId].length - 1]
-                .completed,
-            "transaction completed"
-        );
+    function removeListing(uint256 _tokenId)
+        public
+        isOwner(_tokenId)
+        isListed(_tokenId, true)
+        isAuctioned(_tokenId, false)
+    {
         transactions[_tokenId].pop();
+    }
+
+    function forceUnlist(uint256 _tokenId)
+        internal
+        nonReentrant
+        isListed(_tokenId, true)
+    {
+        if (activeAuctions[_tokenId]) {
+            if (auctions[_tokenId].highestBidder != auctions[_tokenId].seller) {
+                unchecked {
+                    balances[auctions[_tokenId].highestBidder] += auctions[
+                        _tokenId
+                    ].highestBid;
+                }
+            }
+            activeAuctions[_tokenId] = false;
+        }
+        transactions[_tokenId].pop();
+    }
+
+    function endAuction(uint256 _tokenId)
+        public
+        nonReentrant
+        isOwner(_tokenId)
+        isListed(_tokenId, true)
+        isAuctioned(_tokenId, true)
+    {
+        if (auctions[_tokenId].highestBidder == auctions[_tokenId].seller) {
+            activeAuctions[_tokenId] = false;
+            removeListing(_tokenId);
+        } else {
+            //require(block.timestamp >= auctions[_tokenId].endAt, "auction is still ongoing");
+            activeAuctions[_tokenId] = false;
+
+            transactions[_tokenId][transactions[_tokenId].length - 1]
+                .completed = true;
+
+            unchecked {
+                transactions[_tokenId][transactions[_tokenId].length - 1]
+                    .price = auctions[_tokenId].highestBid;
+
+                balances[auctions[_tokenId].seller] += auctions[_tokenId]
+                    .highestBid;
+            }
+
+            ERC721(contractAddr).safeTransferFrom(
+                auctions[_tokenId].seller,
+                auctions[_tokenId].highestBidder,
+                _tokenId
+            );
+        }
+
+        delete auctions[_tokenId];
+
+        emit AuctionEnd(
+            contractAddr,
+            _tokenId,
+            auctions[_tokenId].highestBid,
+            auctions[_tokenId].highestBidder
+        );
+    }
+
+    function bid(uint256 _tokenId)
+        external
+        payable
+        nonReentrant
+        isListed(_tokenId, true)
+        isAuctioned(_tokenId, true)
+    {
+        require(
+            msg.sender != auctions[_tokenId].seller,
+            "must not own the token"
+        );
+
+        unchecked {
+            require(
+                msg.value > auctions[_tokenId].highestBid,
+                "must pay more than the highest bid"
+            );
+            if (auctions[_tokenId].highestBidder != auctions[_tokenId].seller) {
+                balances[auctions[_tokenId].highestBidder] += auctions[_tokenId]
+                    .highestBid;
+            }
+            auctions[_tokenId].highestBid = msg.value;
+            transactions[_tokenId][transactions[_tokenId].length - 1]
+                .price = msg.value;
+        }
+
+        auctions[_tokenId].highestBidder = msg.sender;
+        transactions[_tokenId][transactions[_tokenId].length - 1].buyer = msg
+            .sender;
+
+        emit BidPlaced(contractAddr, _tokenId, msg.value);
+    }
+
+    function purchace(uint256 _tokenId)
+        public
+        payable
+        nonReentrant
+        isListed(_tokenId, true)
+        isAuctioned(_tokenId, false)
+    {
+        Transaction memory item = transactions[_tokenId][
+            transactions[_tokenId].length - 1
+        ];
+
+        if (msg.sender == item.seller) {
+            removeListing(_tokenId);
+        } else {
+            unchecked {
+                require(msg.value >= item.price, "insufficient funds sent");
+                balances[item.seller] += msg.value;
+            }
+            ERC721(contractAddr).safeTransferFrom(
+                item.seller,
+                msg.sender,
+                _tokenId
+            );
+            transactions[_tokenId][transactions[_tokenId].length - 1]
+                .buyer = msg.sender;
+            transactions[_tokenId][transactions[_tokenId].length - 1]
+                .completed = true;
+        }
+    }
+
+    function withdraw(uint256 amount) public nonReentrant {
+        unchecked {
+            require(amount <= balances[msg.sender], "insufficent funds");
+        }
+        payable(msg.sender).transfer(amount);
+        unchecked {
+            balances[msg.sender] -= amount;
+        }
     }
 
     function getListings(uint256 _tokenId)
@@ -206,42 +280,5 @@ contract DeltTrader {
         returns (Transaction[] memory)
     {
         return transactions[_tokenId];
-    }
-
-    function isListed(uint256 _tokenId) public view returns (bool) {
-        return
-            !transactions[_tokenId][transactions[_tokenId].length - 1]
-                .completed;
-    }
-
-    function isAuctioned(uint256 _tokenId) public view returns (bool) {
-        require(isListed(_tokenId), "token is not listed");
-        return activeAuctions[_tokenId];
-    }
-
-    function purchace(uint256 _tokenId) public payable {
-        require(transactions[_tokenId].length > 0, "token is not listed");
-
-        Transaction memory item = transactions[_tokenId][
-            transactions[_tokenId].length - 1
-        ];
-
-        require(!item.completed, "token is not listed");
-        require(msg.value >= item.price, "insufficient funds sent");
-        balances[item.seller] += msg.value;
-        ERC721 token = ERC721(contractAddr);
-        token.safeTransferFrom(item.seller, msg.sender, _tokenId);
-        transactions[_tokenId][transactions[_tokenId].length - 1].buyer = msg
-            .sender;
-        transactions[_tokenId][transactions[_tokenId].length - 1]
-            .completed = true;
-    }
-
-    function withdraw(uint256 amount, address payable destAddr) public {
-        require(amount <= balances[msg.sender], "insufficent funds");
-        uint256 bWithdraw = balances[msg.sender];
-        balances[msg.sender] = 0;
-        destAddr.transfer(amount);
-        balances[msg.sender] = bWithdraw - amount;
     }
 }

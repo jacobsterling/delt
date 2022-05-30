@@ -29,9 +29,6 @@ async function main() {
   await instanceTrader.deployed();
 
   console.log(`DeltTrader deployed to:`, instanceTrader.address);
-
-  await instanceItems.grantRole("0x0000000000000000000000000000000000000000000000000000000000000000", instanceTrader.address);
-  console.log("DeltTrader granted admin.");
 }
 
 main().catch((error) => {

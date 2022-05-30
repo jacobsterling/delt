@@ -60,13 +60,10 @@ export interface DeltTraderInterface extends utils.Interface {
     "bid(uint256)": FunctionFragment;
     "endAuction(uint256)": FunctionFragment;
     "getListings(uint256)": FunctionFragment;
-    "getPrice(uint256)": FunctionFragment;
-    "isAuctioned(uint256)": FunctionFragment;
-    "isListed(uint256)": FunctionFragment;
     "purchace(uint256)": FunctionFragment;
     "removeListing(uint256)": FunctionFragment;
     "transactions(uint256,uint256)": FunctionFragment;
-    "withdraw(uint256,address)": FunctionFragment;
+    "withdraw(uint256)": FunctionFragment;
   };
 
   getFunction(
@@ -78,9 +75,6 @@ export interface DeltTraderInterface extends utils.Interface {
       | "bid"
       | "endAuction"
       | "getListings"
-      | "getPrice"
-      | "isAuctioned"
-      | "isListed"
       | "purchace"
       | "removeListing"
       | "transactions"
@@ -110,18 +104,6 @@ export interface DeltTraderInterface extends utils.Interface {
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: "getPrice",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "isAuctioned",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "isListed",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
     functionFragment: "purchace",
     values: [BigNumberish]
   ): string;
@@ -135,7 +117,7 @@ export interface DeltTraderInterface extends utils.Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "withdraw",
-    values: [BigNumberish, string]
+    values: [BigNumberish]
   ): string;
 
   decodeFunctionResult(
@@ -151,12 +133,6 @@ export interface DeltTraderInterface extends utils.Interface {
     functionFragment: "getListings",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: "getPrice", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "isAuctioned",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: "isListed", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "purchace", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "removeListing",
@@ -285,21 +261,6 @@ export interface DeltTrader extends BaseContract {
       overrides?: CallOverrides
     ): Promise<[DeltTrader.TransactionStructOutput[]]>;
 
-    getPrice(
-      _tokenId: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<[BigNumber]>;
-
-    isAuctioned(
-      _tokenId: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<[boolean]>;
-
-    isListed(
-      _tokenId: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<[boolean]>;
-
     purchace(
       _tokenId: BigNumberish,
       overrides?: PayableOverrides & { from?: string | Promise<string> }
@@ -326,7 +287,6 @@ export interface DeltTrader extends BaseContract {
 
     withdraw(
       amount: BigNumberish,
-      destAddr: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
   };
@@ -372,18 +332,6 @@ export interface DeltTrader extends BaseContract {
     overrides?: CallOverrides
   ): Promise<DeltTrader.TransactionStructOutput[]>;
 
-  getPrice(
-    _tokenId: BigNumberish,
-    overrides?: CallOverrides
-  ): Promise<BigNumber>;
-
-  isAuctioned(
-    _tokenId: BigNumberish,
-    overrides?: CallOverrides
-  ): Promise<boolean>;
-
-  isListed(_tokenId: BigNumberish, overrides?: CallOverrides): Promise<boolean>;
-
   purchace(
     _tokenId: BigNumberish,
     overrides?: PayableOverrides & { from?: string | Promise<string> }
@@ -410,7 +358,6 @@ export interface DeltTrader extends BaseContract {
 
   withdraw(
     amount: BigNumberish,
-    destAddr: string,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
@@ -446,27 +393,12 @@ export interface DeltTrader extends BaseContract {
     endAuction(
       _tokenId: BigNumberish,
       overrides?: CallOverrides
-    ): Promise<string>;
+    ): Promise<void>;
 
     getListings(
       _tokenId: BigNumberish,
       overrides?: CallOverrides
     ): Promise<DeltTrader.TransactionStructOutput[]>;
-
-    getPrice(
-      _tokenId: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    isAuctioned(
-      _tokenId: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<boolean>;
-
-    isListed(
-      _tokenId: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<boolean>;
 
     purchace(_tokenId: BigNumberish, overrides?: CallOverrides): Promise<void>;
 
@@ -489,11 +421,7 @@ export interface DeltTrader extends BaseContract {
       }
     >;
 
-    withdraw(
-      amount: BigNumberish,
-      destAddr: string,
-      overrides?: CallOverrides
-    ): Promise<void>;
+    withdraw(amount: BigNumberish, overrides?: CallOverrides): Promise<void>;
   };
 
   filters: {
@@ -567,21 +495,6 @@ export interface DeltTrader extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
-    getPrice(
-      _tokenId: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    isAuctioned(
-      _tokenId: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    isListed(
-      _tokenId: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
     purchace(
       _tokenId: BigNumberish,
       overrides?: PayableOverrides & { from?: string | Promise<string> }
@@ -600,7 +513,6 @@ export interface DeltTrader extends BaseContract {
 
     withdraw(
       amount: BigNumberish,
-      destAddr: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
   };
@@ -643,21 +555,6 @@ export interface DeltTrader extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
-    getPrice(
-      _tokenId: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
-    isAuctioned(
-      _tokenId: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
-    isListed(
-      _tokenId: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
     purchace(
       _tokenId: BigNumberish,
       overrides?: PayableOverrides & { from?: string | Promise<string> }
@@ -676,7 +573,6 @@ export interface DeltTrader extends BaseContract {
 
     withdraw(
       amount: BigNumberish,
-      destAddr: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
   };

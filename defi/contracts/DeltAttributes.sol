@@ -7,7 +7,7 @@ library DeltAttributes {
         bool awarded;
         string itemName;
         string itemType;
-        uint256 mod;
+        uint256 lvl;
     }
 
     struct Attr {
@@ -16,12 +16,12 @@ library DeltAttributes {
     }
 
     struct AttrLoc {
-        uint256 mod;
+        uint256 lvl;
         uint256 index;
     }
 
     struct Stat {
-        string desc;
+        string trait;
         string statKey;
         uint256 tier;
         uint256 value;
@@ -48,8 +48,8 @@ library DeltAttributes {
                         _attributes,
                         '"',
                         attributes[i].stats[j].statKey,
-                        '":  {"desc": "',
-                        attributes[i].stats[j].desc,
+                        '":  {"trait": "',
+                        attributes[i].stats[j].trait,
                         '",  "tier": ',
                         Base64.uint2str(attributes[i].stats[j].tier),
                         ',  "value": ',
@@ -87,8 +87,8 @@ library DeltAttributes {
                                     _itemItem.itemName,
                                     '",  "type": "',
                                     _itemItem.itemType,
-                                    '",  "mod": ',
-                                    Base64.uint2str(_itemItem.mod),
+                                    '",  "level": ',
+                                    Base64.uint2str(_itemItem.lvl),
                                     ',  "image": "',
                                     Base64.decode(encodedSVG),
                                     '",  ',

@@ -1,8 +1,8 @@
 
 export const useAccount = async (account: string) => {
   const username = ref<string>(undefined)
+  const userSlug = ref<string>(undefined)
   const type = ref<string>(undefined)
-  const accountCompact = `${account.substring(0, 4)}...${account.substring(account.length - 4)}`
   const file = ref<Blob>(undefined)
   const imageURL = ref<Object>(undefined)
   const level = ref<number>(undefined)
@@ -15,7 +15,6 @@ export const useAccount = async (account: string) => {
       .download(`${username}.jpg`)
     file.value = download
     if (error) {
-      console.log(error)
       return
     }
     const reader = new FileReader()
@@ -25,27 +24,33 @@ export const useAccount = async (account: string) => {
     reader.readAsDataURL(file.value)
   }
 
-  if (account) {
-    try {
-      const { data, error } = await client.from("usernames").select("*").eq("account", account).single()
-      if (error) { throw error }
-      username.value = data.username
-      type.value = data.type
-      level.value = data.level
+  const { data: userData } = await client.from("accounts").select("*").eq("account", account).single()
 
-      await getProfilePicture(username.value)
-
-      // return other username data (account type ?)
-    } catch (error) {
-      console.log(error)
-    }
+  if (!userData) {
+    await client
+      .from("accounts")
+      .insert([
+        {
+          account
+        }
+      ])
+    const { data: newUserData } = await client.from("accounts").select("*").eq("account", account).single()
+    type.value = newUserData.type
+    level.value = newUserData.level
+  } else {
+    username.value = userData.username
+    userSlug.value = userData.userSlug
+    type.value = userData.type
+    level.value = userData.level
   }
 
+  if (username.value) { await getProfilePicture(username.value) }
+
   return {
-    accountCompact,
     imageURL: imageURL.value,
     level: level.value,
     type: type.value,
+    userSlug: userSlug.value,
     username: username.value
   }
 }

@@ -1,3 +1,4 @@
+import * as Phaser from 'phaser';
 import GetConfig from './config';
 
 const launch = (containerId: string) => {

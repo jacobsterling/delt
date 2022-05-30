@@ -1,3 +1,4 @@
+import "phaser";
 import { IMovementSettings } from "../keyboardBindings";
 import { ITextureList, Wizard } from "./wizard";
 import KeyCodes = Phaser.Input.Keyboard.KeyCodes;

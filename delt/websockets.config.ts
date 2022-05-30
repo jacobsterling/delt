@@ -1,3 +1,4 @@
+import "phaser";
 import { Entity } from "./entities/entity";
 import { Wizard } from "./entities/wizard";
 import MainScene from "./scenes/mainScene";

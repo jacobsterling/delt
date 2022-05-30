@@ -10,9 +10,11 @@
     "@types/ws": "^8.5.3",
     "bufferutil": "^4.0.6",
     "utf-8-validate": "^5.0.9",
+    "uuid": "^8.3.2",
     "ws": "^8.6.0"
   },
   "devDependencies": {
+    "@types/uuid": "^8.3.4",
     "@typescript-eslint/eslint-plugin": "^5.25.0",
     "@typescript-eslint/parser": "^5.25.0",
     "concurrently": "^7.2.1",

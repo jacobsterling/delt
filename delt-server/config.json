@@ -17,6 +17,6 @@
       "threshold": 1024
     }
   },
-  "tick": 64,
-  "timeoutInterval": 5000
+  "tick": 128,
+  "timeoutInterval": 10000
 }

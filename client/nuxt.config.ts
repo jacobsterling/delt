@@ -4,6 +4,9 @@ import { DeltUnocssNuxtOptions } from "./unocss.config"
 
 // https://v3.nuxtjs.org/api/configuration/nuxt.config
 export default defineNuxtConfig({
+  build: {
+    transpile: ["@heroicons/vue"]
+  },
   css: [
     "@unocss/reset/tailwind.css"
   ],
@@ -23,9 +26,11 @@ export default defineNuxtConfig({
   typescript: {
     shim: false
   },
-
   unocss: DeltUnocssNuxtOptions,
   vite: {
+    build: {
+      assetsInlineLimit: 0 // change later
+    },
     optimizeDeps: {
       exclude: ["hardhat"]
     }

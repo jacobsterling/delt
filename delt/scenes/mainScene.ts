@@ -5,6 +5,7 @@ import * as Fire from '../emitters/fire';
 import { Emitter } from '../emitters/fire';
 import PhaserWebsocketMultiplayerPlugin from '../websockets';
 import establishMultiplayer from '../websockets.config';
+import WizardBlue from '../assets/WizardBlue';
 
 export default class MainScene extends Phaser.Scene {
     public image!: Phaser.GameObjects.Image;
@@ -26,7 +27,8 @@ export default class MainScene extends Phaser.Scene {
         this.player = new Wizard(this, {
             color: 'blue',
             control: true,
-            id: this.multiplayer.id
+            id: this.multiplayer.id,
+            defaultTexture: WizardBlue.Down
         });
         this.player.setName(this.multiplayer.id);
         this.player.create();

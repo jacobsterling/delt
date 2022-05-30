@@ -1,11 +1,14 @@
-const MESSAGE_TYPE = {
-	UPDATE_OBJECT: 'update.object',
-	KILL_OBJECT: 'kill.object',
-	ACTION_START: 'action.start',
-	ACTION_STOP: 'action.stop'
-}
+import "phaser";
 
 // Based on: https://github.com/joemoe/phaser-websocket-multiplayer-plugin
+
+enum MESSAGE_TYPE {
+	UPDATE_OBJECT = 'update.object',
+	HEART_BEAT = 'heartbeat',
+	KILL_OBJECT = 'kill.object',
+	ACTION_START = 'action.start',
+	ACTION_STOP = 'action.stop'
+};
 
 const deserializeJsonToBasicMessage = (data: string): BasicMessage | null => {
 	try {
@@ -27,7 +30,7 @@ export type BasicMessage = {
 export type BasicMessageReceived = {
 	id: string;
 	data: any;
-}
+};
 
 export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.BasePlugin  {
     event: Phaser.Events.EventEmitter;
@@ -140,7 +143,7 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 	checkTimeouts() {
 		let currentTime = (new Date()).getTime();
 		
-		this.socket.send('heartbeat');
+		this.socket.send(this.constructMessage(MESSAGE_TYPE.HEART_BEAT, null));
 		
 		Object.entries(this.objectLastseen).forEach(([key, value]) => {
             if (typeof value != "number") return
@@ -177,11 +180,11 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 			if(!this.objectRegistry[element.id]) {
 				this.objectRegistry[element.id] = true;
 				this.event.emit('object.create', element);
-				this.log('create', element.data);
+				this.log('create', JSON.stringify(element));
 			}
 			else
 			{
-				this.event.emit('object.update', this.objectRegistry[element.id], element.data, element.id);
+				this.event.emit('object.update', this.objectRegistry[element.id], element);
 			}
 			this.objectLastseen[element.id] = (new Date()).getTime();
 		});
@@ -203,16 +206,20 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 	}
 
 	broadcast() {
-		this.socket.send(JSON.stringify({
-			type: MESSAGE_TYPE.UPDATE_OBJECT,
-			id: this.id,
-			data: this.featureExtractor(this.localObject)
-		}));
+		this.socket.send(this.constructMessage(MESSAGE_TYPE.UPDATE_OBJECT, this.localObject));
 	}
 
 	stopBroadcast() {
 		clearInterval(this.broadcastInterval);
 	}
+
+	private constructMessage = (msg: MESSAGE_TYPE, obj: any) => (
+		JSON.stringify({
+			type: msg,
+			id: this.id,
+			data: this.featureExtractor(obj)
+		})
+	)
 
 
 	startAction(actionType = 'generic', objects = []) {

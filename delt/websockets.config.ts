@@ -1,6 +1,21 @@
-import { Scene } from "phaser";
+import { Entity } from "./entities/entity";
 import { Wizard } from "./entities/wizard";
 import MainScene from "./scenes/mainScene";
+
+type Vector2 = {
+	x: number;
+	y: number;
+}
+
+export type EntityMessage = {
+    position: Vector2;
+    type: string;
+};
+
+type BasicMessage = {
+    id: string;
+    data: EntityMessage;
+};
 
 const establishMultiplayer = (scene: MainScene) => {
 	scene.multiplayer.event.on('socket.open', () => initConnection(scene), scene);
@@ -13,28 +28,39 @@ const establishMultiplayer = (scene: MainScene) => {
 		updateObjects(obj, scene);
 	}, scene.multiplayer);
 
+	scene.multiplayer.event.on('object.kill', (_: any, objId: string) => {
+		killObjects(objId, scene)
+	}, scene.multiplayer);
+
 	scene.multiplayer.track(scene.player.sprite, featureExtractor);
 	scene.multiplayer.connect();
 }
 
-const featureExtractor = (object: any) => {
+const featureExtractor = (object: any): EntityMessage | null => {
+	if (!object) return null;
 	return {
-		x: object.x,
-		y: object.y,
+		position: {
+			x: object.x,
+			y: object.y,
+		},
 		type: typeof(object)
-	}
+	};
 }
 
-const createObject = (data: any, scene: MainScene) => {
-	const { id } = data;
+const createObject = (obj: any, scene: MainScene) => {
+	const { id, data } = obj;
+
+	if (id === scene.multiplayer.id) return;
+
+	const {x, y} = data.position;
 	
 	if (scene.multiplayer.id == id) {
-		scene.multiplayer.registerObject(id, data.player);
+		scene.multiplayer.registerObject(id, obj.player);
 		return;
 	}
 	const newWizard = new Wizard(scene, {
 		color: 'red',
-		position: new Phaser.Math.Vector2(data?.data.x ?? 0, data?.data?.y ?? 0),
+		position: new Phaser.Math.Vector2(x, y),
 		id: id,
 	});
 	newWizard.preload();
@@ -45,16 +71,26 @@ const createObject = (data: any, scene: MainScene) => {
 
 const updateObjects = (obj: any, scene: MainScene) => {
 	const {id, data} = obj;
-	const {x, y} = data;
 	if (id) {
 		const res = scene.gameObjects.find(x=>x.id === id);
 		if (!res) return;
+		const {x, y} = data.position;
 		res?.sprite.setPosition(x, y);
 	}
 }
 
 const initConnection = (scene: MainScene) => {
 	scene.multiplayer.startBroadcast();
+}
+
+const killObjects = (killId: string, scene: MainScene) => {
+	const obj: Entity = scene.gameObjects.find(x=>x.id === killId);
+	if (!(obj instanceof Entity)) {
+		console.log(`Tried deleting non-entity object ${killId}`);
+		return;
+	}
+	obj.destroy();
+	scene.gameObjects = scene.gameObjects.filter(x=>x !== obj);
 }
 
 export default establishMultiplayer;

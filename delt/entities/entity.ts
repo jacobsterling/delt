@@ -36,4 +36,8 @@ export class Entity extends Phaser.GameObjects.GameObject {
     public update = (t: number, dt: number) => {
 
     }
+
+    public destroy = () => {
+
+    }
 }

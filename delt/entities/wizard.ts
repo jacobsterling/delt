@@ -1,5 +1,4 @@
 import 'phaser';
-import { Crosshair } from '../hud/crosshair';
 import { checkDirection, IMovementSettings } from '../keyboardBindings';
 import { Entity } from './entity';
 import { Emitter } from '../emitters/fire';
@@ -33,7 +32,8 @@ type SafeWizardConfig = {
     color: string;
     control: boolean;
     position: Phaser.Math.Vector2;
-    id: string
+    id: string;
+    defaultTexture: string;
 }
 
 export type WizardConfig = Partial<SafeWizardConfig>;
@@ -42,18 +42,19 @@ const defaultConfig: SafeWizardConfig = {
     color: 'red',
     control: false,
     position: new Vector2(getRandom(100, 400), getRandom(100, 400)),
-    id: ''
+    id: '',
+    defaultTexture: getTextures('red').Down,
 }
 
 export class Wizard extends Entity {
 
     private static getAllTextures = () => [BlueWizard, RedWizard];
-    private crosshair!: Crosshair;
     public declare sprite: Phaser.GameObjects.Image;
     private declare startingPosition: Phaser.Math.Vector2;
     public projectiles: Emitter[] = [];
     public movement!: IMovementSettings[];
-    private textures!: any;
+    private textures!: ITextureList;
+    private defaultTexture!: string;
 
     public get interval(): number {
         return this._interval;
@@ -78,9 +79,9 @@ export class Wizard extends Entity {
     constructor(scene: Phaser.Scene, config: WizardConfig = defaultConfig) {
         super(scene, "sprite", config.id);
         this.startingPosition = config.position ?? defaultConfig.position;
-        this.crosshair = new Crosshair(scene);
         this._velocity = this._walkSpeed;
         this.textures = getTextures(config?.color ?? defaultConfig.color);
+        this.defaultTexture = config.defaultTexture ?? defaultConfig.defaultTexture;
         if (config.control) this.controlCharacter();
     }
 
@@ -112,25 +113,15 @@ export class Wizard extends Entity {
     }
 
     private createImg = () => {
-        console.log(this.scene)
-        const img = this.movement?.find(x=>x.isDefault)?.Textures[0];
         let {x, y} = defaultConfig.position;
         x = this.startingPosition?.x ?? x;
         y = this.startingPosition?.y ?? y;
-
-        if (img == null) {
-            console.error('No default texture was set for ', this);
-            const texture = this.textures.Down;
-            console.error(this.textures.Down);
-            this.sprite = this.scene.add.image(x, y, this.textures.Down).setScale(5, 5);
-            this.sprite.setTexture(this.textures.Down)
-            return;
-        }
-        this.sprite = this.scene.add.image(x, y, img).setScale(5, 5);
+        
+        this.sprite = this.scene.add.image(x, y, this.defaultTexture).setScale(5, 5);
     }
 
     public onMouseMove = (event: Phaser.Input.Pointer) => {
-        this.crosshair.onMouseMove(event);
+        // this.crosshair.onMouseMove(event);
     }
 
     public onPointerDown = (event: Phaser.Input.Pointer) => {
@@ -141,5 +132,10 @@ export class Wizard extends Entity {
         // Check if every key that has been added to movement has been pressed.
         this.movement?.forEach(direction => checkDirection(this, direction, t, dt));
         this.projectiles.forEach(x => x.update(t, dt));
+    }
+
+    public destroy = () => {
+        this.sprite.destroy(true);
+        this.projectiles.forEach(x => x.emitter.remove());
     }
 }

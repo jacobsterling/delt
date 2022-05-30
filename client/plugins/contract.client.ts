@@ -55,10 +55,11 @@ export interface ContractRef {
   connectDeltTrader: (signer: Signer) => Contract,
   withdraw: (wallet: Wallet, amount: number) => Promise<void>,
   modifiyItem: (wallet: Wallet, item: Item, upgrade: number, attribute: Attr) => Promise<void>,
-  deltItemsAddress: () => string,
-  deltTraderAddress: () => string,
-  awardItem: (wallet: Wallet, item: Item, image: string) => Promise<any>,
-  payToMintItem: (wallet: Wallet, item: Item, image: string) => Promise<any>
+  deltItemsAddress: string,
+  deltTraderAddress: string,
+  setTier: (_desc: string, _tier: number) => Promise<void>,
+  awardItem: (wallet: Wallet, item: Item, image: string) => Promise<number>,
+  payToMintItem: (wallet: Wallet, item: Item, image: string) => Promise<number>
 }
 
 export default defineNuxtPlugin(() => {
@@ -66,15 +67,29 @@ export default defineNuxtPlugin(() => {
   const contractRef = reactive<ContractRef>({
 
     addListing: async (wallet: Wallet, item: Item, price: number) => {
-      const DeltTrader = contractRef.connectDeltTrader(wallet.signer)
-      const result = await DeltTrader.addListing(item.tokenId, price, item.auctioned)
-      DeltTrader.on("AuctionStart", (contractAddr: string, _tokenId: any, price: any, endAt: any) => console.log("AuctionStart", contractAddr, _tokenId.toNumber(), price.toNumber(), endAt)
-      )
-      await result.wait()
-      await useSupabaseClient()
-        .from("items")
-        .update({ auctioned: item.auctioned, listed: true, price })
-        .eq("id", item.id)
+      try {
+        const DeltItems = contractRef.connectDeltItems(wallet.signer)
+        if (!await DeltItems.isApprovedForAll(wallet.account, contractRef.deltTraderAddress)) {
+          const approval = await DeltItems.setApprovalForAll(contractRef.deltTraderAddress, true)
+          await approval.wait()
+          console.log("DeltTrader approved for all.")
+        }
+        const DeltTrader = contractRef.connectDeltTrader(wallet.signer)
+        const result = await DeltTrader.addListing(item.tokenId, ethers.utils.parseEther(price.toString()), item.auctioned)
+        DeltTrader.on("AuctionStart", (contractAddr: string, _tokenId: any, price: any, endAt: any) => console.log("AuctionStart", contractAddr, _tokenId.toNumber(), price.toNumber(), endAt)
+        )
+        await result.wait()
+        const { error } = await useSupabaseClient()
+          .from("items")
+          .update({ auctioned: item.auctioned, listed: true, price })
+          .eq("id", item.id)
+
+        if (error) {
+          throw new Error(error.message)
+        }
+      } catch (Error) {
+        console.log(Error)
+      }
     },
 
     awardItem: async (wallet: Wallet, item: Item, image: string) => {
@@ -98,50 +113,66 @@ export default defineNuxtPlugin(() => {
 
         console.log(newTokenId.toNumber())
 
-        await useSupabaseClient()
+        const { error } = await useSupabaseClient()
           .from("items")
-          .update({ owner: wallet.account, tokenId: newTokenId })
+          .update({ owner: wallet.account, tokenId: newTokenId.toNumber() })
           .eq("id", item.id)
-
-        return true
+        if (error) {
+          throw new Error(error.message)
+        }
+        return newTokenId.toNumber()
       } catch (Error) {
         console.log(Error)
-        return false
+        return null
       }
     },
 
     bid: async (wallet: Wallet, item: Item, amount: number) => {
-      const DeltTrader = await contractRef.connectDeltTrader(wallet.signer)
-      const result = await DeltTrader.bid(item.tokenId, {
-        value: ethers.utils.parseEther(amount.toString())
-      })
-      DeltTrader.on("BidPlaced", (contractAddr: string, _tokenId: any, highestBid: any) => console.log("Bid Placed", contractAddr, _tokenId.toNumber(), highestBid.toNumber())
-      )
+      try {
+        const DeltTrader = await contractRef.connectDeltTrader(wallet.signer)
+        const result = await DeltTrader.bid(item.tokenId, {
+          value: ethers.utils.parseEther(amount.toString())
+        })
+        DeltTrader.on("BidPlaced", (contractAddr: string, _tokenId: any, highestBid: any) => console.log("Bid Placed", contractAddr, _tokenId.toNumber(), highestBid.toNumber())
+        )
 
-      await result.wait()
-      await useSupabaseClient()
-        .from("items")
-        .update({ price: amount })
-        .eq("id", item.id)
+        await result.wait()
+        const { error } = await useSupabaseClient()
+          .from("items")
+          .update({ price: amount })
+          .eq("id", item.id)
+        if (error) {
+          throw new Error(error.message)
+        }
+      } catch (Error) {
+        console.log(Error)
+      }
     },
 
     burnItem: async (wallet: Wallet, item: Item) => {
-      const DeltItems = await contractRef.connectDeltItems(wallet.signer)
-      const result = await DeltItems.burn(item.tokenId)
-      await result.wait()
-      await useSupabaseClient()
-        .from("items")
-        .update({ owner: wallet.account, tokenId: null })
-        .eq("id", item.id)
+      try {
+        const DeltItems = await contractRef.connectDeltItems(wallet.signer)
+        const result = await DeltItems.burn(item.tokenId)
+        await result.wait()
+        const { error } = await useSupabaseClient()
+          .from("items")
+          .update({ owner: wallet.account, tokenId: null })
+          .eq("id", item.id)
+        if (error) {
+          throw new Error(error.message)
+        }
+      } catch (Error) {
+        console.log(Error)
+      }
     },
 
     connectDeltItems: (signer: Signer) => {
-      const contract = markRaw(new ethers.Contract(contractRef.deltItemsAddress(), DeltItems.abi, signer))
+      const contract = markRaw(new ethers.Contract(contractRef.deltItemsAddress, DeltItems.abi, signer))
       return contract.connect(signer)
     },
 
     connectDeltTrader: (signer: Signer) => {
-      const contract = markRaw(new ethers.Contract(contractRef.deltTraderAddress(), DeltTrader.abi, signer))
+      const contract = markRaw(new ethers.Contract(contractRef.deltTraderAddress, DeltTrader.abi, signer))
       return contract.connect(signer)
     },
 
@@ -166,35 +197,41 @@ export default defineNuxtPlugin(() => {
       return _stats
     },
 
-    deltItemsAddress: () => {
-      return "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
-    },
+    deltItemsAddress: "0x7bc06c482DEAd17c0e297aFbC32f6e63d3846650",
 
-    deltTraderAddress: () => {
-      return "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"
-    },
+    deltTraderAddress: "0xc351628EB244ec633d5f21fBD6621e1a683B1181",
 
     endAuction: async (wallet: Wallet, item: Item) => {
-      const DeltTrader = await contractRef.connectDeltItems(wallet.signer)
-      const result = await DeltTrader.endAuction(item.tokenId)
-      await result.wait()
-      await useSupabaseClient()
-        .from("items")
-        .update({ auction: false, listed: false, owner: result.value })
-        .eq("id", item.id)
+      try {
+        const DeltTrader = await contractRef.connectDeltTrader(wallet.signer)
+        const result = await DeltTrader.endAuction(item.tokenId)
+        await result.wait()
+        const transaction = DeltTrader.getListings(item.tokenId)
+        const { error } = await useSupabaseClient()
+          .from("items")
+          .update({ auctioned: false, listed: false, owner: transaction[0] })
+          .eq("id", item.id)
+        if (error) {
+          throw new Error(error.message)
+        }
+      } catch (Error) {
+        console.log(Error)
+      }
     },
 
     modifiyItem: async (wallet: Wallet, item: Item, upgrade: number, attribute: Attr) => {
-      const DeltItems = await contractRef.connectDeltItems(wallet.signer)
-      const Id = await DeltItems.getItemId(item.tokenId)
-      console.log(Id.at(-1).toNumber())
-      const price = await DeltItems.getOpMod(Id.at(-1).toNumber() + upgrade, upgrade)
-      console.log(price / 1e18)
-      console.log(contractRef.convertAttr(attribute))
-      const result = await DeltItems.modifiyItem(item.tokenId, contractRef.convertAttr(attribute), {
-        value: ethers.utils.parseUnits(price.toString(), "wei")
-      })
-      await result.wait()
+      try {
+        const DeltItems = await contractRef.connectDeltItems(wallet.signer)
+        const Id = await DeltItems.getItemId(item.tokenId)
+        const price = await DeltItems.getOpMod(Id.at(-1).toNumber() + upgrade, upgrade)
+        const result = await DeltItems.modifiyItem(item.tokenId, contractRef.convertAttr(attribute), {
+          value: ethers.utils.parseUnits(price.toString(), "wei")
+        })
+        await result.wait()
+        // update in supabase ??
+      } catch (Error) {
+        console.log(Error)
+      }
     },
 
     payToMintItem: async (wallet: Wallet, item: Item, image: string) => {
@@ -215,30 +252,41 @@ export default defineNuxtPlugin(() => {
         const result = await DeltItems.payToMintItem(wallet.account, Object.values(itemId), image, attributes, {
           value: ethers.utils.parseUnits(`${price}`, "ether")
         })
-        await result.wait()
 
         const newTokenId = await DeltItems.getTokenId(itemId.itemName)
-
-        await useSupabaseClient()
+        await result.wait()
+        const { error } = await useSupabaseClient()
           .from("items")
           .update({ owner: wallet.account, tokenId: newTokenId.toNumber() })
           .eq("id", item.id)
+        if (error) {
+          throw new Error(error.message)
+        }
 
-        return true
+        return newTokenId.toNumber()
       } catch (Error) {
         console.log(Error)
-        return false
+        return null
       }
     },
 
     purchase: async (wallet: Wallet, item: Item) => {
-      const DeltTrader = await contractRef.connectDeltTrader(wallet.signer)
-      const result = await DeltTrader.purchace(item.tokenId)
-      await result.wait()
-      await useSupabaseClient()
-        .from("items")
-        .update({ auction: false, listed: false, owner: result.value })
-        .eq("id", item.id)
+      try {
+        const DeltTrader = await contractRef.connectDeltTrader(wallet.signer)
+        const result = await DeltTrader.purchace(item.tokenId, {
+          value: ethers.utils.parseUnits(`${item.price}`, "ether")
+        })
+        await result.wait()
+        const { error } = await useSupabaseClient()
+          .from("items")
+          .update({ auctioned: false, listed: false, owner: wallet.account })
+          .eq("id", item.id)
+        if (error) {
+          throw new Error(error.message)
+        }
+      } catch (Error) {
+        console.log(Error)
+      }
     },
 
     read: (provider: providers.Web3Provider, contractAbi: ContractInterface, contractAddress: string) => {
@@ -246,26 +294,52 @@ export default defineNuxtPlugin(() => {
     },
 
     readDeltItems: (provider: providers.Web3Provider) => {
-      return contractRef.read(provider, DeltItems.abi, contractRef.deltItemsAddress())
+      return contractRef.read(provider, DeltItems.abi, contractRef.deltItemsAddress)
     },
 
     readDeltTrader: (provider: providers.Web3Provider) => {
-      return contractRef.read(provider, DeltTrader.abi, contractRef.deltTraderAddress())
+      return contractRef.read(provider, DeltTrader.abi, contractRef.deltTraderAddress)
     },
 
     removeListing: async (wallet: Wallet, item: Item) => {
-      const DeltTrader = await contractRef.connectDeltTrader(wallet.signer)
-      const result = await DeltTrader.removeListing(item.tokenId)
-      await result.wait()
-      await useSupabaseClient()
-        .from("items")
-        .update({ auction: false, listed: false })
-        .eq("id", item.id)
+      try {
+        const DeltTrader = await contractRef.connectDeltTrader(wallet.signer)
+        const result = await DeltTrader.removeListing(item.tokenId)
+        await result.wait()
+        const { error } = await useSupabaseClient()
+          .from("items")
+          .update({ auctioned: false, listed: false })
+          .eq("id", item.id)
+        if (error) {
+          throw new Error(error.message)
+        }
+      } catch (Error) {
+        console.log(Error)
+      }
+    },
+
+    setTier: async (trait: string, tier: number, desc: Object = {}) => {
+      try {
+        const result = await contractRef.deltItems.setTier(trait, tier)
+        await result.wait()
+        const { error } = await useSupabaseClient()
+          .from("traits")
+          .upsert({ desc, tier, trait })
+        if (error) {
+          throw new Error(error.message)
+        }
+      } catch (Error) {
+        console.log(Error)
+      }
     },
 
     withdraw: async (wallet: Wallet, amount: number) => {
-      const result = await contractRef.deltTrader.withdraw(amount, wallet.account)
-      await result.wait()
+      try {
+        const result = await contractRef.deltTrader.withdraw(amount, wallet.account)
+        await result.wait()
+      } catch (Error) {
+        console.log(Error)
+      }
     }
 
   })

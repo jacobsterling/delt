@@ -42,6 +42,7 @@ contract DeltItems is
         public attrLoc;
     mapping(uint256 => mapping(string => bool)) public attrExists;
     mapping(uint256 => string[]) public attrKeys;
+    mapping(string => uint256) public traitTier;
 
     struct Op {
         int256 opMod;
@@ -76,6 +77,17 @@ contract DeltItems is
         _unpause();
     }
 
+    function setTier(string memory _trait, uint256 _tier)
+        public
+        onlyRole(MINTER_ROLE)
+    {
+        traitTier[_trait] = _tier;
+    }
+
+    function getTier(string memory _trait) public view returns (uint256) {
+        return traitTier[_trait];
+    }
+
     function getItemId(uint256 _tokenId)
         public
         view
@@ -88,18 +100,16 @@ contract DeltItems is
         return tokenIdlookup[_itemId];
     }
 
-    function getOpMod(uint256 _mod, int256 _opMod)
+    function getOpPrice(uint256 _lvl, int256 _mod)
         public
         pure
         returns (uint256)
     {
-        if (_opMod > 0) {
-            unchecked {
-                return _mod * uint256(_opMod) * 1e15 wei;
-            }
-        } else {
-            unchecked {
-                return _mod * 1e15 wei;
+        unchecked {
+            if (_mod > 0) {
+                return _lvl * uint256(_mod) * 1e15 wei;
+            } else {
+                return _lvl * 1e15 wei;
             }
         }
     }
@@ -115,9 +125,10 @@ contract DeltItems is
             );
             attrExists[_tokenId][_attr.attrKey] = true;
         }
-        itemId[_tokenId].mod -= attrLoc[_tokenId][_attr.attrKey].mod;
+        itemId[_tokenId].lvl -= attrLoc[_tokenId][_attr.attrKey].lvl;
         for (uint256 i = 0; i < _attr.stats.length; i++) {
             _op.push = true;
+            _attr.stats[i].tier = traitTier[_attr.stats[i].trait];
             for (
                 uint256 j = 0;
                 j < attributes[_tokenId][_attr.attrKey].length;
@@ -167,17 +178,17 @@ contract DeltItems is
         }
         unchecked {
             if (_op.opMod > 0) {
-                attrLoc[_tokenId][_attr.attrKey].mod += uint256(_op.opMod);
+                attrLoc[_tokenId][_attr.attrKey].lvl += uint256(_op.opMod);
             } else {
                 int256 sub = _op.opMod * -1;
-                attrLoc[_tokenId][_attr.attrKey].mod -= uint256(sub);
+                attrLoc[_tokenId][_attr.attrKey].lvl -= uint256(sub);
             }
         }
         if (
             attributes[_tokenId][_attr.attrKey].length == 0 ||
             _attr.stats.length == 0
         ) {
-            _op.opMod = int256(attrLoc[_tokenId][_attr.attrKey].mod) * -1;
+            _op.opMod = int256(attrLoc[_tokenId][_attr.attrKey].lvl) * -1;
             delete attributes[_tokenId][_attr.attrKey];
             if (
                 attrLoc[_tokenId][_attr.attrKey].index ==
@@ -198,7 +209,7 @@ contract DeltItems is
             attrExists[_tokenId][_attr.attrKey] = false;
             attrKeys[_tokenId].pop();
         } else {
-            itemId[_tokenId].mod += attrLoc[_tokenId][_attr.attrKey].mod;
+            itemId[_tokenId].lvl += attrLoc[_tokenId][_attr.attrKey].lvl;
         }
     }
 
@@ -243,9 +254,9 @@ contract DeltItems is
             unchecked {
                 require(
                     msg.value >=
-                        getOpMod(
-                            itemId[_tokenIdCounter.current()].mod,
-                            int256(itemId[_tokenIdCounter.current()].mod)
+                        getOpPrice(
+                            itemId[_tokenIdCounter.current()].lvl,
+                            int256(itemId[_tokenIdCounter.current()].lvl)
                         ),
                     "underpayed"
                 );
@@ -275,7 +286,7 @@ contract DeltItems is
         setAttribute(_tokenId, _attr);
         unchecked {
             require(
-                msg.value >= getOpMod(itemId[_tokenId].mod, _op.opMod),
+                msg.value >= getOpPrice(itemId[_tokenId].lvl, _op.opMod),
                 "underpayed"
             );
         }

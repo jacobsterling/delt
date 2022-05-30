@@ -1,5 +1,13 @@
 import MetaMaskOnboarding from "@metamask/onboarding"
 import { ethers } from "ethers"
+
+export interface Profile {
+  imageURL?: Object,
+  level: number,
+  type: string,
+  username: string,
+  userSlug: string
+}
 export interface Wallet {
   account?: string,
   accountCompact?: string,
@@ -12,6 +20,7 @@ export interface Wallet {
   signer?: ethers.Signer,
   setAccount: (account?: string) => Promise<void>,
   switchNetwork: (config: { chainId: string }) => Promise<void>
+  profile: Profile
 }
 
 export default defineNuxtPlugin(() => {
@@ -19,6 +28,7 @@ export default defineNuxtPlugin(() => {
     account: undefined,
     accountCompact: undefined,
     balance: undefined,
+
     connect: async () => {
       if (MetaMaskOnboarding.isMetaMaskInstalled() === false) {
         new MetaMaskOnboarding().startOnboarding()
@@ -53,7 +63,9 @@ export default defineNuxtPlugin(() => {
       }
     },
     network: undefined,
+    profile: undefined,
     provider: undefined,
+
     setAccount: async (account?: string) => {
       if (account === undefined) {
         wallet.account = undefined
@@ -63,11 +75,15 @@ export default defineNuxtPlugin(() => {
       }
 
       wallet.account = account
-      wallet.accountCompact = `${wallet.account.substring(0, 4)}...${wallet.account.substring(wallet.account.length - 4)}`
+      wallet.accountCompact = `${account.substring(0, 4)}...${account.substring(account.length - 4)}`
+
+      const user = await useAccount(account)
+      wallet.profile = { imageURL: user.imageURL, level: user.level, type: user.type, userSlug: useSlug(user.username), username: user.username || wallet.accountCompact }
 
       const balance = await wallet.provider?.getBalance(wallet.account)
       wallet.balance = ethers.utils.formatEther(balance)
     },
+
     switchNetwork: async (config: { chainId: string }) => {
       if (wallet.network?.chainId.toString() === config.chainId) { return }
 
@@ -82,6 +98,7 @@ export default defineNuxtPlugin(() => {
         }
       }
     }
+
   })
 
   if (window.ethereum) {

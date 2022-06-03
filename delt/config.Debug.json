@@ -16,7 +16,7 @@
                     "mapping": "multiplayer",
                     "start": true,
                     "data": {                
-                        "url": "ws://127.0.0.1:42069",
+                        "url": "ws://127.0.0.1:42069/",
                         "broadcastInterval": 16,
                         "pauseTimeout": 5000,
                         "deadTimeout": 15000,

@@ -2,5 +2,6 @@
 /* tslint:disable */
 /* eslint-disable */
 export { DeltAttributes__factory } from "./DeltAttributes__factory";
+export { DeltEntities__factory } from "./DeltEntities__factory";
 export { DeltItems__factory } from "./DeltItems__factory";
 export { DeltTrader__factory } from "./DeltTrader__factory";

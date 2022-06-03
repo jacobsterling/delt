@@ -1,36 +1,36 @@
 <script setup lang="ts">
 
+import { Token } from "../../plugins/contract.client"
 const client = useSupabaseClient()
 const route = useRoute()
 
-const { data: userData } = await client.from("usernames").select("*").eq("username", route.params.username).single()
+const { $wallet: wallet, $contractRef: contractRef } = useNuxtApp()
+const profile = await useUsername(route.params.username)
 
-const { data: itemsAuctioned } = await client.from("items").select("*").eq("auction", true).eq("owner", userData.account)
-const { data: itemsUnauctioned } = await client.from("items").select("*").eq("auction", false).eq("owner", userData.account)
+const { data: tokens } = await client.from("tokens").select("*").eq("owner", profile.account)
 
-const state = ref<boolean>(true)
+const removeListing = async (token: Token) => {
+  await contractRef.removeListing(wallet, token)
+}
 
 </script>
 
 <template>
-  <div class="inline-flex justify-left">
-    <button class="bg-red-200 hover:bg-red-400 rounded-md p-1 m-2 text-sm" @click="state = !state">
-      <div v-if="state">
-        Auctioned
-      </div>
-      <div v-else>
-        Unauctioned
-      </div>
-    </button>
-  </div>
-  <div v-if="state" class="inline-flex justify-center">
-    <ItemCard v-for="item in itemsAuctioned" :item="item">
+  <div class="inline-flex justify-center">
+    <TokenCard v-for="token in tokens" :key="token.slug" :item="token">
       <li>
-        <ItemPurchase :item="item" />
+        <TokenPurchase :item="token" />
       </li>
-    </ItemCard>
-  </div>
-  <div v-else class="inline-flex justify-center">
-    <ItemCard v-for="item in itemsUnauctioned" :item="item" />
+      <li>
+        <DeltButton class="d-button-sky p-1 flex" @click="removeListing(token)">
+          <div class="flex-inline justify-between align-center">
+            <ExclamationIcon class="d-icon-6" />
+            <div class="flex text-center">
+              Remove Listing
+            </div>
+          </div>
+        </DeltButton>
+      </li>
+    </TokenCard>
   </div>
 </template>

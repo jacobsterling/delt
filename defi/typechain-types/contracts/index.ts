@@ -2,5 +2,6 @@
 /* tslint:disable */
 /* eslint-disable */
 export type { DeltAttributes } from "./DeltAttributes";
+export type { DeltEntities } from "./DeltEntities";
 export type { DeltItems } from "./DeltItems";
 export type { DeltTrader } from "./DeltTrader";

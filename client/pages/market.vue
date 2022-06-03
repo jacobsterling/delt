@@ -7,14 +7,14 @@ const FROM = ref(0)
 const TO = ref(LIMIT)
 const status = ref(true)
 
-const { data: items } = await client.from("items").select("*").eq("listed", true).neq("owner", undefined).order("createdAt").range(FROM.value, TO.value)
+const { data: tokens } = await client.from("tokens").select("*").eq("listed", true).neq("owner", undefined).order("createdAt").range(FROM.value, TO.value)
 
-const loaditems = async () => {
+const loadtokens = async () => {
   FROM.value = TO.value + 1
   TO.value = FROM.value + LIMIT
-  const { data: newitems } = await client.from("items").select("*").eq("listed", true).neq("owner", undefined).order("createdAt").range(FROM.value, TO.value)
-  items.concat(newitems)
-  if (items.length < LIMIT) {
+  const { data: newtokens } = await client.from("tokens").select("*").eq("listed", true).neq("owner", undefined).order("createdAt").range(FROM.value, TO.value)
+  tokens.concat(newtokens)
+  if (tokens.length < LIMIT) {
     status.value = false
   }
 }
@@ -23,11 +23,11 @@ const loaditems = async () => {
 
 <template>
   <div class="justify-center flex-wrap w-90%">
-    <ItemCard v-for="item in items" :item="item">
-      <ItemPurchase :item="item" />
-    </ItemCard>
+    <TokenCard v-for="token in tokens" :key="token.slug" :item="token">
+      <TokenPurchase :item="token" />
+    </TokenCard>
     <footer class="w-100% justify-center">
-      <DeltButton v-if="status" class="d-button-cyan flex" @click="loaditems">
+      <DeltButton v-if="status" class="d-button-cyan flex" @click="loadtokens">
         Load more items
       </DeltButton>
     </footer>

@@ -3,7 +3,8 @@ pragma solidity ^0.8.7;
 import "./Base64.sol";
 
 library DeltAttributes {
-    struct ItemId {
+    struct Id {
+        uint256 amount;
         bool awarded;
         string itemName;
         string itemType;
@@ -21,9 +22,9 @@ library DeltAttributes {
     }
 
     struct Stat {
-        string trait;
         string statKey;
         uint256 tier;
+        string trait;
         uint256 value;
     }
 
@@ -71,7 +72,7 @@ library DeltAttributes {
     }
 
     function tokenURI(
-        ItemId memory _itemItem,
+        Id memory _itemId,
         string memory encodedSVG,
         Attr[] memory _attributes
     ) external pure returns (string memory) {
@@ -84,11 +85,11 @@ library DeltAttributes {
                             string(
                                 abi.encodePacked(
                                     '{"name": "',
-                                    _itemItem.itemName,
+                                    _itemId.itemName,
                                     '",  "type": "',
-                                    _itemItem.itemType,
+                                    _itemId.itemType,
                                     '",  "level": ',
-                                    Base64.uint2str(_itemItem.lvl),
+                                    Base64.uint2str(_itemId.lvl),
                                     ',  "image": "',
                                     Base64.decode(encodedSVG),
                                     '",  ',

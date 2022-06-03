@@ -1,6 +1,5 @@
 
-export const useUser = async (uid: any) => {
-  const username = ref<string>(undefined)
+export const useUsername = async (username: any) => {
   const type = ref<string>(undefined)
   const account = ref<string>(undefined)
   const file = ref<Blob>(undefined)
@@ -10,7 +9,7 @@ export const useUser = async (uid: any) => {
   const getProfilePicture = async (username: string) => {
     const { data: download, error } = await client
       .storage
-      .from("designs")
+      .from("avatars")
       .download(`${username}.jpg`)
     file.value = download
     if (error) {
@@ -24,26 +23,22 @@ export const useUser = async (uid: any) => {
     reader.readAsDataURL(file.value)
   }
 
-  if (uid) {
-    try {
-      const { data, error } = await client.from("usernames").select("*").eq("id", uid).single()
-      if (error) { throw error }
-      username.value = data.username
-      type.value = data.type
-      account.value = data.account
+  try {
+    const { data, error } = await client.from("account").select("*").eq("username", username).single()
+    if (error) { throw error }
+    type.value = data.type
+    account.value = data.account
 
-      await getProfilePicture(username.value)
+    await getProfilePicture(username)
 
-      // return other username data (account type ?)
-    } catch (error) {
-      console.log(error)
-    }
+    // return other username data (account type ?)
+  } catch (error) {
+    console.log(error)
   }
 
   return {
     account: account.value,
     imageURL: imageURL.value,
-    type: type.value,
-    username: username.value
+    type: type.value
   }
 }

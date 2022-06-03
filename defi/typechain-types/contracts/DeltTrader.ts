@@ -28,10 +28,25 @@ import type {
 } from "../common";
 
 export declare namespace DeltTrader {
+  export type ListingStruct = { contractAddr: string; id: BigNumberish };
+
+  export type ListingStructOutput = [string, BigNumber] & {
+    contractAddr: string;
+    id: BigNumber;
+  };
+
+  export type BidStruct = { bidder: string; bid: BigNumberish };
+
+  export type BidStructOutput = [string, BigNumber] & {
+    bidder: string;
+    bid: BigNumber;
+  };
+
   export type TransactionStruct = {
     buyer: string;
     seller: string;
     price: BigNumberish;
+    amount: BigNumberish;
     auctioned: boolean;
     completed: boolean;
   };
@@ -40,12 +55,14 @@ export declare namespace DeltTrader {
     string,
     string,
     BigNumber,
+    BigNumber,
     boolean,
     boolean
   ] & {
     buyer: string;
     seller: string;
     price: BigNumber;
+    amount: BigNumber;
     auctioned: boolean;
     completed: boolean;
   };
@@ -53,16 +70,18 @@ export declare namespace DeltTrader {
 
 export interface DeltTraderInterface extends utils.Interface {
   functions: {
-    "activeAuctions(uint256)": FunctionFragment;
-    "addListing(uint256,uint256,bool)": FunctionFragment;
-    "auctions(uint256)": FunctionFragment;
+    "activeAuctions(address,uint256)": FunctionFragment;
+    "addListing((address,uint256),uint256,uint256,bool)": FunctionFragment;
+    "auctions(address,uint256)": FunctionFragment;
     "balances(address)": FunctionFragment;
-    "bid(uint256)": FunctionFragment;
-    "endAuction(uint256)": FunctionFragment;
-    "getListings(uint256)": FunctionFragment;
-    "purchace(uint256)": FunctionFragment;
-    "removeListing(uint256)": FunctionFragment;
-    "transactions(uint256,uint256)": FunctionFragment;
+    "bid((address,uint256))": FunctionFragment;
+    "endAuction((address,uint256))": FunctionFragment;
+    "erc721(address)": FunctionFragment;
+    "getListings((address,uint256))": FunctionFragment;
+    "purchace((address,uint256))": FunctionFragment;
+    "removeListing((address,uint256))": FunctionFragment;
+    "setContractStandard(address,bool)": FunctionFragment;
+    "transactions(address,uint256,uint256)": FunctionFragment;
     "withdraw(uint256)": FunctionFragment;
   };
 
@@ -74,46 +93,56 @@ export interface DeltTraderInterface extends utils.Interface {
       | "balances"
       | "bid"
       | "endAuction"
+      | "erc721"
       | "getListings"
       | "purchace"
       | "removeListing"
+      | "setContractStandard"
       | "transactions"
       | "withdraw"
   ): FunctionFragment;
 
   encodeFunctionData(
     functionFragment: "activeAuctions",
-    values: [BigNumberish]
+    values: [string, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "addListing",
-    values: [BigNumberish, BigNumberish, boolean]
+    values: [DeltTrader.ListingStruct, BigNumberish, BigNumberish, boolean]
   ): string;
   encodeFunctionData(
     functionFragment: "auctions",
-    values: [BigNumberish]
+    values: [string, BigNumberish]
   ): string;
   encodeFunctionData(functionFragment: "balances", values: [string]): string;
-  encodeFunctionData(functionFragment: "bid", values: [BigNumberish]): string;
   encodeFunctionData(
-    functionFragment: "endAuction",
-    values: [BigNumberish]
+    functionFragment: "bid",
+    values: [DeltTrader.ListingStruct]
   ): string;
   encodeFunctionData(
+    functionFragment: "endAuction",
+    values: [DeltTrader.ListingStruct]
+  ): string;
+  encodeFunctionData(functionFragment: "erc721", values: [string]): string;
+  encodeFunctionData(
     functionFragment: "getListings",
-    values: [BigNumberish]
+    values: [DeltTrader.ListingStruct]
   ): string;
   encodeFunctionData(
     functionFragment: "purchace",
-    values: [BigNumberish]
+    values: [DeltTrader.ListingStruct]
   ): string;
   encodeFunctionData(
     functionFragment: "removeListing",
-    values: [BigNumberish]
+    values: [DeltTrader.ListingStruct]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "setContractStandard",
+    values: [string, boolean]
   ): string;
   encodeFunctionData(
     functionFragment: "transactions",
-    values: [BigNumberish, BigNumberish]
+    values: [string, BigNumberish, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "withdraw",
@@ -129,6 +158,7 @@ export interface DeltTraderInterface extends utils.Interface {
   decodeFunctionResult(functionFragment: "balances", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "bid", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "endAuction", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "erc721", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "getListings",
     data: BytesLike
@@ -139,59 +169,76 @@ export interface DeltTraderInterface extends utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "setContractStandard",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "transactions",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "withdraw", data: BytesLike): Result;
 
   events: {
-    "AuctionEnd(address,uint256,uint256,address)": EventFragment;
-    "AuctionStart(address,uint256,uint256,uint256)": EventFragment;
-    "BidPlaced(address,uint256,uint256)": EventFragment;
+    "AuctionEnd(tuple,address,uint256,uint256)": EventFragment;
+    "AuctionStart(tuple,uint256,uint256)": EventFragment;
+    "BidPlaced(tuple,tuple[])": EventFragment;
+    "Purchaced(tuple,address,uint256,uint256)": EventFragment;
   };
 
   getEvent(nameOrSignatureOrTopic: "AuctionEnd"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "AuctionStart"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "BidPlaced"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "Purchaced"): EventFragment;
 }
 
 export interface AuctionEndEventObject {
-  contractAddr: string;
-  _tokenId: BigNumber;
-  highestBid: BigNumber;
+  _listing: DeltTrader.ListingStructOutput;
   highestBidder: string;
+  highestBid: BigNumber;
+  amount: BigNumber;
 }
 export type AuctionEndEvent = TypedEvent<
-  [string, BigNumber, BigNumber, string],
+  [DeltTrader.ListingStructOutput, string, BigNumber, BigNumber],
   AuctionEndEventObject
 >;
 
 export type AuctionEndEventFilter = TypedEventFilter<AuctionEndEvent>;
 
 export interface AuctionStartEventObject {
-  contractAddr: string;
-  _tokenId: BigNumber;
+  _listing: DeltTrader.ListingStructOutput;
   price: BigNumber;
   endAt: BigNumber;
 }
 export type AuctionStartEvent = TypedEvent<
-  [string, BigNumber, BigNumber, BigNumber],
+  [DeltTrader.ListingStructOutput, BigNumber, BigNumber],
   AuctionStartEventObject
 >;
 
 export type AuctionStartEventFilter = TypedEventFilter<AuctionStartEvent>;
 
 export interface BidPlacedEventObject {
-  contractAddr: string;
-  _tokenId: BigNumber;
-  highestBid: BigNumber;
+  _listing: DeltTrader.ListingStructOutput;
+  updatedBids: DeltTrader.BidStructOutput[];
 }
 export type BidPlacedEvent = TypedEvent<
-  [string, BigNumber, BigNumber],
+  [DeltTrader.ListingStructOutput, DeltTrader.BidStructOutput[]],
   BidPlacedEventObject
 >;
 
 export type BidPlacedEventFilter = TypedEventFilter<BidPlacedEvent>;
+
+export interface PurchacedEventObject {
+  _listing: DeltTrader.ListingStructOutput;
+  buyer: string;
+  price: BigNumber;
+  amount: BigNumber;
+}
+export type PurchacedEvent = TypedEvent<
+  [DeltTrader.ListingStructOutput, string, BigNumber, BigNumber],
+  PurchacedEventObject
+>;
+
+export type PurchacedEventFilter = TypedEventFilter<PurchacedEvent>;
 
 export interface DeltTrader extends BaseContract {
   connect(signerOrProvider: Signer | Provider | string): this;
@@ -221,65 +268,77 @@ export interface DeltTrader extends BaseContract {
 
   functions: {
     activeAuctions(
-      arg0: BigNumberish,
+      arg0: string,
+      arg1: BigNumberish,
       overrides?: CallOverrides
     ): Promise<[boolean]>;
 
     addListing(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
       _price: BigNumberish,
+      _amount: BigNumberish,
       _auction: boolean,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     auctions(
-      arg0: BigNumberish,
+      arg0: string,
+      arg1: BigNumberish,
       overrides?: CallOverrides
     ): Promise<
-      [string, BigNumber, string, BigNumber] & {
+      [string, BigNumber, BigNumber] & {
         seller: string;
-        highestBid: BigNumber;
-        highestBidder: string;
         endAt: BigNumber;
+        initPrice: BigNumber;
       }
     >;
 
     balances(arg0: string, overrides?: CallOverrides): Promise<[BigNumber]>;
 
     bid(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     endAuction(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
+    erc721(arg0: string, overrides?: CallOverrides): Promise<[boolean]>;
+
     getListings(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
       overrides?: CallOverrides
     ): Promise<[DeltTrader.TransactionStructOutput[]]>;
 
     purchace(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     removeListing(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
+    setContractStandard(
+      _contractAddr: string,
+      _isErc721: boolean,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     transactions(
-      arg0: BigNumberish,
+      arg0: string,
       arg1: BigNumberish,
+      arg2: BigNumberish,
       overrides?: CallOverrides
     ): Promise<
-      [string, string, BigNumber, boolean, boolean] & {
+      [string, string, BigNumber, BigNumber, boolean, boolean] & {
         buyer: string;
         seller: string;
         price: BigNumber;
+        amount: BigNumber;
         auctioned: boolean;
         completed: boolean;
       }
@@ -292,65 +351,77 @@ export interface DeltTrader extends BaseContract {
   };
 
   activeAuctions(
-    arg0: BigNumberish,
+    arg0: string,
+    arg1: BigNumberish,
     overrides?: CallOverrides
   ): Promise<boolean>;
 
   addListing(
-    _tokenId: BigNumberish,
+    _listing: DeltTrader.ListingStruct,
     _price: BigNumberish,
+    _amount: BigNumberish,
     _auction: boolean,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   auctions(
-    arg0: BigNumberish,
+    arg0: string,
+    arg1: BigNumberish,
     overrides?: CallOverrides
   ): Promise<
-    [string, BigNumber, string, BigNumber] & {
+    [string, BigNumber, BigNumber] & {
       seller: string;
-      highestBid: BigNumber;
-      highestBidder: string;
       endAt: BigNumber;
+      initPrice: BigNumber;
     }
   >;
 
   balances(arg0: string, overrides?: CallOverrides): Promise<BigNumber>;
 
   bid(
-    _tokenId: BigNumberish,
+    _listing: DeltTrader.ListingStruct,
     overrides?: PayableOverrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   endAuction(
-    _tokenId: BigNumberish,
+    _listing: DeltTrader.ListingStruct,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
+  erc721(arg0: string, overrides?: CallOverrides): Promise<boolean>;
+
   getListings(
-    _tokenId: BigNumberish,
+    _listing: DeltTrader.ListingStruct,
     overrides?: CallOverrides
   ): Promise<DeltTrader.TransactionStructOutput[]>;
 
   purchace(
-    _tokenId: BigNumberish,
+    _listing: DeltTrader.ListingStruct,
     overrides?: PayableOverrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   removeListing(
-    _tokenId: BigNumberish,
+    _listing: DeltTrader.ListingStruct,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
+  setContractStandard(
+    _contractAddr: string,
+    _isErc721: boolean,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   transactions(
-    arg0: BigNumberish,
+    arg0: string,
     arg1: BigNumberish,
+    arg2: BigNumberish,
     overrides?: CallOverrides
   ): Promise<
-    [string, string, BigNumber, boolean, boolean] & {
+    [string, string, BigNumber, BigNumber, boolean, boolean] & {
       buyer: string;
       seller: string;
       price: BigNumber;
+      amount: BigNumber;
       auctioned: boolean;
       completed: boolean;
     }
@@ -363,59 +434,77 @@ export interface DeltTrader extends BaseContract {
 
   callStatic: {
     activeAuctions(
-      arg0: BigNumberish,
+      arg0: string,
+      arg1: BigNumberish,
       overrides?: CallOverrides
     ): Promise<boolean>;
 
     addListing(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
       _price: BigNumberish,
+      _amount: BigNumberish,
       _auction: boolean,
       overrides?: CallOverrides
     ): Promise<void>;
 
     auctions(
-      arg0: BigNumberish,
+      arg0: string,
+      arg1: BigNumberish,
       overrides?: CallOverrides
     ): Promise<
-      [string, BigNumber, string, BigNumber] & {
+      [string, BigNumber, BigNumber] & {
         seller: string;
-        highestBid: BigNumber;
-        highestBidder: string;
         endAt: BigNumber;
+        initPrice: BigNumber;
       }
     >;
 
     balances(arg0: string, overrides?: CallOverrides): Promise<BigNumber>;
 
-    bid(_tokenId: BigNumberish, overrides?: CallOverrides): Promise<void>;
-
-    endAuction(
-      _tokenId: BigNumberish,
+    bid(
+      _listing: DeltTrader.ListingStruct,
       overrides?: CallOverrides
     ): Promise<void>;
 
+    endAuction(
+      _listing: DeltTrader.ListingStruct,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    erc721(arg0: string, overrides?: CallOverrides): Promise<boolean>;
+
     getListings(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
       overrides?: CallOverrides
     ): Promise<DeltTrader.TransactionStructOutput[]>;
 
-    purchace(_tokenId: BigNumberish, overrides?: CallOverrides): Promise<void>;
+    purchace(
+      _listing: DeltTrader.ListingStruct,
+      overrides?: CallOverrides
+    ): Promise<void>;
 
     removeListing(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    setContractStandard(
+      _contractAddr: string,
+      _isErc721: boolean,
       overrides?: CallOverrides
     ): Promise<void>;
 
     transactions(
-      arg0: BigNumberish,
+      arg0: string,
       arg1: BigNumberish,
+      arg2: BigNumberish,
       overrides?: CallOverrides
     ): Promise<
-      [string, string, BigNumber, boolean, boolean] & {
+      [string, string, BigNumber, BigNumber, boolean, boolean] & {
         buyer: string;
         seller: string;
         price: BigNumber;
+        amount: BigNumber;
         auctioned: boolean;
         completed: boolean;
       }
@@ -425,89 +514,110 @@ export interface DeltTrader extends BaseContract {
   };
 
   filters: {
-    "AuctionEnd(address,uint256,uint256,address)"(
-      contractAddr?: null,
-      _tokenId?: null,
+    "AuctionEnd(tuple,address,uint256,uint256)"(
+      _listing?: null,
+      highestBidder?: null,
       highestBid?: null,
-      highestBidder?: null
+      amount?: null
     ): AuctionEndEventFilter;
     AuctionEnd(
-      contractAddr?: null,
-      _tokenId?: null,
+      _listing?: null,
+      highestBidder?: null,
       highestBid?: null,
-      highestBidder?: null
+      amount?: null
     ): AuctionEndEventFilter;
 
-    "AuctionStart(address,uint256,uint256,uint256)"(
-      contractAddr?: null,
-      _tokenId?: null,
+    "AuctionStart(tuple,uint256,uint256)"(
+      _listing?: null,
       price?: null,
       endAt?: null
     ): AuctionStartEventFilter;
     AuctionStart(
-      contractAddr?: null,
-      _tokenId?: null,
+      _listing?: null,
       price?: null,
       endAt?: null
     ): AuctionStartEventFilter;
 
-    "BidPlaced(address,uint256,uint256)"(
-      contractAddr?: null,
-      _tokenId?: null,
-      highestBid?: null
+    "BidPlaced(tuple,tuple[])"(
+      _listing?: null,
+      updatedBids?: null
     ): BidPlacedEventFilter;
-    BidPlaced(
-      contractAddr?: null,
-      _tokenId?: null,
-      highestBid?: null
-    ): BidPlacedEventFilter;
+    BidPlaced(_listing?: null, updatedBids?: null): BidPlacedEventFilter;
+
+    "Purchaced(tuple,address,uint256,uint256)"(
+      _listing?: null,
+      buyer?: null,
+      price?: null,
+      amount?: null
+    ): PurchacedEventFilter;
+    Purchaced(
+      _listing?: null,
+      buyer?: null,
+      price?: null,
+      amount?: null
+    ): PurchacedEventFilter;
   };
 
   estimateGas: {
     activeAuctions(
-      arg0: BigNumberish,
+      arg0: string,
+      arg1: BigNumberish,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
     addListing(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
       _price: BigNumberish,
+      _amount: BigNumberish,
       _auction: boolean,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
-    auctions(arg0: BigNumberish, overrides?: CallOverrides): Promise<BigNumber>;
+    auctions(
+      arg0: string,
+      arg1: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
 
     balances(arg0: string, overrides?: CallOverrides): Promise<BigNumber>;
 
     bid(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     endAuction(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
+    erc721(arg0: string, overrides?: CallOverrides): Promise<BigNumber>;
+
     getListings(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
     purchace(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     removeListing(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
+    setContractStandard(
+      _contractAddr: string,
+      _isErc721: boolean,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     transactions(
-      arg0: BigNumberish,
+      arg0: string,
       arg1: BigNumberish,
+      arg2: BigNumberish,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
@@ -519,19 +629,22 @@ export interface DeltTrader extends BaseContract {
 
   populateTransaction: {
     activeAuctions(
-      arg0: BigNumberish,
+      arg0: string,
+      arg1: BigNumberish,
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
     addListing(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
       _price: BigNumberish,
+      _amount: BigNumberish,
       _auction: boolean,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     auctions(
-      arg0: BigNumberish,
+      arg0: string,
+      arg1: BigNumberish,
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
@@ -541,33 +654,45 @@ export interface DeltTrader extends BaseContract {
     ): Promise<PopulatedTransaction>;
 
     bid(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     endAuction(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
+    erc721(
+      arg0: string,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
     getListings(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
     purchace(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     removeListing(
-      _tokenId: BigNumberish,
+      _listing: DeltTrader.ListingStruct,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    setContractStandard(
+      _contractAddr: string,
+      _isErc721: boolean,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     transactions(
-      arg0: BigNumberish,
+      arg0: string,
       arg1: BigNumberish,
+      arg2: BigNumberish,
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 

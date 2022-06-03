@@ -28,14 +28,22 @@ import type {
 } from "../common";
 
 export declare namespace DeltAttributes {
-  export type ItemIdStruct = {
+  export type IdStruct = {
+    amount: BigNumberish;
     awarded: boolean;
     itemName: string;
     itemType: string;
     lvl: BigNumberish;
   };
 
-  export type ItemIdStructOutput = [boolean, string, string, BigNumber] & {
+  export type IdStructOutput = [
+    BigNumber,
+    boolean,
+    string,
+    string,
+    BigNumber
+  ] & {
+    amount: BigNumber;
     awarded: boolean;
     itemName: string;
     itemType: string;
@@ -43,16 +51,16 @@ export declare namespace DeltAttributes {
   };
 
   export type StatStruct = {
-    trait: string;
     statKey: string;
     tier: BigNumberish;
+    trait: string;
     value: BigNumberish;
   };
 
-  export type StatStructOutput = [string, string, BigNumber, BigNumber] & {
-    trait: string;
+  export type StatStructOutput = [string, BigNumber, string, BigNumber] & {
     statKey: string;
     tier: BigNumber;
+    trait: string;
     value: BigNumber;
   };
 
@@ -77,7 +85,6 @@ export interface DeltItemsInterface extends utils.Interface {
     "attrKeys(uint256,uint256)": FunctionFragment;
     "attrLoc(uint256,string)": FunctionFragment;
     "attributes(uint256,string,uint256)": FunctionFragment;
-    "awardItem(address,(bool,string,string,uint256),string,(string,(string,string,uint256,uint256)[])[])": FunctionFragment;
     "balanceOf(address)": FunctionFragment;
     "burn(uint256)": FunctionFragment;
     "exists(string)": FunctionFragment;
@@ -92,13 +99,13 @@ export interface DeltItemsInterface extends utils.Interface {
     "initialize()": FunctionFragment;
     "isApprovedForAll(address,address)": FunctionFragment;
     "itemId(uint256)": FunctionFragment;
-    "modifiyItem(uint256,(string,(string,string,uint256,uint256)[]))": FunctionFragment;
+    "mint(address,(uint256,bool,string,string,uint256),string,(string,(string,uint256,string,uint256)[])[])": FunctionFragment;
+    "modifiyItem(uint256,(string,(string,uint256,string,uint256)[]))": FunctionFragment;
     "name()": FunctionFragment;
-    "opMod()": FunctionFragment;
     "ownerOf(uint256)": FunctionFragment;
     "pause()": FunctionFragment;
     "paused()": FunctionFragment;
-    "payToMintItem(address,(bool,string,string,uint256),string,(string,(string,string,uint256,uint256)[])[])": FunctionFragment;
+    "payToMint(address,(uint256,bool,string,string,uint256),string,(string,(string,uint256,string,uint256)[])[])": FunctionFragment;
     "renounceRole(bytes32,address)": FunctionFragment;
     "revokeRole(bytes32,address)": FunctionFragment;
     "safeTransferFrom(address,address,uint256)": FunctionFragment;
@@ -127,7 +134,6 @@ export interface DeltItemsInterface extends utils.Interface {
       | "attrKeys"
       | "attrLoc"
       | "attributes"
-      | "awardItem"
       | "balanceOf"
       | "burn"
       | "exists"
@@ -142,13 +148,13 @@ export interface DeltItemsInterface extends utils.Interface {
       | "initialize"
       | "isApprovedForAll"
       | "itemId"
+      | "mint"
       | "modifiyItem"
       | "name"
-      | "opMod"
       | "ownerOf"
       | "pause"
       | "paused"
-      | "payToMintItem"
+      | "payToMint"
       | "renounceRole"
       | "revokeRole"
       | "safeTransferFrom(address,address,uint256)"
@@ -196,15 +202,6 @@ export interface DeltItemsInterface extends utils.Interface {
     functionFragment: "attributes",
     values: [BigNumberish, string, BigNumberish]
   ): string;
-  encodeFunctionData(
-    functionFragment: "awardItem",
-    values: [
-      string,
-      DeltAttributes.ItemIdStruct,
-      string,
-      DeltAttributes.AttrStruct[]
-    ]
-  ): string;
   encodeFunctionData(functionFragment: "balanceOf", values: [string]): string;
   encodeFunctionData(functionFragment: "burn", values: [BigNumberish]): string;
   encodeFunctionData(functionFragment: "exists", values: [string]): string;
@@ -247,11 +244,19 @@ export interface DeltItemsInterface extends utils.Interface {
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
+    functionFragment: "mint",
+    values: [
+      string,
+      DeltAttributes.IdStruct,
+      string,
+      DeltAttributes.AttrStruct[]
+    ]
+  ): string;
+  encodeFunctionData(
     functionFragment: "modifiyItem",
     values: [BigNumberish, DeltAttributes.AttrStruct]
   ): string;
   encodeFunctionData(functionFragment: "name", values?: undefined): string;
-  encodeFunctionData(functionFragment: "opMod", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "ownerOf",
     values: [BigNumberish]
@@ -259,10 +264,10 @@ export interface DeltItemsInterface extends utils.Interface {
   encodeFunctionData(functionFragment: "pause", values?: undefined): string;
   encodeFunctionData(functionFragment: "paused", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "payToMintItem",
+    functionFragment: "payToMint",
     values: [
       string,
-      DeltAttributes.ItemIdStruct,
+      DeltAttributes.IdStruct,
       string,
       DeltAttributes.AttrStruct[]
     ]
@@ -337,7 +342,6 @@ export interface DeltItemsInterface extends utils.Interface {
   decodeFunctionResult(functionFragment: "attrKeys", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "attrLoc", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "attributes", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "awardItem", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "burn", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "exists", data: BytesLike): Result;
@@ -361,19 +365,16 @@ export interface DeltItemsInterface extends utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "itemId", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "mint", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "modifiyItem",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "name", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "opMod", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "ownerOf", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "pause", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "paused", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "payToMintItem",
-    data: BytesLike
-  ): Result;
+  decodeFunctionResult(functionFragment: "payToMint", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "renounceRole",
     data: BytesLike
@@ -603,21 +604,13 @@ export interface DeltItems extends BaseContract {
       arg2: BigNumberish,
       overrides?: CallOverrides
     ): Promise<
-      [string, string, BigNumber, BigNumber] & {
-        trait: string;
+      [string, BigNumber, string, BigNumber] & {
         statKey: string;
         tier: BigNumber;
+        trait: string;
         value: BigNumber;
       }
     >;
-
-    awardItem(
-      player: string,
-      _itemId: DeltAttributes.ItemIdStruct,
-      _tokenSVG: string,
-      _attributes: DeltAttributes.AttrStruct[],
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<ContractTransaction>;
 
     balanceOf(owner: string, overrides?: CallOverrides): Promise<[BigNumber]>;
 
@@ -636,7 +629,7 @@ export interface DeltItems extends BaseContract {
     getItemId(
       _tokenId: BigNumberish,
       overrides?: CallOverrides
-    ): Promise<[DeltAttributes.ItemIdStructOutput]>;
+    ): Promise<[DeltAttributes.IdStructOutput]>;
 
     getOpPrice(
       _lvl: BigNumberish,
@@ -679,13 +672,22 @@ export interface DeltItems extends BaseContract {
       arg0: BigNumberish,
       overrides?: CallOverrides
     ): Promise<
-      [boolean, string, string, BigNumber] & {
+      [BigNumber, boolean, string, string, BigNumber] & {
+        amount: BigNumber;
         awarded: boolean;
         itemName: string;
         itemType: string;
         lvl: BigNumber;
       }
     >;
+
+    mint(
+      player: string,
+      _itemId: DeltAttributes.IdStruct,
+      _tokenSVG: string,
+      _attributes: DeltAttributes.AttrStruct[],
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
 
     modifiyItem(
       _tokenId: BigNumberish,
@@ -694,8 +696,6 @@ export interface DeltItems extends BaseContract {
     ): Promise<ContractTransaction>;
 
     name(overrides?: CallOverrides): Promise<[string]>;
-
-    opMod(overrides?: CallOverrides): Promise<[BigNumber]>;
 
     ownerOf(
       tokenId: BigNumberish,
@@ -708,9 +708,9 @@ export interface DeltItems extends BaseContract {
 
     paused(overrides?: CallOverrides): Promise<[boolean]>;
 
-    payToMintItem(
+    payToMint(
       player: string,
-      _itemId: DeltAttributes.ItemIdStruct,
+      _itemId: DeltAttributes.IdStruct,
       _tokenSVG: string,
       _attributes: DeltAttributes.AttrStruct[],
       overrides?: PayableOverrides & { from?: string | Promise<string> }
@@ -837,21 +837,13 @@ export interface DeltItems extends BaseContract {
     arg2: BigNumberish,
     overrides?: CallOverrides
   ): Promise<
-    [string, string, BigNumber, BigNumber] & {
-      trait: string;
+    [string, BigNumber, string, BigNumber] & {
       statKey: string;
       tier: BigNumber;
+      trait: string;
       value: BigNumber;
     }
   >;
-
-  awardItem(
-    player: string,
-    _itemId: DeltAttributes.ItemIdStruct,
-    _tokenSVG: string,
-    _attributes: DeltAttributes.AttrStruct[],
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
 
   balanceOf(owner: string, overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -870,7 +862,7 @@ export interface DeltItems extends BaseContract {
   getItemId(
     _tokenId: BigNumberish,
     overrides?: CallOverrides
-  ): Promise<DeltAttributes.ItemIdStructOutput>;
+  ): Promise<DeltAttributes.IdStructOutput>;
 
   getOpPrice(
     _lvl: BigNumberish,
@@ -910,13 +902,22 @@ export interface DeltItems extends BaseContract {
     arg0: BigNumberish,
     overrides?: CallOverrides
   ): Promise<
-    [boolean, string, string, BigNumber] & {
+    [BigNumber, boolean, string, string, BigNumber] & {
+      amount: BigNumber;
       awarded: boolean;
       itemName: string;
       itemType: string;
       lvl: BigNumber;
     }
   >;
+
+  mint(
+    player: string,
+    _itemId: DeltAttributes.IdStruct,
+    _tokenSVG: string,
+    _attributes: DeltAttributes.AttrStruct[],
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
 
   modifiyItem(
     _tokenId: BigNumberish,
@@ -926,8 +927,6 @@ export interface DeltItems extends BaseContract {
 
   name(overrides?: CallOverrides): Promise<string>;
 
-  opMod(overrides?: CallOverrides): Promise<BigNumber>;
-
   ownerOf(tokenId: BigNumberish, overrides?: CallOverrides): Promise<string>;
 
   pause(
@@ -936,9 +935,9 @@ export interface DeltItems extends BaseContract {
 
   paused(overrides?: CallOverrides): Promise<boolean>;
 
-  payToMintItem(
+  payToMint(
     player: string,
-    _itemId: DeltAttributes.ItemIdStruct,
+    _itemId: DeltAttributes.IdStruct,
     _tokenSVG: string,
     _attributes: DeltAttributes.AttrStruct[],
     overrides?: PayableOverrides & { from?: string | Promise<string> }
@@ -1059,21 +1058,13 @@ export interface DeltItems extends BaseContract {
       arg2: BigNumberish,
       overrides?: CallOverrides
     ): Promise<
-      [string, string, BigNumber, BigNumber] & {
-        trait: string;
+      [string, BigNumber, string, BigNumber] & {
         statKey: string;
         tier: BigNumber;
+        trait: string;
         value: BigNumber;
       }
     >;
-
-    awardItem(
-      player: string,
-      _itemId: DeltAttributes.ItemIdStruct,
-      _tokenSVG: string,
-      _attributes: DeltAttributes.AttrStruct[],
-      overrides?: CallOverrides
-    ): Promise<void>;
 
     balanceOf(owner: string, overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -1089,7 +1080,7 @@ export interface DeltItems extends BaseContract {
     getItemId(
       _tokenId: BigNumberish,
       overrides?: CallOverrides
-    ): Promise<DeltAttributes.ItemIdStructOutput>;
+    ): Promise<DeltAttributes.IdStructOutput>;
 
     getOpPrice(
       _lvl: BigNumberish,
@@ -1127,13 +1118,22 @@ export interface DeltItems extends BaseContract {
       arg0: BigNumberish,
       overrides?: CallOverrides
     ): Promise<
-      [boolean, string, string, BigNumber] & {
+      [BigNumber, boolean, string, string, BigNumber] & {
+        amount: BigNumber;
         awarded: boolean;
         itemName: string;
         itemType: string;
         lvl: BigNumber;
       }
     >;
+
+    mint(
+      player: string,
+      _itemId: DeltAttributes.IdStruct,
+      _tokenSVG: string,
+      _attributes: DeltAttributes.AttrStruct[],
+      overrides?: CallOverrides
+    ): Promise<void>;
 
     modifiyItem(
       _tokenId: BigNumberish,
@@ -1143,17 +1143,15 @@ export interface DeltItems extends BaseContract {
 
     name(overrides?: CallOverrides): Promise<string>;
 
-    opMod(overrides?: CallOverrides): Promise<BigNumber>;
-
     ownerOf(tokenId: BigNumberish, overrides?: CallOverrides): Promise<string>;
 
     pause(overrides?: CallOverrides): Promise<void>;
 
     paused(overrides?: CallOverrides): Promise<boolean>;
 
-    payToMintItem(
+    payToMint(
       player: string,
-      _itemId: DeltAttributes.ItemIdStruct,
+      _itemId: DeltAttributes.IdStruct,
       _tokenSVG: string,
       _attributes: DeltAttributes.AttrStruct[],
       overrides?: CallOverrides
@@ -1352,14 +1350,6 @@ export interface DeltItems extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
-    awardItem(
-      player: string,
-      _itemId: DeltAttributes.ItemIdStruct,
-      _tokenSVG: string,
-      _attributes: DeltAttributes.AttrStruct[],
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<BigNumber>;
-
     balanceOf(owner: string, overrides?: CallOverrides): Promise<BigNumber>;
 
     burn(
@@ -1418,6 +1408,14 @@ export interface DeltItems extends BaseContract {
 
     itemId(arg0: BigNumberish, overrides?: CallOverrides): Promise<BigNumber>;
 
+    mint(
+      player: string,
+      _itemId: DeltAttributes.IdStruct,
+      _tokenSVG: string,
+      _attributes: DeltAttributes.AttrStruct[],
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
     modifiyItem(
       _tokenId: BigNumberish,
       _attr: DeltAttributes.AttrStruct,
@@ -1425,8 +1423,6 @@ export interface DeltItems extends BaseContract {
     ): Promise<BigNumber>;
 
     name(overrides?: CallOverrides): Promise<BigNumber>;
-
-    opMod(overrides?: CallOverrides): Promise<BigNumber>;
 
     ownerOf(
       tokenId: BigNumberish,
@@ -1439,9 +1435,9 @@ export interface DeltItems extends BaseContract {
 
     paused(overrides?: CallOverrides): Promise<BigNumber>;
 
-    payToMintItem(
+    payToMint(
       player: string,
-      _itemId: DeltAttributes.ItemIdStruct,
+      _itemId: DeltAttributes.IdStruct,
       _tokenSVG: string,
       _attributes: DeltAttributes.AttrStruct[],
       overrides?: PayableOverrides & { from?: string | Promise<string> }
@@ -1567,14 +1563,6 @@ export interface DeltItems extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
-    awardItem(
-      player: string,
-      _itemId: DeltAttributes.ItemIdStruct,
-      _tokenSVG: string,
-      _attributes: DeltAttributes.AttrStruct[],
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<PopulatedTransaction>;
-
     balanceOf(
       owner: string,
       overrides?: CallOverrides
@@ -1648,6 +1636,14 @@ export interface DeltItems extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
+    mint(
+      player: string,
+      _itemId: DeltAttributes.IdStruct,
+      _tokenSVG: string,
+      _attributes: DeltAttributes.AttrStruct[],
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
     modifiyItem(
       _tokenId: BigNumberish,
       _attr: DeltAttributes.AttrStruct,
@@ -1655,8 +1651,6 @@ export interface DeltItems extends BaseContract {
     ): Promise<PopulatedTransaction>;
 
     name(overrides?: CallOverrides): Promise<PopulatedTransaction>;
-
-    opMod(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     ownerOf(
       tokenId: BigNumberish,
@@ -1669,9 +1663,9 @@ export interface DeltItems extends BaseContract {
 
     paused(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
-    payToMintItem(
+    payToMint(
       player: string,
-      _itemId: DeltAttributes.ItemIdStruct,
+      _itemId: DeltAttributes.IdStruct,
       _tokenSVG: string,
       _attributes: DeltAttributes.AttrStruct[],
       overrides?: PayableOverrides & { from?: string | Promise<string> }

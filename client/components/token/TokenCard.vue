@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const props = defineProps({
-  item: {
+  token: {
     default: undefined,
     required: true,
     type: Object,
@@ -16,7 +16,7 @@ const props = defineProps({
 
 const { $wallet: wallet, $contractRef: contractRef } = useNuxtApp()
 
-const { username: owner, accountCompact: ownerAcc, imageURL: ownerPp, level: ownerLvl } = await useAccount(props.item.owner)
+const { username: owner, imageURL: ownerPp, level: ownerLvl } = await useAccount(props.token.owner)
 
 const client = useSupabaseClient()
 
@@ -26,7 +26,7 @@ const getItemImage = (slug: string) => {
   try {
     const { data: url, error } = client
       .storage
-      .from("items")
+      .from("tokens")
       .getPublicUrl(`${slug}.svg`)
     if (error) { throw error }
     console.log(url.publicURL)
@@ -36,13 +36,13 @@ const getItemImage = (slug: string) => {
   }
 }
 
-const image = getItemImage(props.item.slug)
+const image = getItemImage(props.token.slug)
 const tokenURI = ref<string>(undefined)
 const status = ref<string>("get URI")
 
 const getURI = async () => {
   try {
-    tokenURI.value = await contractRef.readDeltItems(wallet.provider).tokenURI(props.item.tokenId)
+    tokenURI.value = await contractRef.readDeltItems(wallet.provider).tokenURI(props.token.tokenId)
   } catch (Error) {
     console.log(Error)
     status.value = "Unminted"
@@ -54,11 +54,11 @@ const getURI = async () => {
 
 <template>
   <div class="p-2 m-5 flex-block shadow-2xl rounded-2xl w-280px">
-    <img :src="image" height="200" @click="router.push(`/${owner}/${props.item.slug}`)">
+    <img :src="image" height="200" @click="router.push(`/${owner}/${props.token.slug}`)">
     <footer class="text-xs border-top my-1 flex justify-around content-center">
-      <ul class="grid justify-items-start">
+      <ul class="grid justify-tokens-start">
         <li class="text-base">
-          <h1>{{ props.item.slug }}</h1>
+          <h1>{{ props.token.slug }}</h1>
         </li>
         <li>
           <NuxtLink :to="owner">
@@ -79,7 +79,7 @@ const getURI = async () => {
         </li>
       </ul>
       <aside class="flex float:right">
-        <ul v-if="wallet" class="grid justify-items-end my-2">
+        <ul v-if="wallet" class="grid justify-tokens-end my-2">
           <slot />
         </ul>
       </aside>

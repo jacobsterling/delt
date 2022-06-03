@@ -21,14 +21,22 @@ import type {
 } from "../common";
 
 export declare namespace DeltAttributes {
-  export type ItemIdStruct = {
+  export type IdStruct = {
+    amount: BigNumberish;
     awarded: boolean;
     itemName: string;
     itemType: string;
     lvl: BigNumberish;
   };
 
-  export type ItemIdStructOutput = [boolean, string, string, BigNumber] & {
+  export type IdStructOutput = [
+    BigNumber,
+    boolean,
+    string,
+    string,
+    BigNumber
+  ] & {
+    amount: BigNumber;
     awarded: boolean;
     itemName: string;
     itemType: string;
@@ -36,16 +44,16 @@ export declare namespace DeltAttributes {
   };
 
   export type StatStruct = {
-    trait: string;
     statKey: string;
     tier: BigNumberish;
+    trait: string;
     value: BigNumberish;
   };
 
-  export type StatStructOutput = [string, string, BigNumber, BigNumber] & {
-    trait: string;
+  export type StatStructOutput = [string, BigNumber, string, BigNumber] & {
     statKey: string;
     tier: BigNumber;
+    trait: string;
     value: BigNumber;
   };
 
@@ -62,14 +70,14 @@ export declare namespace DeltAttributes {
 
 export interface DeltAttributesInterface extends utils.Interface {
   functions: {
-    "tokenURI((bool,string,string,uint256),string,(string,(string,string,uint256,uint256)[])[])": FunctionFragment;
+    "tokenURI((uint256,bool,string,string,uint256),string,(string,(string,uint256,string,uint256)[])[])": FunctionFragment;
   };
 
   getFunction(nameOrSignatureOrTopic: "tokenURI"): FunctionFragment;
 
   encodeFunctionData(
     functionFragment: "tokenURI",
-    values: [DeltAttributes.ItemIdStruct, string, DeltAttributes.AttrStruct[]]
+    values: [DeltAttributes.IdStruct, string, DeltAttributes.AttrStruct[]]
   ): string;
 
   decodeFunctionResult(functionFragment: "tokenURI", data: BytesLike): Result;
@@ -105,7 +113,7 @@ export interface DeltAttributes extends BaseContract {
 
   functions: {
     tokenURI(
-      _itemItem: DeltAttributes.ItemIdStruct,
+      _itemId: DeltAttributes.IdStruct,
       encodedSVG: string,
       _attributes: DeltAttributes.AttrStruct[],
       overrides?: CallOverrides
@@ -113,7 +121,7 @@ export interface DeltAttributes extends BaseContract {
   };
 
   tokenURI(
-    _itemItem: DeltAttributes.ItemIdStruct,
+    _itemId: DeltAttributes.IdStruct,
     encodedSVG: string,
     _attributes: DeltAttributes.AttrStruct[],
     overrides?: CallOverrides
@@ -121,7 +129,7 @@ export interface DeltAttributes extends BaseContract {
 
   callStatic: {
     tokenURI(
-      _itemItem: DeltAttributes.ItemIdStruct,
+      _itemId: DeltAttributes.IdStruct,
       encodedSVG: string,
       _attributes: DeltAttributes.AttrStruct[],
       overrides?: CallOverrides
@@ -132,7 +140,7 @@ export interface DeltAttributes extends BaseContract {
 
   estimateGas: {
     tokenURI(
-      _itemItem: DeltAttributes.ItemIdStruct,
+      _itemId: DeltAttributes.IdStruct,
       encodedSVG: string,
       _attributes: DeltAttributes.AttrStruct[],
       overrides?: CallOverrides
@@ -141,7 +149,7 @@ export interface DeltAttributes extends BaseContract {
 
   populateTransaction: {
     tokenURI(
-      _itemItem: DeltAttributes.ItemIdStruct,
+      _itemId: DeltAttributes.IdStruct,
       encodedSVG: string,
       _attributes: DeltAttributes.AttrStruct[],
       overrides?: CallOverrides

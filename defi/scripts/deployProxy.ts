@@ -16,19 +16,33 @@ async function main() {
     }
   });
 
-  DeltItems
   const instanceItems = await upgrades.deployProxy(DeltItems, { unsafeAllowLinkedLibraries: true, });
 
   await instanceItems.deployed();
 
   console.log(`DeltItems proxy deployed to:`, instanceItems.address);
 
+  const DeltEntities = await ethers.getContractFactory("DeltEntities", {
+    libraries: {
+      DeltAttributes: instanceAttributes.address
+    }
+  });
+
+  const instanceEntities = await upgrades.deployProxy(DeltEntities, { unsafeAllowLinkedLibraries: true, });
+
+  await instanceEntities.deployed();
+
+  console.log(`DeltEntities proxy deployed to:`, instanceEntities.address);
+
   const DeltTrader = await ethers.getContractFactory("DeltTrader");
-  const instanceTrader = await DeltTrader.deploy(instanceItems.address);
+  const instanceTrader = await DeltTrader.deploy();
 
   await instanceTrader.deployed();
 
   console.log(`DeltTrader deployed to:`, instanceTrader.address);
+
+  await instanceTrader.setContractStandard(instanceItems.address, true)
+  await instanceTrader.setContractStandard(instanceEntities.address, false)
 }
 
 main().catch((error) => {

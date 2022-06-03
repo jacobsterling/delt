@@ -2,67 +2,80 @@
 pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /// @custom:security-contact kciuq@protonmail.com
 contract DeltTrader is ReentrancyGuard {
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(address _contractAddr) {
-        contractAddr = _contractAddr;
-    }
-
-    event AuctionStart(
-        address contractAddr,
-        uint256 _tokenId,
-        uint256 price,
-        uint256 endAt
-    );
+    event AuctionStart(Listing _listing, uint256 price, uint256 endAt);
     event AuctionEnd(
-        address contractAddr,
-        uint256 _tokenId,
+        Listing _listing,
+        address highestBidder,
         uint256 highestBid,
-        address highestBidder
+        uint256 amount
     );
-    event BidPlaced(address contractAddr, uint256 _tokenId, uint256 highestBid);
 
-    mapping(uint256 => Transaction[]) public transactions;
-    mapping(uint256 => Auction) public auctions;
-    mapping(uint256 => bool) public activeAuctions;
+    event BidPlaced(Listing _listing, Bid[] updatedBids);
+    event Purchaced(
+        Listing _listing,
+        address buyer,
+        uint256 price,
+        uint256 amount
+    );
+
+    mapping(address => mapping(uint256 => Transaction[])) public transactions;
+    mapping(address => mapping(uint256 => Auction)) public auctions;
+    mapping(address => mapping(uint256 => bool)) public activeAuctions;
+    mapping(address => bool) public erc721;
+
     mapping(address => uint256) public balances;
-
-    address contractAddr;
 
     struct Transaction {
         address buyer;
         address payable seller;
         uint256 price;
+        uint256 amount;
         bool auctioned;
         bool completed;
     }
 
-    struct Auction {
-        address payable seller;
-        uint256 highestBid;
-        address highestBidder;
-        uint256 endAt;
+    struct Listing {
+        address contractAddr;
+        uint256 id;
     }
 
-    modifier isListed(uint256 _tokenId, bool isActive) {
+    struct Bid {
+        address bidder;
+        uint256 bid;
+    }
+
+    struct Auction {
+        address payable seller;
+        uint256 endAt;
+        uint256 initPrice;
+        Bid[] bids;
+    }
+
+    modifier isListed(Listing memory _listing, bool isActive) {
         if (isActive) {
-            if (transactions[_tokenId].length > 0) {
+            if (transactions[_listing.contractAddr][_listing.id].length > 0) {
                 require(
-                    !transactions[_tokenId][transactions[_tokenId].length - 1]
-                        .completed,
+                    !transactions[_listing.contractAddr][_listing.id][
+                        transactions[_listing.contractAddr][_listing.id]
+                            .length - 1
+                    ].completed,
                     "token is not listed"
                 );
             } else {
                 revert("token is not listed");
             }
         } else {
-            if (transactions[_tokenId].length > 0) {
+            if (transactions[_listing.contractAddr][_listing.id].length > 0) {
                 require(
-                    transactions[_tokenId][transactions[_tokenId].length - 1]
-                        .completed,
+                    transactions[_listing.contractAddr][_listing.id][
+                        transactions[_listing.contractAddr][_listing.id]
+                            .length - 1
+                    ].completed,
                     "token is listed"
                 );
             }
@@ -70,198 +83,377 @@ contract DeltTrader is ReentrancyGuard {
         _;
     }
 
-    modifier isAuctioned(uint256 _tokenId, bool isActive) {
+    modifier isAuctioned(Listing memory _listing, bool isActive) {
         if (isActive) {
             require(
-                activeAuctions[_tokenId],
+                activeAuctions[_listing.contractAddr][_listing.id],
                 "auction for token is not active"
             );
         } else {
-            require(!activeAuctions[_tokenId], "auction for token is active");
+            require(
+                !activeAuctions[_listing.contractAddr][_listing.id],
+                "auction for token is active"
+            );
         }
         _;
     }
 
-    modifier isOwner(uint256 _tokenId) {
-        if (ERC721(contractAddr).ownerOf(_tokenId) == msg.sender) {
-            _;
+    modifier isOwner(Listing memory _listing) {
+        if (erc721[_listing.contractAddr]) {
+            if (
+                ERC721(_listing.contractAddr).ownerOf(_listing.id) == msg.sender
+            ) {
+                _;
+            } else {
+                revert("not owner of given token");
+            }
         } else {
-            revert("not owner of given token");
+            if (
+                ERC1155(_listing.contractAddr).balanceOf(
+                    msg.sender,
+                    _listing.id
+                ) > 0
+            ) {
+                _;
+            } else {
+                revert("must own at least 1 of given token");
+            }
         }
     }
 
+    function setContractStandard(address _contractAddr, bool _isErc721) public {
+        erc721[_contractAddr] = _isErc721;
+    }
+
     function addListing(
-        uint256 _tokenId,
+        Listing memory _listing,
         uint256 _price,
+        uint256 _amount,
         bool _auction
-    ) public isOwner(_tokenId) isListed(_tokenId, false) {
+    ) public isOwner(_listing) isListed(_listing, false) {
         unchecked {
             require(_price > 0, "price must be greater than 0");
         }
-
-        require(
-            ERC721(contractAddr).isApprovedForAll(msg.sender, address(this)),
-            "contract must be approved"
-        );
 
         Transaction memory item = Transaction(
             address(this),
             payable(msg.sender),
             _price,
+            _amount,
             _auction,
             false
         );
 
-        transactions[_tokenId].push(item);
-
-        if (_auction) {
-            uint256 endAt = block.timestamp + 1 days;
-
-            auctions[_tokenId].seller = item.seller;
-            unchecked {
-                auctions[_tokenId].highestBid = item.price;
-            }
-
-            auctions[_tokenId].highestBidder = item.seller;
-
-            emit AuctionStart(contractAddr, _tokenId, item.price, endAt);
-
-            auctions[_tokenId].endAt = endAt;
-
-            activeAuctions[_tokenId] = true;
-        }
-    }
-
-    function removeListing(uint256 _tokenId)
-        public
-        isOwner(_tokenId)
-        isListed(_tokenId, true)
-        isAuctioned(_tokenId, false)
-    {
-        transactions[_tokenId].pop();
-    }
-
-    function forceUnlist(uint256 _tokenId)
-        internal
-        nonReentrant
-        isListed(_tokenId, true)
-    {
-        if (activeAuctions[_tokenId]) {
-            if (auctions[_tokenId].highestBidder != auctions[_tokenId].seller) {
-                unchecked {
-                    balances[auctions[_tokenId].highestBidder] += auctions[
-                        _tokenId
-                    ].highestBid;
-                }
-            }
-            activeAuctions[_tokenId] = false;
-        }
-        transactions[_tokenId].pop();
-    }
-
-    function endAuction(uint256 _tokenId)
-        public
-        nonReentrant
-        isOwner(_tokenId)
-        isListed(_tokenId, true)
-        isAuctioned(_tokenId, true)
-    {
-        if (auctions[_tokenId].highestBidder == auctions[_tokenId].seller) {
-            activeAuctions[_tokenId] = false;
-            removeListing(_tokenId);
+        if (erc721[_listing.contractAddr]) {
+            require(
+                ERC721(_listing.contractAddr).isApprovedForAll(
+                    msg.sender,
+                    address(this)
+                ),
+                "contract must be approved"
+            );
+            item.amount = 1;
         } else {
-            //require(block.timestamp >= auctions[_tokenId].endAt, "auction is still ongoing");
-            activeAuctions[_tokenId] = false;
-
-            transactions[_tokenId][transactions[_tokenId].length - 1]
-                .completed = true;
-
-            unchecked {
-                transactions[_tokenId][transactions[_tokenId].length - 1]
-                    .price = auctions[_tokenId].highestBid;
-
-                balances[auctions[_tokenId].seller] += auctions[_tokenId]
-                    .highestBid;
-            }
-
-            ERC721(contractAddr).safeTransferFrom(
-                auctions[_tokenId].seller,
-                auctions[_tokenId].highestBidder,
-                _tokenId
+            require(
+                ERC1155(_listing.contractAddr).isApprovedForAll(
+                    msg.sender,
+                    address(this)
+                ),
+                "contract must be approved"
             );
         }
 
-        delete auctions[_tokenId];
+        transactions[_listing.contractAddr][_listing.id].push(item);
 
-        emit AuctionEnd(
-            contractAddr,
-            _tokenId,
-            auctions[_tokenId].highestBid,
-            auctions[_tokenId].highestBidder
-        );
+        if (_auction) {
+            auctions[_listing.contractAddr][_listing.id].seller = item.seller;
+            unchecked {
+                auctions[_listing.contractAddr][_listing.id].initPrice = item
+                    .price;
+            }
+
+            emit AuctionStart(_listing, item.price, block.timestamp + 1 days);
+
+            auctions[_listing.contractAddr][_listing.id].endAt =
+                block.timestamp +
+                1 days;
+
+            activeAuctions[_listing.contractAddr][_listing.id] = true;
+        }
     }
 
-    function bid(uint256 _tokenId)
+    function removeListing(Listing memory _listing)
+        public
+        isOwner(_listing)
+        isListed(_listing, true)
+        isAuctioned(_listing, false)
+    {
+        transactions[_listing.contractAddr][_listing.id].pop();
+    }
+
+    function forceUnlist(Listing memory _listing)
+        internal
+        nonReentrant
+        isListed(_listing, true)
+    {
+        if (activeAuctions[_listing.contractAddr][_listing.id]) {
+            if (auctions[_listing.contractAddr][_listing.id].bids.length > 0) {
+                unchecked {
+                    balances[
+                        auctions[_listing.contractAddr][_listing.id]
+                            .bids[
+                                auctions[_listing.contractAddr][_listing.id]
+                                    .bids
+                                    .length - 1
+                            ]
+                            .bidder
+                    ] += auctions[_listing.contractAddr][_listing.id]
+                        .bids[
+                            auctions[_listing.contractAddr][_listing.id]
+                                .bids
+                                .length - 1
+                        ]
+                        .bid;
+                }
+            }
+            activeAuctions[_listing.contractAddr][_listing.id] = false;
+        }
+        transactions[_listing.contractAddr][_listing.id].pop();
+    }
+
+    function endAuction(Listing memory _listing)
+        public
+        nonReentrant
+        isOwner(_listing)
+        isListed(_listing, true)
+        isAuctioned(_listing, true)
+    {
+        if (auctions[_listing.contractAddr][_listing.id].bids.length > 0) {
+            activeAuctions[_listing.contractAddr][_listing.id] = false;
+            removeListing(_listing);
+        } else {
+            //require(block.timestamp >= auctions[_listing.id].endAt, "auction is still ongoing");
+            activeAuctions[_listing.contractAddr][_listing.id] = false;
+
+            transactions[_listing.contractAddr][_listing.id][
+                transactions[_listing.contractAddr][_listing.id].length - 1
+            ].completed = true;
+
+            unchecked {
+                transactions[_listing.contractAddr][_listing.id][
+                    transactions[_listing.contractAddr][_listing.id].length - 1
+                ].price = auctions[_listing.contractAddr][_listing.id]
+                    .bids[
+                        auctions[_listing.contractAddr][_listing.id]
+                            .bids
+                            .length - 1
+                    ]
+                    .bid;
+
+                balances[
+                    auctions[_listing.contractAddr][_listing.id].seller
+                ] += auctions[_listing.contractAddr][_listing.id]
+                    .bids[
+                        auctions[_listing.contractAddr][_listing.id]
+                            .bids
+                            .length - 1
+                    ]
+                    .bid;
+            }
+
+            if (erc721[_listing.contractAddr]) {
+                ERC721(_listing.contractAddr).safeTransferFrom(
+                    auctions[_listing.contractAddr][_listing.id].seller,
+                    auctions[_listing.contractAddr][_listing.id]
+                        .bids[
+                            auctions[_listing.contractAddr][_listing.id]
+                                .bids
+                                .length - 1
+                        ]
+                        .bidder,
+                    _listing.id
+                );
+            } else {
+                ERC1155(_listing.contractAddr).safeTransferFrom(
+                    auctions[_listing.contractAddr][_listing.id].seller,
+                    auctions[_listing.contractAddr][_listing.id]
+                        .bids[
+                            auctions[_listing.contractAddr][_listing.id]
+                                .bids
+                                .length - 1
+                        ]
+                        .bidder,
+                    _listing.id,
+                    transactions[_listing.contractAddr][_listing.id][
+                        transactions[_listing.contractAddr][_listing.id]
+                            .length - 1
+                    ].amount,
+                    "0x0"
+                );
+            }
+            emit AuctionEnd(
+                _listing,
+                auctions[_listing.contractAddr][_listing.id]
+                    .bids[
+                        auctions[_listing.contractAddr][_listing.id]
+                            .bids
+                            .length - 1
+                    ]
+                    .bidder,
+                auctions[_listing.contractAddr][_listing.id]
+                    .bids[
+                        auctions[_listing.contractAddr][_listing.id]
+                            .bids
+                            .length - 1
+                    ]
+                    .bid,
+                transactions[_listing.contractAddr][_listing.id][
+                    transactions[_listing.contractAddr][_listing.id].length - 1
+                ].amount
+            );
+        }
+        delete auctions[_listing.contractAddr][_listing.id];
+    }
+
+    function bid(Listing memory _listing)
         external
         payable
         nonReentrant
-        isListed(_tokenId, true)
-        isAuctioned(_tokenId, true)
+        isListed(_listing, true)
+        isAuctioned(_listing, true)
     {
         require(
-            msg.sender != auctions[_tokenId].seller,
+            msg.sender != auctions[_listing.contractAddr][_listing.id].seller,
             "must not own the token"
         );
 
-        unchecked {
-            require(
-                msg.value > auctions[_tokenId].highestBid,
-                "must pay more than the highest bid"
-            );
-            if (auctions[_tokenId].highestBidder != auctions[_tokenId].seller) {
-                balances[auctions[_tokenId].highestBidder] += auctions[_tokenId]
-                    .highestBid;
+        if (auctions[_listing.contractAddr][_listing.id].bids.length > 0) {
+            unchecked {
+                require(
+                    msg.value >
+                        auctions[_listing.contractAddr][_listing.id]
+                            .bids[
+                                auctions[_listing.contractAddr][_listing.id]
+                                    .bids
+                                    .length - 1
+                            ]
+                            .bid,
+                    "must pay more than the highest bid"
+                );
             }
-            auctions[_tokenId].highestBid = msg.value;
-            transactions[_tokenId][transactions[_tokenId].length - 1]
-                .price = msg.value;
+        } else {
+            require(
+                msg.value >
+                    auctions[_listing.contractAddr][_listing.id].initPrice,
+                "must pay more than the initial price"
+            );
         }
 
-        auctions[_tokenId].highestBidder = msg.sender;
-        transactions[_tokenId][transactions[_tokenId].length - 1].buyer = msg
-            .sender;
+        unchecked {
+            balances[
+                auctions[_listing.contractAddr][_listing.id]
+                    .bids[
+                        auctions[_listing.contractAddr][_listing.id]
+                            .bids
+                            .length - 1
+                    ]
+                    .bidder
+            ] += auctions[_listing.contractAddr][_listing.id]
+                .bids[
+                    auctions[_listing.contractAddr][_listing.id].bids.length - 1
+                ]
+                .bid;
 
-        emit BidPlaced(contractAddr, _tokenId, msg.value);
+            transactions[_listing.contractAddr][_listing.id][
+                transactions[_listing.contractAddr][_listing.id].length - 1
+            ].price = msg.value;
+        }
+
+        transactions[_listing.contractAddr][_listing.id][
+            transactions[_listing.contractAddr][_listing.id].length - 1
+        ].buyer = msg.sender;
+
+        auctions[_listing.contractAddr][_listing.id].bids.push(
+            Bid(msg.sender, msg.value)
+        );
+
+        emit BidPlaced(
+            _listing,
+            auctions[_listing.contractAddr][_listing.id].bids
+        );
     }
 
-    function purchace(uint256 _tokenId)
+    function purchace(Listing memory _listing)
         public
         payable
         nonReentrant
-        isListed(_tokenId, true)
-        isAuctioned(_tokenId, false)
+        isListed(_listing, true)
+        isAuctioned(_listing, false)
     {
-        Transaction memory item = transactions[_tokenId][
-            transactions[_tokenId].length - 1
-        ];
-
-        if (msg.sender == item.seller) {
-            removeListing(_tokenId);
+        if (
+            msg.sender ==
+            transactions[_listing.contractAddr][_listing.id][
+                transactions[_listing.contractAddr][_listing.id].length - 1
+            ].seller
+        ) {
+            removeListing(_listing);
         } else {
             unchecked {
-                require(msg.value >= item.price, "insufficient funds sent");
-                balances[item.seller] += msg.value;
+                require(
+                    msg.value >=
+                        transactions[_listing.contractAddr][_listing.id][
+                            transactions[_listing.contractAddr][_listing.id]
+                                .length - 1
+                        ].price,
+                    "insufficient funds sent"
+                );
+                balances[
+                    transactions[_listing.contractAddr][_listing.id][
+                        transactions[_listing.contractAddr][_listing.id]
+                            .length - 1
+                    ].seller
+                ] += msg.value;
             }
-            ERC721(contractAddr).safeTransferFrom(
-                item.seller,
-                msg.sender,
-                _tokenId
-            );
-            transactions[_tokenId][transactions[_tokenId].length - 1]
-                .buyer = msg.sender;
-            transactions[_tokenId][transactions[_tokenId].length - 1]
-                .completed = true;
+
+            if (erc721[_listing.contractAddr]) {
+                ERC721(_listing.contractAddr).safeTransferFrom(
+                    transactions[_listing.contractAddr][_listing.id][
+                        transactions[_listing.contractAddr][_listing.id]
+                            .length - 1
+                    ].seller,
+                    msg.sender,
+                    _listing.id
+                );
+            } else {
+                ERC1155(_listing.contractAddr).safeTransferFrom(
+                    transactions[_listing.contractAddr][_listing.id][
+                        transactions[_listing.contractAddr][_listing.id]
+                            .length - 1
+                    ].seller,
+                    msg.sender,
+                    _listing.id,
+                    transactions[_listing.contractAddr][_listing.id][
+                        transactions[_listing.contractAddr][_listing.id]
+                            .length - 1
+                    ].amount,
+                    "0x0"
+                );
+            }
+            transactions[_listing.contractAddr][_listing.id][
+                transactions[_listing.contractAddr][_listing.id].length - 1
+            ].buyer = msg.sender;
+            transactions[_listing.contractAddr][_listing.id][
+                transactions[_listing.contractAddr][_listing.id].length - 1
+            ].completed = true;
         }
+        emit Purchaced(
+            _listing,
+            msg.sender,
+            msg.value,
+            transactions[_listing.contractAddr][_listing.id][
+                transactions[_listing.contractAddr][_listing.id].length - 1
+            ].amount
+        );
     }
 
     function withdraw(uint256 amount) public nonReentrant {
@@ -274,11 +466,11 @@ contract DeltTrader is ReentrancyGuard {
         }
     }
 
-    function getListings(uint256 _tokenId)
+    function getListings(Listing memory _listing)
         public
         view
         returns (Transaction[] memory)
     {
-        return transactions[_tokenId];
+        return transactions[_listing.contractAddr][_listing.id];
     }
 }

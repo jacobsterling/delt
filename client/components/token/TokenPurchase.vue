@@ -5,7 +5,7 @@ const amount = ref<number>(undefined)
 
 const { $wallet: wallet, $contractRef: contractRef } = useNuxtApp()
 const props = defineProps({
-  item: {
+  listing: {
     default: undefined,
     required: true,
     type: Object,
@@ -14,17 +14,17 @@ const props = defineProps({
 })
 
 const purchase = async () => {
-  if (props.item.auctioned) {
-    await contractRef.bid(wallet, props.item, amount.value)
+  if (props.listing.auctioned) {
+    await contractRef.bid(wallet, props.listing, amount.value)
   } else {
-    await contractRef.purchase(wallet, props.item)
+    await contractRef.purchase(wallet, props.listing)
   }
 }
 
 </script>
 
 <template>
-  <li v-if="props.item.auctioned">
+  <li v-if="props.listing.auctioned">
     <DeltButton class="d-button-emerald p-1 flex">
       <div class="flex-inline justify-between align-center">
         <input v-model="amount" type="text" placeholder="Bid Amount">
@@ -36,7 +36,7 @@ const purchase = async () => {
       <div class="flex-inline justify-between align-center">
         <FireIcon size="5px" class="d-icon-5 flex" />
         <div class="flex text-center">
-          {{ props.item.price }}
+          {{ props.listing.price }}
         </div>
       </div>
     </DeltButton>

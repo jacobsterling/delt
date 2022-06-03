@@ -24,7 +24,7 @@ contract DeltItems is
     EIP712Upgradeable
 {
     using CountersUpgradeable for CountersUpgradeable.Counter;
-    using DeltAttributes for DeltAttributes.ItemId;
+    using DeltAttributes for DeltAttributes.Id;
     using DeltAttributes for DeltAttributes.Attr;
     using DeltAttributes for DeltAttributes.AttrLoc;
     using DeltAttributes for DeltAttributes.Stat;
@@ -33,7 +33,7 @@ contract DeltItems is
 
     CountersUpgradeable.Counter private _tokenIdCounter;
 
-    mapping(uint256 => DeltAttributes.ItemId) public itemId;
+    mapping(uint256 => DeltAttributes.Id) public itemId;
     mapping(string => uint256) public tokenIdlookup;
     mapping(string => bool) public exists;
     mapping(uint256 => mapping(string => DeltAttributes.Stat[]))
@@ -69,11 +69,11 @@ contract DeltItems is
         _grantRole(MINTER_ROLE, msg.sender);
     }
 
-    function pause() public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function pause() public onlyRole(MINTER_ROLE) {
         _pause();
     }
 
-    function unpause() public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function unpause() public onlyRole(MINTER_ROLE) {
         _unpause();
     }
 
@@ -91,7 +91,7 @@ contract DeltItems is
     function getItemId(uint256 _tokenId)
         public
         view
-        returns (DeltAttributes.ItemId memory)
+        returns (DeltAttributes.Id memory)
     {
         return itemId[_tokenId];
     }
@@ -213,29 +213,29 @@ contract DeltItems is
         }
     }
 
-    function awardItem(
+    function mint(
         address player,
-        DeltAttributes.ItemId memory _itemId,
+        DeltAttributes.Id memory _itemId,
         string memory _tokenSVG,
         DeltAttributes.Attr[] memory _attributes
     ) public onlyRole(MINTER_ROLE) {
         require(_itemId.awarded, "item was not awarded");
-        mintItem(player, _itemId, _tokenSVG, _attributes);
+        createItem(player, _itemId, _tokenSVG, _attributes);
     }
 
-    function payToMintItem(
+    function payToMint(
         address player,
-        DeltAttributes.ItemId memory _itemId,
+        DeltAttributes.Id memory _itemId,
         string memory _tokenSVG,
         DeltAttributes.Attr[] memory _attributes
     ) public payable {
         require(!_itemId.awarded, "item was awarded");
-        mintItem(player, _itemId, _tokenSVG, _attributes);
+        createItem(player, _itemId, _tokenSVG, _attributes);
     }
 
-    function mintItem(
+    function createItem(
         address player,
-        DeltAttributes.ItemId memory _itemId,
+        DeltAttributes.Id memory _itemId,
         string memory _tokenSVG,
         DeltAttributes.Attr[] memory _attributes
     ) internal {
@@ -274,10 +274,6 @@ contract DeltItems is
         _op.opMod = 0;
     }
 
-    function opMod() public view returns (int256) {
-        return _op.opMod;
-    }
-
     function modifiyItem(uint256 _tokenId, DeltAttributes.Attr memory _attr)
         public
         payable
@@ -314,6 +310,9 @@ contract DeltItems is
     {
         exists[getItemId(_tokenId).itemName] = false;
         delete itemId[_tokenId];
+        for (uint256 i = 0; i < attrKeys[_tokenId].length; i++) {
+            delete attributes[_tokenId][attrKeys[_tokenId][i]];
+        }
         delete attrKeys[_tokenId];
         _burn(_tokenId);
     }

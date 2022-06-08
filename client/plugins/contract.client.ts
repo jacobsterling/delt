@@ -85,6 +85,7 @@ export interface ContractRef {
   tokenAddress: (upgradable: boolean) => string,
   withdraw: (wallet: Wallet, amount: number) => Promise<void>,
   modifiyItem: (wallet: Wallet, token: Token, upgrade: number, attribute: Attr) => Promise<void>,
+  deltAddress: string,
   deltItemsAddress: string,
   deltEntitiesAddress: string,
   deltTraderAddress: string,
@@ -264,11 +265,13 @@ export default defineNuxtPlugin(() => {
       return _stats
     },
 
-    deltEntitiesAddress: "0x59b670e9fA9D0A427751Af201D676719a970857b",
+    deltAddress: "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
 
-    deltItemsAddress: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
+    deltEntitiesAddress: "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1",
 
-    deltTraderAddress: "0x9A676e781A523b5d0C0e43731313A708CB607508",
+    deltItemsAddress: "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82",
+
+    deltTraderAddress: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
 
     endAuction: async (wallet: Wallet, token: Token) => {
       try {

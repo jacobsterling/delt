@@ -10,7 +10,7 @@
 			"path": "delt"
 		},
 		{
-			"path": "delt-server"
+			"path": "delt-contract"
 		}
 	]
 }

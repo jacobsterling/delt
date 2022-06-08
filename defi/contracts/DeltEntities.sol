@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155Supp
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "./DeltAttributes.sol";
+import "./Delt.sol";
 
 contract DeltEntities is
     Initializable,
@@ -28,6 +29,8 @@ contract DeltEntities is
     CountersUpgradeable.Counter private _tokenIdCounter;
 
     mapping(uint256 => DeltAttributes.Id) public entityIds;
+    mapping(uint256 => uint256) public entityCap;
+    mapping(uint256 => uint256) public entitySupply;
     mapping(string => uint256) public entityIdlookup;
     mapping(string => bool) public exists;
     mapping(uint256 => mapping(string => DeltAttributes.Stat[]))
@@ -36,12 +39,14 @@ contract DeltEntities is
     mapping(string => uint256) public traitTier;
     mapping(uint256 => string) private tokenSVGs;
 
+    Delt public delt;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize() public initializer {
+    function initialize(address deltAddress) public initializer {
         __ERC1155_init("");
         __AccessControl_init();
         __Pausable_init();
@@ -50,6 +55,8 @@ contract DeltEntities is
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
+
+        delt = Delt(deltAddress);
     }
 
     function pause() public onlyRole(MINTER_ROLE) {
@@ -65,6 +72,17 @@ contract DeltEntities is
         onlyRole(MINTER_ROLE)
     {
         traitTier[_trait] = _tier;
+    }
+
+    function supplyOf(uint256 _entityId) public view returns (uint256) {
+        return entitySupply[_entityId];
+    }
+
+    function setEntityCap(uint256 _entityId, uint256 cap)
+        public
+        onlyRole(MINTER_ROLE)
+    {
+        entityCap[_entityId] = cap;
     }
 
     function getTier(string memory _trait) public view returns (uint256) {
@@ -139,7 +157,14 @@ contract DeltEntities is
         entityIdlookup[_entityId.itemName] = _tokenIdCounter.current();
         exists[_entityId.itemName] = true;
 
-        _mint(account, _tokenIdCounter.current(), _entityId.amount, "0x0");
+        _mint(
+            account,
+            _tokenIdCounter.current(),
+            _entityId.amount,
+            bytes("mint")
+        );
+
+        entitySupply[_tokenIdCounter.current()] += _entityId.amount;
 
         tokenSVGs[_tokenIdCounter.current()] = Base64.encode(bytes(_tokenSVG));
 
@@ -166,6 +191,26 @@ contract DeltEntities is
         }
     }
 
+    function burnBatch(
+        address from,
+        uint256[] memory ids,
+        uint256[] memory amounts
+    ) public override onlyRole(MINTER_ROLE) {
+        require(ids.length == amounts.length);
+        for (uint256 i = 0; i < ids.length; i++) {
+            burn(from, ids[i], amounts[i]);
+        }
+    }
+
+    function burn(
+        address account,
+        uint256 id,
+        uint256 value
+    ) public override onlyRole(MINTER_ROLE) {
+        _burn(account, id, value);
+        entitySupply[id] -= value;
+    }
+
     function _beforeTokenTransfer(
         address operator,
         address from,
@@ -178,6 +223,18 @@ contract DeltEntities is
         override(ERC1155Upgradeable, ERC1155SupplyUpgradeable)
         whenNotPaused
     {
+        if (data == bytes("mint")) {
+            for (uint256 i = 0; i < _entityIds.length; i++) {
+                if (entityCap[_entityIds[i]] > 0) {
+                    require(
+                        entitySupply[_entityIds[i]] + amounts[i] <=
+                            entityCap[_entityIds[i]],
+                        "entity cap reached"
+                    );
+                }
+            }
+        }
+
         super._beforeTokenTransfer(
             operator,
             from,

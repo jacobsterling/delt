@@ -4,6 +4,7 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./Delt.sol";
 
 /// @custom:security-contact kciuq@protonmail.com
 contract DeltTrader is ReentrancyGuard {
@@ -54,6 +55,12 @@ contract DeltTrader is ReentrancyGuard {
         uint256 endAt;
         uint256 initPrice;
         Bid[] bids;
+    }
+
+    Delt public delt;
+
+    constructor(address deltAddress) {
+        delt = Delt(deltAddress);
     }
 
     modifier isListed(Listing memory _listing, bool isActive) {

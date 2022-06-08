@@ -34,7 +34,7 @@ contract DeltItems is
     CountersUpgradeable.Counter private _tokenIdCounter;
 
     mapping(uint256 => DeltAttributes.Id) public itemId;
-    mapping(string => uint256) public tokenIdlookup;
+    mapping(string => uint256) public tokenIdLookup;
     mapping(string => bool) public exists;
     mapping(uint256 => mapping(string => DeltAttributes.Stat[]))
         public attributes;
@@ -97,21 +97,7 @@ contract DeltItems is
     }
 
     function getTokenId(string memory _itemId) public view returns (uint256) {
-        return tokenIdlookup[_itemId];
-    }
-
-    function getOpPrice(uint256 _lvl, int256 _mod)
-        public
-        pure
-        returns (uint256)
-    {
-        unchecked {
-            if (_mod > 0) {
-                return _lvl * uint256(_mod) * 1e15 wei;
-            } else {
-                return _lvl * 1e15 wei;
-            }
-        }
+        return tokenIdLookup[_itemId];
     }
 
     function setAttribute(uint256 _tokenId, DeltAttributes.Attr memory _attr)
@@ -228,7 +214,7 @@ contract DeltItems is
         DeltAttributes.Id memory _itemId,
         string memory _tokenSVG,
         DeltAttributes.Attr[] memory _attributes
-    ) public payable {
+    ) public {
         require(!_itemId.awarded, "item was awarded");
         createItem(player, _itemId, _tokenSVG, _attributes);
     }
@@ -237,12 +223,13 @@ contract DeltItems is
         address player,
         DeltAttributes.Id memory _itemId,
         string memory _tokenSVG,
+        DeltAttributes.Id[] memory _entities,
         DeltAttributes.Attr[] memory _attributes
     ) internal {
         require(!exists[_itemId.itemName], "NFT name already minted");
 
         itemId[_tokenIdCounter.current()] = _itemId;
-        tokenIdlookup[_itemId.itemName] = _tokenIdCounter.current();
+        tokenIdLookup[_itemId.itemName] = _tokenIdCounter.current();
         exists[_itemId.itemName] = true;
 
         for (uint256 i = 0; i < _attributes.length; i++) {
@@ -253,14 +240,12 @@ contract DeltItems is
         if (!_itemId.awarded) {
             unchecked {
                 require(
-                    msg.value >=
-                        getOpPrice(
-                            itemId[_tokenIdCounter.current()].lvl,
-                            int256(itemId[_tokenIdCounter.current()].lvl)
-                        ),
-                    "underpayed"
+                    delt.balanceOf(player) >=
+                        itemId[_tokenIdCounter.current()].lvl**2,
+                    "insufficent delt"
                 );
             }
+            delt.burn(player, itemId[_tokenIdCounter.current()].lvl**2);
         }
 
         _safeMint(player, _tokenIdCounter.current());
@@ -274,17 +259,31 @@ contract DeltItems is
         _op.opMod = 0;
     }
 
-    function modifiyItem(uint256 _tokenId, DeltAttributes.Attr memory _attr)
+    function modifiyItem(uint256 _tokenId, DeltAttributes.Attr[] memory _attrs)
         public
-        payable
     {
         require(ownerOf(_tokenId) == msg.sender, "you must own the token");
-        setAttribute(_tokenId, _attr);
+        for (uint256 i = 0; i < _attrs.length; i++) {
+            setAttribute(_tokenId, _attrs[i]);
+        }
+
         unchecked {
-            require(
-                msg.value >= getOpPrice(itemId[_tokenId].lvl, _op.opMod),
-                "underpayed"
-            );
+            if (_op.opMod > 0) {
+                require(
+                    delt.balanceOf(msg.sender) >= uint256(_op.opMod),
+                    "insufficent delt"
+                );
+                delt.burn(
+                    msg.sender,
+                    itemId[_tokenId].lvl + uint256(_op.opMod)
+                );
+            } else {
+                require(
+                    delt.balanceOf(msg.sender) >= itemId[_tokenId].lvl,
+                    "insufficent delt"
+                );
+                delt.burn(msg.sender, itemId[_tokenId].lvl);
+            }
         }
         _op.opMod = 0;
     }

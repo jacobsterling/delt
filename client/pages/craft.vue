@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { Attr, Stat } from "../plugins/contract.client"
-
+import { TokenMetadata, Stat, Attr } from "../plugins/near.client"
 const client = useSupabaseClient()
 const router = useRouter()
 
-const { $wallet: wallet } = useNuxtApp()
+const { $near: near } = useNuxtApp()
 
 const loadingU = ref<Boolean>(false)
+
+const template = ref<TokenMetadata>(undefined)
 
 const upload = async () => {
   loadingU.value = true
@@ -22,14 +23,14 @@ const upload = async () => {
     .from("unminted")
     .insert([
       {
-        createdBy: wallet.account,
+        attributes: attributes.value,
+        burned: false,
+        createdBy: near.wallet.getAccountId(),
         name: name.value,
         slug: useSlug(name.value),
-        type: _type.value,
-        upgradable: upgradable.value,
-        attributes: attributes.value,
         supply: supply.value,
-        burned: false
+        type: _type.value,
+        upgradable: upgradable.value
       }
     ])
   if (itemError) { throw new Error(itemError.message) }
@@ -44,39 +45,25 @@ const upgradable = ref<boolean>(false)
 
 const attributes = ref<Attr[]>([])
 
-const eAttribute: Attr = {
-  attrKey: undefined,
-  stats: []
-}
-
 let stats: Stat[] = []
 
-const attribute = ref<Attr>({
-  attrKey: undefined,
-  stats: []
-})
+const attribute = ref<Attr>()
 
 const addAttr = () => {
   attributes.value.push({
-    attrKey: attrKey.value,
-    stats
+    [attrKey.value]: stats
   })
   stats = []
-  attribute.value = eAttribute
+  attribute.value = {}
 }
 
 const addStat = () => {
   stats.push({
-    statKey: statKey.value,
-    tier: 0,
-    trait: trait.value,
-    value: value.value
-  })
-  attribute.value.stats.push({
-    statKey: statKey.value,
-    tier: 0,
-    trait: trait.value,
-    value: value.value
+    [statKey.value]: {
+      tier: 0,
+      trait: trait.value,
+      value: value.value
+    }
   })
 }
 
@@ -90,10 +77,11 @@ const trait = ref<string>()
 const value = ref<number>()
 
 const stat = ref<Stat>({
-  statKey: statKey.value,
-  tier: 0,
-  trait: trait.value,
-  value: value.value
+  [statKey.value]: {
+    tier: 0,
+    trait: trait.value,
+    value: value.value
+  }
 })
 
 const onImageUpload = (e: any) => {
@@ -131,5 +119,6 @@ const onImageUpload = (e: any) => {
     <button class="d-button-emerald" @click="upload">
       Upload
     </button>
+    {{ template }}
   </div>
 </template>

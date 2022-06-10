@@ -1,0 +1,11 @@
+{
+  "name": "delt-tutorial",
+  "version": "1.0.0",
+  "description": "Delt NFT Contract",
+  "author": "Jacob Sterling",
+  "license": "ISC",
+  "scripts": {
+    "build": "cd delt-contract && bash build.sh && cd ../.."
+  },
+  "dependencies": {}
+}

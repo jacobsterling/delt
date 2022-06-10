@@ -4,13 +4,10 @@
 			"path": "client"
 		},
 		{
-			"path": "defi"
-		},
-		{
 			"path": "delt"
 		},
 		{
-			"path": "delt-contract"
+			"path": "contracts"
 		}
 	]
 }

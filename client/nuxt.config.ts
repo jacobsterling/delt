@@ -17,9 +17,7 @@ export default defineNuxtConfig({
   ],
   runtimeConfig: {
     public: {
-      API_KEY: process.env.API_KEY,
-      CONTRACT_ADDRESS: process.env.CONTRACT_ADDRESS,
-      NFT_STORAGE_KEY: process.env.NFT_STORAGE_KEY
+      API_KEY: process.env.API_KEY
     }
   },
   telemetry: false,

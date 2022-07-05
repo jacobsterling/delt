@@ -1,0 +1,22 @@
+{
+  "name": "delt-contracts",
+  "version": "1.0.0",
+  "description": "delt near contracts",
+  "author": "Jacob Sterling",
+  "license": "MIT",
+  "dependencies": {
+    "near-cli": "^3.4.0"
+  },
+  "scripts": {
+    "build-mt": "cd delt-mt && bash build.sh && cd ..",
+    "create-mt-acc": "near create-account delt-mt.delt.testnet --masterAccount delt.testnet",
+    "delete-mt-acc": "near delete delt-mt.delt.testnet delt.testnet",
+    "deploy-mt": "near deploy --wasmFile out/delt-mt.wasm --accountId delt-mt.delt.testnet",
+    "init-mt": "bash near call delt-mt.delt.testnet new_default_meta '{\"owner_id\": \"delt-mt.delt.testnet\"}' --accountId delt-mt.delt.testnet",
+    "build-ft": "cd delt-ft && bash build.sh && cd ..",
+    "create-ft-acc": "near create-account delt-ft.delt.testnet --masterAccount delt.testnet",
+    "delete-ft-acc": "near delete delt-ft.delt.testnet delt.testnet",
+    "deploy-ft": "near deploy --wasmFile out/delt-ft.wasm --accountId delt-ft.delt.testnet",
+    "init-ft": "bash near call delt-ft.delt.testnet new_default_meta '{\"owner_id\": \"delt-ft.delt.testnet\"}' --accountId delt-ft.delt.testnet"
+  }
+}

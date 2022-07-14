@@ -2,12 +2,15 @@ use crate::fungible_token::core::FungibleTokenCore;
 use crate::fungible_token::events::{FtBurn, FtMint, FtTransfer};
 use crate::fungible_token::receiver::ext_ft_receiver;
 use crate::fungible_token::resolver::{ext_ft_resolver, FungibleTokenResolver};
+use near_contract_standards::storage_management::{
+    StorageBalance, StorageBalanceBounds, StorageManagement,
+};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
 use near_sdk::json_types::U128;
 use near_sdk::{
-    assert_one_yocto, env, log, require, AccountId, Balance, Gas, IntoStorageKey, PromiseOrValue,
-    PromiseResult, StorageUsage,
+    assert_one_yocto, env, log, require, AccountId, Balance, Gas, IntoStorageKey, Promise,
+    PromiseOrValue, PromiseResult, StorageUsage,
 };
 
 const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(5_000_000_000_000);
@@ -26,6 +29,7 @@ const FEE_PERCENTAGE: u128 = 300;
 ///     - AccountRegistrar -- interface for an account to register and unregister
 ///
 /// For example usage, see examples/fungible-token/src/lib.rs.
+
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct FungibleToken {
     /// Owner of contract
@@ -42,13 +46,13 @@ pub struct FungibleToken {
 }
 
 impl FungibleToken {
-    pub fn new<S>(prefix: S, owner_id: AccountId) -> Self
+    pub fn new<S>(owner_id: AccountId, accounts_prefix: S) -> Self
     where
         S: IntoStorageKey,
     {
         let mut this = Self {
             owner_id,
-            accounts: LookupMap::new(prefix),
+            accounts: LookupMap::new(accounts_prefix),
             total_supply: 0,
             account_storage_usage: 0,
         };
@@ -106,28 +110,62 @@ impl FungibleToken {
         amount: Balance,
         memo: Option<String>,
     ) {
+        require!(amount > 0, "The amount should be a positive number");
+
+        let fee_amount = if sender_id != &self.owner_id {
+            amount
+                .overflowing_mul(FEE_PERCENTAGE)
+                .0
+                .checked_div(10000)
+                .unwrap_or_else(|| env::panic_str("Balance overflow"))
+        } else {
+            0
+        };
+
+        let modified_memo = memo.as_deref();
+
+        let transfer_id = if let Some(ref from_string) = memo {
+            if let Ok(account_id) = AccountId::try_from(from_string.to_owned()) {
+                //for administration and staking perposes, uses memo to remain consistant wtih fungable token NEP-21 standard. May change to an approval method once added to NEP-21
+
+                require!(
+                    sender_id == &self.owner_id,
+                    "Not authorised to transfer on behalf of user."
+                );
+
+                modified_memo.map(|_| {
+                    format!(
+                        "transferred by {}, on behalf of {}",
+                        self.owner_id,
+                        account_id.clone()
+                    )
+                });
+
+                account_id
+            } else {
+                sender_id.clone()
+            }
+        } else {
+            sender_id.clone()
+        };
+
         require!(
-            sender_id != receiver_id,
+            &transfer_id != receiver_id,
             "Sender and receiver should be different"
         );
-        require!(amount > 0, "The amount should be a positive number");
-        self.internal_withdraw(sender_id, amount);
 
-        let fee_amount = amount
-            .overflowing_mul(FEE_PERCENTAGE)
-            .0
-            .checked_div(10000)
-            .unwrap_or_else(|| env::panic_str("Balance overflow"));
+        self.internal_withdraw(&transfer_id, amount);
 
-        self.take_fee(sender_id, fee_amount);
+        //takes development 0.06% dev fee and burns 0.24% of every transaction
+        self.take_fee(&transfer_id, fee_amount);
 
-        self.internal_deposit(receiver_id, amount - fee_amount);
+        self.internal_deposit(&transfer_id, amount - fee_amount);
 
         FtTransfer {
-            old_owner_id: sender_id,
+            old_owner_id: &transfer_id,
             new_owner_id: receiver_id,
             amount: &U128(amount),
-            memo: memo.as_deref(),
+            memo: modified_memo,
         }
         .emit();
     }
@@ -312,5 +350,115 @@ impl FungibleTokenResolver for FungibleToken {
         self.internal_ft_resolve_transfer(&sender_id, receiver_id, amount)
             .0
             .into()
+    }
+}
+
+impl FungibleToken {
+    /// Internal method that returns the Account ID and the balance in case the account was
+    /// unregistered.
+    pub fn internal_storage_unregister(
+        &mut self,
+        force: Option<bool>,
+    ) -> Option<(AccountId, Balance)> {
+        assert_one_yocto();
+        let account_id = env::predecessor_account_id();
+        let force = force.unwrap_or(false);
+        if let Some(balance) = self.accounts.get(&account_id) {
+            if balance == 0 || force {
+                self.accounts.remove(&account_id);
+                self.total_supply -= balance;
+                Promise::new(account_id.clone()).transfer(self.storage_balance_bounds().min.0 + 1);
+                Some((account_id, balance))
+            } else {
+                env::panic_str(
+                    "Can't unregister the account with the positive balance without force",
+                )
+            }
+        } else {
+            log!("The account {} is not registered", &account_id);
+            None
+        }
+    }
+
+    fn internal_storage_balance_of(&self, account_id: &AccountId) -> Option<StorageBalance> {
+        if self.accounts.contains_key(account_id) {
+            Some(StorageBalance {
+                total: self.storage_balance_bounds().min,
+                available: 0.into(),
+            })
+        } else {
+            None
+        }
+    }
+}
+
+impl StorageManagement for FungibleToken {
+    // `registration_only` doesn't affect the implementation for vanilla fungible token.
+    #[allow(unused_variables)]
+    fn storage_deposit(
+        &mut self,
+        account_id: Option<AccountId>,
+        registration_only: Option<bool>,
+    ) -> StorageBalance {
+        let amount: Balance = env::attached_deposit();
+        let account_id = account_id.unwrap_or_else(env::predecessor_account_id);
+        if self.accounts.contains_key(&account_id) {
+            log!("The account is already registered, refunding the deposit");
+            if amount > 0 {
+                Promise::new(env::predecessor_account_id()).transfer(amount);
+            }
+        } else {
+            let min_balance = self.storage_balance_bounds().min.0;
+            if amount < min_balance {
+                env::panic_str("The attached deposit is less than the minimum storage balance");
+            }
+
+            self.internal_register_account(&account_id);
+            let refund = amount - min_balance;
+            if refund > 0 {
+                Promise::new(env::predecessor_account_id()).transfer(refund);
+            }
+        }
+        self.internal_storage_balance_of(&account_id).unwrap()
+    }
+
+    /// While storage_withdraw normally allows the caller to retrieve `available` balance, the basic
+    /// Fungible Token implementation sets storage_balance_bounds.min == storage_balance_bounds.max,
+    /// which means available balance will always be 0. So this implementation:
+    /// * panics if `amount > 0`
+    /// * never transfers Ⓝ to caller
+    /// * returns a `storage_balance` struct if `amount` is 0
+    fn storage_withdraw(&mut self, amount: Option<U128>) -> StorageBalance {
+        assert_one_yocto();
+        let predecessor_account_id = env::predecessor_account_id();
+        if let Some(storage_balance) = self.internal_storage_balance_of(&predecessor_account_id) {
+            match amount {
+                Some(amount) if amount.0 > 0 => {
+                    env::panic_str("The amount is greater than the available storage balance");
+                }
+                _ => storage_balance,
+            }
+        } else {
+            env::panic_str(
+                format!("The account {} is not registered", &predecessor_account_id).as_str(),
+            );
+        }
+    }
+
+    fn storage_unregister(&mut self, force: Option<bool>) -> bool {
+        self.internal_storage_unregister(force).is_some()
+    }
+
+    fn storage_balance_bounds(&self) -> StorageBalanceBounds {
+        let required_storage_balance =
+            Balance::from(self.account_storage_usage) * env::storage_byte_cost();
+        StorageBalanceBounds {
+            min: required_storage_balance.into(),
+            max: Some(required_storage_balance.into()),
+        }
+    }
+
+    fn storage_balance_of(&self, account_id: AccountId) -> Option<StorageBalance> {
+        self.internal_storage_balance_of(&account_id)
     }
 }

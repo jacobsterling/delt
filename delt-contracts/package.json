@@ -1,7 +1,7 @@
 {
   "name": "delt-contracts",
   "version": "1.0.0",
-  "description": "delt near contracts",
+  "description": "delt contracts",
   "author": "Jacob Sterling",
   "license": "MIT",
   "dependencies": {
@@ -12,11 +12,16 @@
     "create-mt-acc": "near create-account delt-mt.delt.testnet --masterAccount delt.testnet",
     "delete-mt-acc": "near delete delt-mt.delt.testnet delt.testnet",
     "deploy-mt": "near deploy --wasmFile out/delt-mt.wasm --accountId delt-mt.delt.testnet",
-    "init-mt": "bash near call delt-mt.delt.testnet new_default_meta '{\"owner_id\": \"delt-mt.delt.testnet\"}' --accountId delt-mt.delt.testnet",
+    "init-mt": "bash near call delt-mt.delt.testnet new_default_meta '{\"owner_id\": \"delt.testnet\"}' --accountId delt-mt.delt.testnet",
     "build-ft": "cd delt-ft && bash build.sh && cd ..",
     "create-ft-acc": "near create-account delt-ft.delt.testnet --masterAccount delt.testnet",
     "delete-ft-acc": "near delete delt-ft.delt.testnet delt.testnet",
     "deploy-ft": "near deploy --wasmFile out/delt-ft.wasm --accountId delt-ft.delt.testnet",
-    "init-ft": "bash near call delt-ft.delt.testnet new_default_meta '{\"owner_id\": \"delt-ft.delt.testnet\"}' --accountId delt-ft.delt.testnet"
+    "init-ft": "bash near call delt-ft.delt.testnet new_default_meta '{\"owner_id\": \"delt.testnet\"}' --accountId delt-ft.delt.testnet",
+    "build-d": "cd delt-d && bash build.sh && cd ..",
+    "create-d-acc": "near create-account delt-d.delt.testnet --masterAccount delt.testnet",
+    "delete-d-acc": "near delete delt-d.delt.testnet delt.testnet",
+    "deploy-d": "near deploy --wasmFile out/delt-d.wasm --accountId delt-d.delt.testnet",
+    "init-d": "bash near call delt-d.delt.testnet new_default_meta '{\"owner_id\": \"delt.testnet\"}' --accountId delt-d.delt.testnet"
   }
 }

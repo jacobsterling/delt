@@ -22,14 +22,6 @@ pub trait StakeResolver {
         amounts: Vec<U128>,
         msg: String,
     );
-
-    fn resolve_stake(
-        &mut self,
-        pool_id: crate::staking::PoolId,
-        staker_id: AccountId,
-        stake_index: usize,
-        promise_index: u64,
-    );
 }
 #[ext_contract(ext_mt_contract)]
 pub trait MTContract {

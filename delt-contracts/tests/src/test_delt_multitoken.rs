@@ -1,9 +1,16 @@
-use crate::multi_token::metadata::MultiTokenMetadataProvider;
-use crate::*;
-use env::log_str;
+use delt_mt::multi_token::approval::MultiTokenApproval;
+use delt_mt::multi_token::core::MultiTokenCore;
+use delt_mt::multi_token::metadata::{MultiTokenMetadataProvider, TokenMetadata};
+use delt_mt::{MTContract, Market, Stat, TokenAttributeHandler};
+
+use delt_mt::multi_token::token::{Token, TokenId};
+use near_sdk::env::{self, log_str};
+use near_sdk::json_types::U128;
+use near_sdk::serde_json::{json, to_string, Map, Value};
 use near_sdk::test_utils::{accounts, VMContextBuilder};
 use near_sdk::testing_env;
-use serde_json::{json, to_string, Map, Value};
+
+use crate::set_caller;
 
 fn create_token_md(title: String, description: String) -> TokenMetadata {
     TokenMetadata {
@@ -127,12 +134,6 @@ fn init_tokens(contract: &mut MTContract) -> (Token, Token, Token) {
     (token, token_2, token_3)
 }
 
-fn set_caller(context: &mut VMContextBuilder, account_id: usize) {
-    testing_env!(context
-        .signer_account_id(accounts(account_id))
-        .predecessor_account_id(accounts(account_id))
-        .build())
-}
 #[test]
 fn get_contract_metadata() {
     let mut context = VMContextBuilder::new();

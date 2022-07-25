@@ -93,6 +93,3 @@ impl FungibleTokenMetadataProvider for Contract {
         self.metadata.get().unwrap()
     }
 }
-
-#[cfg(all(test, not(target_arch = "wasm32")))]
-mod tests;

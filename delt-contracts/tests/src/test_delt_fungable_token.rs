@@ -1,19 +1,13 @@
+use delt_ft::Contract;
+use near_contract_standards::fungible_token::core::FungibleTokenCore;
+use near_contract_standards::storage_management::StorageManagement;
 use near_sdk::test_utils::{accounts, VMContextBuilder};
-use near_sdk::MockedBlockchain;
+use near_sdk::{env, MockedBlockchain};
 use near_sdk::{testing_env, Balance};
 
-use super::*;
+use crate::get_context;
 
 const TOTAL_SUPPLY: Balance = 1_000_000_000_000_000;
-
-fn get_context(predecessor_account_id: AccountId) -> VMContextBuilder {
-    let mut builder = VMContextBuilder::new();
-    builder
-        .current_account_id(accounts(0))
-        .signer_account_id(predecessor_account_id.clone())
-        .predecessor_account_id(predecessor_account_id);
-    builder
-}
 
 #[test]
 fn test_new() {

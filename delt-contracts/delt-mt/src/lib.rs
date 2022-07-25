@@ -141,5 +141,3 @@ impl MTContract {
 crate::impl_multi_token_core!(MTContract, tokens);
 crate::impl_multi_token_approval!(MTContract, tokens);
 crate::impl_multi_token_enumeration!(MTContract, tokens);
-#[cfg(all(test, not(target_arch = "wasm32")))]
-mod tests;

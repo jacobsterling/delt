@@ -115,10 +115,16 @@ impl FungibleToken {
             "Sender and receiver should be different"
         );
 
-        require!(
-            self.approved_transfer.get(&sender_id).unwrap_or(0) <= amount,
-            "Unapproved",
-        );
+        if let Some(approved_amount) = self.approved_transfer.get(&sender_id) {
+            require!(approved_amount <= amount, "Unapproved transfer amount");
+            self.approved_transfer
+                .insert(&sender_id, &(approved_amount - amount));
+        } else {
+            require!(
+                sender_id == &env::current_account_id(),
+                "Unapproved transfer"
+            );
+        }
 
         self.internal_withdraw(sender_id, amount);
         self.internal_deposit(receiver_id, amount);

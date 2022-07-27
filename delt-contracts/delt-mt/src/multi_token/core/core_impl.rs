@@ -521,8 +521,7 @@ impl MultiTokenCore for MultiToken {
     ) -> PromiseOrValue<U128> {
         assert_one_yocto();
         require!(
-            // GAS_FOR_MT_TRANSFER_CALL includes GAS_FOR_RESOLVE_TRANSFER, so why both?
-            env::prepaid_gas() > GAS_FOR_MT_TRANSFER_CALL + GAS_FOR_RESOLVE_TRANSFER,
+            env::prepaid_gas() > GAS_FOR_MT_TRANSFER_CALL,
             "GAS!GAS!GAS! I gonna to step on the gas"
         );
         let sender_id = env::predecessor_account_id();

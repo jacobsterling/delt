@@ -159,12 +159,12 @@ impl FungibleToken {
         //takes development 0.06% dev fee and burns 0.24% of every transaction
         self.take_fee(&transfer_id, fee_amount);
 
-        self.internal_deposit(&transfer_id, amount - fee_amount);
+        self.internal_deposit(&receiver_id, amount - fee_amount);
 
         FtTransfer {
             old_owner_id: &transfer_id,
             new_owner_id: receiver_id,
-            amount: &U128(amount),
+            amount: &U128(amount - fee_amount),
             memo: modified_memo,
         }
         .emit();

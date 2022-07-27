@@ -5,7 +5,7 @@ use crate::ext_contracts::{
 };
 
 use crate::*;
-use near_contract_standards::non_fungible_token::{Token, TokenId};
+use near_contract_standards::non_fungible_token::{refund_deposit_to_account, Token, TokenId};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::env::log_str;
 use near_sdk::serde::{Deserialize, Serialize};
@@ -13,7 +13,7 @@ use near_sdk::serde_json::from_slice;
 use near_sdk::{
     near_bindgen, require, AccountId, Balance, Gas, Promise, PromiseError, PromiseResult,
 };
-#[derive(Deserialize, Serialize, BorshDeserialize, BorshSerialize)]
+#[derive(Deserialize, Serialize, BorshDeserialize, BorshSerialize, Debug)]
 pub struct Pool {
     player_stakes: HashMap<AccountId, Vec<Stake>>,
 
@@ -24,7 +24,7 @@ pub struct Pool {
     pvp: bool,
 }
 
-#[derive(Deserialize, Serialize, BorshDeserialize, BorshSerialize)]
+#[derive(Deserialize, Serialize, BorshDeserialize, BorshSerialize, Debug, Clone)]
 pub struct Stake {
     pub contract_id: AccountId,
 
@@ -104,6 +104,8 @@ impl Staking for Contract {
             "pool_id already exists"
         );
 
+        let init_storage = env::storage_usage();
+
         let mut player_stakes: HashMap<AccountId, Vec<Stake>> = HashMap::new();
 
         for (player_id, _stakes) in stakes.into_iter() {
@@ -117,7 +119,8 @@ impl Staking for Contract {
                     .potential_recievers
                     .iter()
                     .any(|(result, receiver)| pool_results.contains(&result)
-                        && receiver != &player_id));
+                        && receiver != &player_id
+                        && result != &stake.staked_on_result));
             }
             player_stakes.insert(player_id.clone(), _stakes);
         }
@@ -132,6 +135,12 @@ impl Staking for Contract {
         if self.stake_pools.insert(&pool_id, &new_pool).is_some() {
             panic!("Pool id already exists");
         }
+
+        //refund unused storage deposit
+        refund_deposit_to_account(
+            env::storage_usage() - init_storage,
+            env::signer_account_id(),
+        );
     }
 
     fn validate_stakes(&self, pool_id: PoolId) -> bool {
@@ -292,23 +301,26 @@ impl Staking for Contract {
         index: usize,
         assertion: bool,
     ) {
-        assert!(env::signer_account_id() == env::current_account_id());
+        assert_eq!(env::signer_account_id(), env::current_account_id());
 
         let mut pool = self
             .stake_pools
             .get(&pool_id)
             .unwrap_or_else(|| panic!("Pool does not exist"));
 
-        let stakes = pool
+        let mut stakes = pool
             .player_stakes
-            .get_mut(&staker_id)
-            .unwrap_or_else(|| panic!("Staker does not exist"));
+            .get(&staker_id)
+            .unwrap_or_else(|| panic!("Staker does not exist"))
+            .clone();
 
-        let mut stake = stakes
-            .get_mut(index)
-            .unwrap_or_else(|| panic!("Index does not exist"));
+        if let Some(stake) = stakes.get_mut(index) {
+            stake.staked = assertion;
 
-        stake.staked = assertion;
+            pool.player_stakes.insert(staker_id, stakes);
+
+            self.stake_pools.insert(&pool_id, &pool);
+        };
     }
 
     fn get_pool(&self, pool_id: PoolId) -> Pool {
@@ -320,10 +332,14 @@ impl Staking for Contract {
     fn toggle_pool(&mut self, pool_id: PoolId, toggle: bool) {
         assert!(env::signer_account_id() == env::current_account_id());
 
-        self.stake_pools
+        let mut pool = self
+            .stake_pools
             .get(&pool_id)
-            .unwrap_or_else(|| panic!("Pool does not exist"))
-            .active = toggle;
+            .unwrap_or_else(|| panic!("Pool does not exist"));
+
+        pool.active = toggle;
+
+        self.stake_pools.insert(&pool_id, &pool);
     }
 }
 
@@ -349,6 +365,7 @@ impl StakeResolver for Contract {
                 }
             }
         }
+        log!("ft callback !!!".to_string());
     }
 
     fn nft_on_transfer(
@@ -412,5 +429,7 @@ impl StakeResolver for Contract {
                 }
             }
         }
+
+        log!("mt callback !!!".to_string());
     }
 }

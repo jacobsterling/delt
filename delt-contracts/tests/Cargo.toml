@@ -1,5 +1,5 @@
 [package]
-name = "tests"
+name = "delt-contracts"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,7 +7,21 @@ edition = "2021"
 
 [dependencies]
 near-sdk = "4.0.0"
+near-contract-standards = "4.0.0"
+anyhow = "1.0"
+near-units = "0.2.0"
+tokio = { version = "1.14", features = ["full"] }
+
 delt-mt = {path = "../delt-mt"}
 delt-ft = {path = "../delt-ft"}
 delt-d = {path = "../delt-d"}
-near-contract-standards = "4.0.0"
+delt-g = {path = "../delt-g"}
+
+[profile.release]
+codegen-units = 1
+# Tell `rustc` to optimize for small code size.
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+overflow-checks = true

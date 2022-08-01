@@ -351,12 +351,14 @@ impl Staking for Contract {
             .stake_pools
             .get(&pool_id)
             .unwrap_or_else(|| panic!("Pool does not exist"));
-        
-        assert!(!pool.active, "Pool is active");
-        assert(!self.validate_stakes(pool_id.clone());
 
-        self
-            .stake_pools.remove(&pool_id);
+        assert!(!pool.active, "Pool is active");
+        assert!(
+            !self.validate_stakes(pool_id.clone()),
+            "Existing stakes in pool"
+        );
+
+        self.stake_pools.remove(&pool_id);
     }
 }
 

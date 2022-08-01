@@ -88,6 +88,8 @@ pub trait Staking {
     fn get_pool(&self, pool_id: PoolId) -> Pool;
 
     fn toggle_pool(&mut self, pool_id: PoolId, toggle: bool);
+
+    fn remove_pool(&mut self, pool_id: PoolId);
 }
 
 #[near_bindgen]
@@ -216,7 +218,7 @@ impl Staking for Contract {
         receiver_id: AccountId,
         index: usize,
     ) {
-        assert!(env::signer_account_id() == env::current_account_id());
+        assert_eq!(env::signer_account_id(), env::current_account_id());
 
         let pool = self.get_pool(pool_id.clone());
 
@@ -330,7 +332,7 @@ impl Staking for Contract {
     }
 
     fn toggle_pool(&mut self, pool_id: PoolId, toggle: bool) {
-        assert!(env::signer_account_id() == env::current_account_id());
+        assert_eq!(env::signer_account_id(), env::current_account_id());
 
         let mut pool = self
             .stake_pools
@@ -340,6 +342,21 @@ impl Staking for Contract {
         pool.active = toggle;
 
         self.stake_pools.insert(&pool_id, &pool);
+    }
+
+    fn remove_pool(&mut self, pool_id: PoolId) {
+        assert_eq!(env::signer_account_id(), env::current_account_id());
+
+        let pool = self
+            .stake_pools
+            .get(&pool_id)
+            .unwrap_or_else(|| panic!("Pool does not exist"));
+        
+        assert!(!pool.active, "Pool is active");
+        assert(!self.validate_stakes(pool_id.clone());
+
+        self
+            .stake_pools.remove(&pool_id);
     }
 }
 

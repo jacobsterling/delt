@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "delt-contracts"
+		},
+		{
+			"path": "..\\delt_server"
 		}
 	]
 }

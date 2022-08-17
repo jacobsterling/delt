@@ -1,5 +1,4 @@
 import "phaser";
-import { Entity } from "./entities/entity";
 import { Wizard } from "./entities/wizard";
 import MainScene from "./scenes/mainScene";
 
@@ -8,90 +7,72 @@ type Vector2 = {
 	y: number;
 }
 
-export type EntityMessage = {
-    position: Vector2;
-    type: string;
+export type Entity = {
+	id: string
+	position: Vector2;
+	type: string;
 };
 
 type BasicMessage = {
-    id: string;
-    data: EntityMessage;
+	[id: string]: Entity
 };
 
 const establishMultiplayer = (scene: MainScene) => {
 	scene.multiplayer.event.on('socket.open', () => initConnection(scene), scene);
+
 	scene.multiplayer.event.on(
 		'object.create',
-		(data: any) => createObject(data, scene),
+		(entity: Entity) => createEntity(entity, scene),
 		scene.multiplayer
 	);
+
 	scene.multiplayer.event.on('object.update', (_: any, obj: any, __: any) => {
-		updateObjects(obj, scene);
+		updateEntitys(obj, scene);
 	}, scene.multiplayer);
 
-	scene.multiplayer.event.on('object.kill', (_: any, objId: string) => {
-		killObjects(objId, scene)
-	}, scene.multiplayer);
+	const position: Vector2 = {
+		x: 0.0,
+		y: 0.0
+	}
 
-	scene.multiplayer.track(scene.player.sprite, featureExtractor);
+	const wizard: Entity = {
+		id: "player.testnet",
+		position: position,
+		type: "player"
+	}
+
+	scene.multiplayer.registerEntity(wizard);
 	scene.multiplayer.connect();
 }
 
-const featureExtractor = (object: any): EntityMessage | null => {
-	if (!object) return null;
-	return {
-		position: {
-			x: object.x,
-			y: object.y,
-		},
-		type: typeof(object)
-	};
-}
 
-const createObject = (obj: any, scene: MainScene) => {
-	const { id, data } = obj;
+const createEntity = (entity: Entity, scene: MainScene) => {
+	const { x, y } = entity.position;
 
-	if (id === scene.multiplayer.id) return;
+	scene.multiplayer.registerEntity(entity);
 
-	const {x, y} = data.position;
-	
-	if (scene.multiplayer.id == id) {
-		scene.multiplayer.registerObject(id, obj.player);
-		return;
-	}
 	const newWizard = new Wizard(scene, {
 		color: 'red',
 		position: new Phaser.Math.Vector2(x, y),
-		id: id,
+		id: entity.id,
 	});
 	newWizard.preload();
 	newWizard.create();
 	scene.gameObjects.push(newWizard);
-	
+
 }
 
-const updateObjects = (obj: any, scene: MainScene) => {
-	const {id, data} = obj;
-	if (id) {
-		const res = scene.gameObjects.find(x=>x.id === id);
+const updateEntitys = (entitys: [Entity], scene: MainScene) => {
+	entitys.forEach((entity: Entity) => {
+		const res = scene.gameObjects.find(x => x.id === entity.id);
 		if (!res) return;
-		const {x, y} = data.position;
+		const { x, y } = entity.position;
 		res?.sprite.setPosition(x, y);
-	}
+	})
 }
 
 const initConnection = (scene: MainScene) => {
 	scene.multiplayer.startBroadcast();
-}
-
-const killObjects = (killId: string, scene: MainScene) => {
-	const obj: Entity = scene.gameObjects.find(x=>x.id === killId);
-	if (!(obj instanceof Entity)) {
-		console.log(`Tried deleting non-entity object ${killId}`);
-		return;
-	}
-	obj.destroy();
-	scene.gameObjects = scene.gameObjects.filter(x=>x !== obj);
 }
 
 export default establishMultiplayer;

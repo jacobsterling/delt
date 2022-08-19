@@ -7,7 +7,7 @@ export class Entity extends Phaser.GameObjects.GameObject {
     protected readonly _initialInterval: number = 250;
     protected isControlling: boolean = false;
     protected readonly id!: string;
-    
+
     public get interval(): number {
         return this._interval;
     }

@@ -1,78 +1,54 @@
 import "phaser";
 import { Wizard } from "./entities/wizard";
 import MainScene from "./scenes/mainScene";
+import { EntityData } from "./websockets";
 
-type Vector2 = {
-	x: number;
-	y: number;
-}
+const establishMultiplayer = (scene: MainScene, game_id: string = "global") => {
+	scene.multiplayer.event.on('socket.open', () => scene.multiplayer.init(), scene);
 
-export type Entity = {
-	id: string
-	position: Vector2;
-	type: string;
-};
-
-type BasicMessage = {
-	[id: string]: Entity
-};
-
-const establishMultiplayer = (scene: MainScene) => {
-	scene.multiplayer.event.on('socket.open', () => initConnection(scene), scene);
-
-	scene.multiplayer.event.on(
-		'object.create',
-		(entity: Entity) => createEntity(entity, scene),
-		scene.multiplayer
-	);
-
-	scene.multiplayer.event.on('object.update', (_: any, obj: any, __: any) => {
-		updateEntitys(obj, scene);
+	scene.multiplayer.event.on('object.update', (id: string, entity: EntityData) => {
+		updateClientEntity(id, entity, scene);
 	}, scene.multiplayer);
 
-	const position: Vector2 = {
-		x: 0.0,
-		y: 0.0
-	}
+	scene.multiplayer.event.on('object.create', (id: string, entity: EntityData) => {
+		createClientEntity(id, entity, scene);
+	}, scene.multiplayer);
 
-	const wizard: Entity = {
-		id: "player.testnet",
-		position: position,
-		type: "player"
-	}
+	scene.multiplayer.event.on('object.kill', (id: string, entity: EntityData) => {
+		killClientEntity(id, entity, scene);
+	}, scene.multiplayer);
 
-	scene.multiplayer.registerEntity(wizard);
-	scene.multiplayer.connect();
+	scene.multiplayer.event.on('socket.connected', (id: string, game_id: string) => scene.joinGame(id, game_id), scene);
+
+	scene.multiplayer.connect("ws://localhost:42069");
 }
 
-
-const createEntity = (entity: Entity, scene: MainScene) => {
+const createClientEntity = (id: string, entity: EntityData, scene: MainScene) => {
 	const { x, y } = entity.position;
-
-	scene.multiplayer.registerEntity(entity);
 
 	const newWizard = new Wizard(scene, {
 		color: 'red',
-		position: new Phaser.Math.Vector2(x, y),
-		id: entity.id,
+		startingPosition: new Phaser.Math.Vector2(x, y),
+		id,
 	});
+
 	newWizard.preload();
 	newWizard.create();
-	scene.gameObjects.push(newWizard);
+	scene.entities[id] = newWizard;
+
 
 }
 
-const updateEntitys = (entitys: [Entity], scene: MainScene) => {
-	entitys.forEach((entity: Entity) => {
-		const res = scene.gameObjects.find(x => x.id === entity.id);
-		if (!res) return;
-		const { x, y } = entity.position;
-		res?.sprite.setPosition(x, y);
-	})
+const updateClientEntity = (id: string, entity: EntityData, scene: MainScene) => {
+	if (id == scene.multiplayer.id) return;
+	const res = scene.entities[id];
+	if (!res) return;
+	const { x, y } = entity.position;
+	res?.sprite.setPosition(x, y);
 }
 
-const initConnection = (scene: MainScene) => {
-	scene.multiplayer.startBroadcast();
+const killClientEntity = (id: string, entity: EntityData, scene: MainScene) => {
+	delete scene.entities[id];
 }
 
 export default establishMultiplayer;

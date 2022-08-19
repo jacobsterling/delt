@@ -12,9 +12,8 @@ const Vector2 = Phaser.Math.Vector2
 const nameof = <T>(name: Extract<keyof T, string>): string => name;
 
 const getTextures = (color: string): ITextureList => {
-    switch (color)
-    {
-        case 'red':  return RedWizard;
+    switch (color) {
+        case 'red': return RedWizard;
         case 'blue': return BlueWizard;
     }
     return BlueWizard
@@ -31,7 +30,7 @@ const getRandom = (min: number, max: number) => {
 type SafeWizardConfig = {
     color: string;
     control: boolean;
-    position: Phaser.Math.Vector2;
+    startingPosition: Phaser.Math.Vector2;
     id: string;
     defaultTexture: string;
 }
@@ -41,20 +40,20 @@ export type WizardConfig = Partial<SafeWizardConfig>;
 const defaultConfig: SafeWizardConfig = {
     color: 'red',
     control: false,
-    position: new Vector2(getRandom(100, 400), getRandom(100, 400)),
+    startingPosition: new Vector2(getRandom(100, 400), getRandom(100, 400)),
     id: '',
     defaultTexture: getTextures('red').Down,
 }
 
 export class Wizard extends Entity {
-
     private static getAllTextures = () => [BlueWizard, RedWizard];
     public declare sprite: Phaser.GameObjects.Image;
-    private declare startingPosition: Phaser.Math.Vector2;
     public projectiles: Emitter[] = [];
     public movement!: IMovementSettings[];
     private textures!: ITextureList;
     private defaultTexture!: string;
+    protected readonly startPosition!: Phaser.Math.Vector2;
+
 
     public get interval(): number {
         return this._interval;
@@ -78,7 +77,7 @@ export class Wizard extends Entity {
 
     constructor(scene: Phaser.Scene, config: WizardConfig = defaultConfig) {
         super(scene, "sprite", config.id);
-        this.startingPosition = config.position ?? defaultConfig.position;
+        this.startPosition = config.startingPosition ?? defaultConfig.startingPosition;
         this._velocity = this._walkSpeed;
         this.textures = getTextures(config?.color ?? defaultConfig.color);
         this.defaultTexture = config.defaultTexture ?? defaultConfig.defaultTexture;
@@ -113,10 +112,9 @@ export class Wizard extends Entity {
     }
 
     private createImg = () => {
-        let {x, y} = defaultConfig.position;
-        x = this.startingPosition?.x ?? x;
-        y = this.startingPosition?.y ?? y;
-        
+        let { x, y } = defaultConfig.startingPosition;
+        x = this.startPosition?.x ?? x;
+        y = this.startPosition?.y ?? y;
         this.sprite = this.scene.add.image(x, y, this.defaultTexture).setScale(5, 5);
     }
 

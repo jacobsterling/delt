@@ -1,9 +1,9 @@
 import "phaser";
-import { Entity } from "./websockets.config";
+import { Entity } from "./entities/entity";
 
 // Based on: https://github.com/joemoe/phaser-websocket-multiplayer-plugin
 
-const deserializeJsonToBasicMessage = (data: string) => {
+const deserializeJson = (data: string) => {
 	try {
 		return JSON.parse(data);
 	}
@@ -13,6 +13,22 @@ const deserializeJsonToBasicMessage = (data: string) => {
 	}
 }
 
+const constructBasicMessage = (msg_type: string, data: { [id: string]: any }) => {
+	data["msg_type"] = msg_type
+	return JSON.stringify(data)
+}
+
+type Vector2 = {
+	x: number;
+	y: number;
+}
+
+export type EntityData = {
+	position: Vector2;
+	type: string;
+};
+
+export type EntitysData = { [id: string]: EntityData; };
 export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.BasePlugin {
 	event: Phaser.Events.EventEmitter;
 	declare socket: WebSocket;
@@ -20,8 +36,11 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 	broadcastInterval!: number;
 	checkTimeoutsInterval!: number;
 
-	objectRegistry: { [id: string]: any; } = {};
-	objectLastseen: { [id: string]: any; } = {};
+	entitesRegistry: EntitysData = {};
+	entitesLastseen: { [id: string]: number; } = {};
+
+	id: string | undefined;
+	game_id: string | undefined;
 
 	config: {
 		url: string; // the url of the websocket
@@ -38,28 +57,26 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 		this.game = pluginManager.game;
 		this.event = new Phaser.Events.EventEmitter();
 
-		this.objectRegistry = {};
-		this.objectLastseen = {};
-
+		this.entitesRegistry = {};
+		this.entitesLastseen = {};
 		this.config = {
-			url: "",					// the url of the websocket
+			url: '',					// the url of the websocket
 			broadcastInterval: 200,		// the interval in milliseconds in which the state of the tracked object is broadcasted
 			pauseTimeout: 5000,			// the time (milliseconds) after which a remote object becomes inactive
 			deadTimeout: 15000,			// the time after which a remote object is removed
 			checkTimeoutsInterval: 100,	// the interval in milliseconds how oft remote objects are checked
 			autoConnect: false,			// if the connection should be established automatically
-			debug: false				// if the debug mode is on
+			debug: false
 		};
 	}
 
 	init(config = {}) {
-		this.config = Object.assign(this.config, config);
+		this.config = Object.assign(this.config, config)
 		if (this.config.autoConnect) this.connect();
 	}
 
 	connect(url = '') {
-		if (url == '')
-			url = this.config.url;
+		url === '' ? url = this.config.url : url
 		this.log('trying to connect');
 		this.socket = new WebSocket(url);
 		this.socket.addEventListener('open', this.onSocketOpen.bind(this));
@@ -75,11 +92,53 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 	}
 
 	onSocketMessage(event: any) {
-		const data = deserializeJsonToBasicMessage(event?.data ?? '');
+		const data = deserializeJson(event?.data ?? '');
 		if (data == null) return;
 
-		console.log(data)
-		//update data with json
+		switch (data?.msg_type) {
+			case "notification":
+				console.log(data?.msg)
+				break;
+
+			case "update":
+				delete data.msg_type
+				Object.entries(data).forEach(([key, element]) => {
+					const entity = this.extractEntityData(element)
+					console.log(key)
+					if (!this.entitesRegistry[key]) {
+						this.entitesRegistry[key] = entity;
+						this.event.emit('object.create', key, entity);
+						this.log('create', JSON.stringify(entity));
+					} else {
+						this.event.emit('object.update', key, entity);
+					}
+					this.entitesLastseen[key] = (new Date()).getTime();
+				})
+
+				break;
+
+			case "error":
+				console.log(data?.msg)
+				break;
+
+			case "msg":
+				console.log(data?.msg)
+				break;
+
+			case "joined":
+				this.game_id = data?.game_id
+				this.startUpdate()
+				break;
+
+			case "connected":
+				this.id = data?.id
+				this.event.emit('socket.connected', data?.id, "vans dungeon"); //game id
+				break;
+
+			default:
+				//pong ??
+				break;
+		}
 	}
 
 	onSocketError(event: any) {
@@ -95,47 +154,88 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 	checkTimeouts() {
 		let currentTime = (new Date()).getTime();
 
-		Object.entries(this.objectLastseen).forEach(([key, value]) => {
+		Object.entries(this.entitesLastseen).forEach(([key, value]) => {
 			if (typeof value != "number") return
 			if (currentTime - value > this.config.deadTimeout)
-				this.killObject(key);
+				this.killEntity(key);
 		});
 	}
 
-	registerEntity(entity: Entity) {
-		this.objectRegistry[entity.id] = entity;
+	registerEntity(id: string, entity: Entity) {
+		const entityData = this.extractEntityFeatures(entity)
+		this.entitesRegistry[id] = entityData
 	}
 
-	killObject(id: string) {
-		this.event.emit('object.kill', this.objectRegistry[id], id);
-		delete this.objectRegistry[id];
-		delete this.objectLastseen[id];
+	updateEntity(id: string, entity: Entity) {
+		const entityData = this.extractEntityFeatures(entity)
+
+		if (this.entitesRegistry[id]) {
+			this.entitesRegistry[id] = Object.assign(this.entitesRegistry[id], entityData)
+		}
 	}
 
-	updateObject(data: Object) {
-		Object.entries(data).forEach(([key, element]) => {
-			if (!this.objectRegistry[key]) {
-				this.objectRegistry[key] = element;
-				this.event.emit('object.create', element);
-				this.log('create', JSON.stringify(element));
-			} else {
-				this.event.emit('object.update', this.objectRegistry[key], element);
-			}
-			this.objectLastseen[key] = (new Date()).getTime();
-		})
+	extractEntityFeatures(entity: Entity) {
+		const position: Vector2 = {
+			x: entity.sprite.x,
+			y: entity.sprite.y
+		}
+		const data: EntityData = {
+			position: position,
+			type: entity.type
+		}
+
+		return data
 	}
 
-	startBroadcast() {
+	extractEntityData(entity: any) {
+		const data: EntityData = {
+			position: entity.position,
+			type: entity.type
+		}
+
+		return data
+	}
+
+	killEntity(id: string) {
+		this.event.emit('object.kill', this.entitesRegistry[id], id);
+		delete this.entitesRegistry[id];
+		delete this.entitesLastseen[id];
+	}
+
+	joinGame(game_id: string) {
+		const msg = constructBasicMessage("join", { ["game_id"]: game_id })
+
+		this.broadcast(msg)
+	}
+
+	login(account_id: string) {
+		const msg = constructBasicMessage("login", { ["account_id"]: account_id })
+
+		this.broadcast(msg)
+	}
+
+	sendMessage(message: string = "") {
+		const msg = constructBasicMessage("msg", { ["msg"]: message })
+
+		this.broadcast(msg)
+	}
+
+	startUpdate() {
 		this.broadcastInterval = setInterval(
 			() => {
-				this.broadcast(this.objectRegistry);
+				this.broadcast(constructBasicMessage("update", this.entitesRegistry));
 			},
 			this.config.broadcastInterval
 		);
 	}
 
-	broadcast(msg: Object) {
-		this.socket.send(JSON.stringify(msg));
+	broadcast(msg: string) {
+		if (this.socket) {
+			this.socket.send(msg);
+		} else {
+			console.log(this.socket)
+		}
+
 	}
 
 	stopBroadcast() {

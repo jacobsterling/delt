@@ -2,10 +2,13 @@ import "phaser";
 import { Emitter } from "./emitters/fire";
 import { Entity } from "./entities/entity";
 import { Wizard } from "./entities/wizard";
+import { EmitterData, EntityFeatures, EntitysData } from "./websockets.config";
 
 // Based on: https://github.com/joemoe/phaser-websocket-multiplayer-plugin
 
-const deserializeJson = (data: string) => {
+//this file just sends/receives data from server
+
+const deserializeJsonResponse = (data: string) => {
 	try {
 		return JSON.parse(data);
 	}
@@ -15,28 +18,15 @@ const deserializeJson = (data: string) => {
 	}
 }
 
-const constructBasicMessage = (msg_type: string, data: { [id: string]: any }) => {
-	data["msg_type"] = msg_type
-	return JSON.stringify(data)
-}
-
-export type Vector2 = {
-	x: number;
-	y: number;
-}
-
-export type EmitterData = {
-	type: string;
-	direction: Vector2
-	spawner: string;
-}
-
-export type EntityData = {
-	position: Vector2;
-	type: string;
+export type gameConfig = {
+	account_id?: string,
+	game_id?: string,
+	privite?: boolean,
+	whitelist?: [],
+	password?: string,
+	data?: {},
+	autoconnect: boolean
 };
-
-export type EntitysData = { [id: string]: EntityData; };
 export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.BasePlugin {
 	event: Phaser.Events.EventEmitter;
 	declare socket: WebSocket;
@@ -47,7 +37,8 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 	entitesRegistry: EntitysData = {};
 	entitesLastseen: { [id: string]: number; } = {};
 
-	id: string | undefined;
+	game_state: { [id: string]: any } = {}
+
 	host_id: string | undefined;
 	game_id: string | undefined;
 
@@ -57,8 +48,6 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 		pauseTimeout: number; // the time (milliseconds) after which a remote object becomes inactive
 		deadTimeout: number; // the time after which a remote object is removed
 		checkTimeoutsInterval: number; // the interval in milliseconds how oft remote objects are checked
-		autoConnect: boolean; // if the connection should be established automatically
-		debug: boolean; // if the debug mode is on
 	};
 
 	constructor(pluginManager: any) {
@@ -68,78 +57,99 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 
 		this.entitesRegistry = {};
 		this.entitesLastseen = {};
+
 		this.config = {
 			url: '',					// the url of the websocket
 			broadcastInterval: 200,		// the interval in milliseconds in which the state of the tracked object is broadcasted
 			pauseTimeout: 5000,			// the time (milliseconds) after which a remote object becomes inactive
 			deadTimeout: 15000,			// the time after which a remote object is removed
 			checkTimeoutsInterval: 100,	// the interval in milliseconds how oft remote objects are checked
-			autoConnect: false,			// if the connection should be established automatically
-			debug: false
 		};
 	}
 
-	init(config = {}) {
-		this.config = Object.assign(this.config, config)
-		if (this.config.autoConnect) this.connect();
-	}
-
-	connect(url = '') {
-		url === '' ? url = this.config.url : url
-		this.log('trying to connect');
-		this.socket = new WebSocket(url);
+	connect(config = {}) {
+		this.config = Object.assign(this.config, config);
+		this.socket = new WebSocket(this.config.url);
 		this.socket.addEventListener('open', this.onSocketOpen.bind(this));
 		this.socket.addEventListener('message', this.onSocketMessage.bind(this));
 		this.socket.addEventListener('close', this.onSocketClose.bind(this));
 		this.socket.addEventListener('error', this.onSocketError.bind(this));
 	}
 
+	createGame(account_id: string, game_config: gameConfig = {
+		autoconnect: false
+	}) {
+
+		game_config.account_id = account_id
+
+		this.broadcastMessage("create", game_config)
+
+		if (game_config.autoconnect && game_config.account_id) {
+			this.event.on('game.created', (game_id: string) => {
+				console.warn(game_id, " created.")
+				this.joinGame(account_id, game_id)
+			}
+			);
+		}
+	}
+
+	joinGame(account_id: string, game_id: string) {
+		this.broadcastMessage("join", { "account_id": account_id, "game_id": game_id })
+	}
+
+	getGames() {
+		this.broadcastMessage("list", {})
+	}
+
+	checkTimeouts() {
+		let currentTime = (new Date()).getTime();
+
+		Object.entries(this.entitesLastseen).forEach(([id, value]) => {
+			if (typeof value != "number") return
+			if (currentTime - value > this.config.deadTimeout) {
+				this.event.emit('entity.timeout', id);
+			}
+		});
+	}
+
 	onSocketOpen(event: any) {
-		this.log('socket open')
 		this.event.emit('socket.open', event);
 		this.checkTimeoutsInterval = setInterval(this.checkTimeouts.bind(this), this.config.checkTimeoutsInterval);
 	}
 
 	onSocketMessage(event: any) {
-		const data = deserializeJson(event?.data ?? '')
-		if (data == null) return;
+		const res = deserializeJsonResponse(event?.data ?? '')
+		if (res == null) return;
 
-		switch (data?.msg_type) {
+		switch (res?.msg_type) {
 			case "notification":
-				console.log("server notifcation:", data?.msg)
+				console.warn(res?.msg)
+				break;
+
+			case "list":
+				delete res.msg_type
+				console.table(res)
+				this.event.emit('game.list', res);
 				break;
 
 			//used for temp object creation
 			case "spawn":
-				delete data.msg_type
-
-				Array(data?.spawns).forEach(([spawn]) => {
-					switch (spawn?.type) {
-
-						//manage this here ? or in game ?
-						case "projectile":
-							const projectile = this.extractSpawnData(spawn)
-							this.event.emit('spawn.create', spawn)
-
-						default:
-							break;
-					}
+				delete res.msg_type
+				Array(res?.spawns).forEach(([spawn]) => {
+					this.event.emit('spawn.create', spawn)
 				})
-
 				break;
 
 			case "update":
-				delete data.msg_type
-				Object.entries(data).forEach(([key, element]) => {
+				delete res.msg_type
+				Object.entries(res).forEach(([key, element]) => {
 					switch (key) {
 						case "entities":
 							Object.entries(Object(element)).forEach(([id, entity]) => {
-								const entityData = this.extractEntityData(entity)
 								if (!this.entitesRegistry[id]) {
-									this.entitesRegistry[id] = entityData
-									this.event.emit('object.create', id, entityData)
+									this.event.emit('entity.create', id, entity)
 								} else {
-									this.event.emit('object.update', id, entityData)
+									this.event.emit('entity.update', id, entity)
 								}
 								this.entitesLastseen[id] = (new Date()).getTime()
 							}
@@ -147,7 +157,10 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 							break;
 
 						case "data":
-							//change game state
+							this.game_state = Object.assign(this.game_state, element)
+							this.event.emit('game.updated', this.game_state);
+							//have object.create in here when difference in game data ??
+
 							break;
 
 						default:
@@ -156,39 +169,41 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 				})
 				break;
 
-			case "error":
-				console.warn("server error:", data?.msg)
-				break;
-
-			case "msg":
-				console.log(data?.msg)
-				break;
-
 			case "joined":
-				this.game_id = data?.game_id
-				this.host_id = data?.host_id
-				if (this.id) {
-					this.startUpdate(this.id)
-
-					if (this.id == this.host_id) {
-						//send updates with game state
-					}
-				}
-
+				this.game_id = res?.game_id
+				this.host_id = res?.host_id
+				this.event.emit('game.joined');
 				break;
 
-			case "connected":
-				this.id = data?.id
-				this.event.emit('socket.connected', data?.id); //game id
+			case "created":
+				this.event.emit('game.created', res?.game_id);
 				break;
 
 			case "left":
-				console.log("server notifcation: disconnected from", this.game_id)
+				this.event.emit('game.left', this.game_id);
 				this.game_id = undefined;
 				break;
 
+			case "connected":
+				this.event.emit('socket.connected', res?.id); //game id
+				break;
+
+			case "error":
+				console.warn(res?.msg)
+				this.event.emit('socket.error', res?.msg);
+
+				if (res?.msg == "Game id already exists") {
+					this.event.emit('game.exists', res?.game_id);
+				}
+				break;
+
+			case "msg":
+				console.info(res?.msg)
+				this.event.emit('message.recieved', res?.msg);
+				break;
+
 			default:
-				//pong ??
+				//console.warn("Unexpected message", data?.msg)
 				break;
 		}
 	}
@@ -199,129 +214,28 @@ export default class PhaserWebsocketMultiplayerPlugin extends Phaser.Plugins.Bas
 
 	onSocketClose(event: any) {
 		clearInterval(this.checkTimeoutsInterval);
-		this.stopUpdate();
+		this.stopBroadcast();
 		this.game_id = undefined;
 		this.event.emit('socket.close', event);
 	}
 
-	checkTimeouts() {
-		let currentTime = (new Date()).getTime();
-
-		Object.entries(this.entitesLastseen).forEach(([key, value]) => {
-			if (typeof value != "number") return
-			if (currentTime - value > this.config.deadTimeout)
-				this.killEntity(key);
-		});
-	}
-
-	registerEntity(id: string, entity: Entity) {
-		const entityData = this.extractEntityFeatures(entity)
-		this.entitesRegistry[id] = entityData
-	}
-
-	updateEntity(id: string, entity: Entity) {
-		const entityData = this.extractEntityFeatures(entity)
-
-		if (this.entitesRegistry[id]) {
-			this.entitesRegistry[id] = Object.assign(this.entitesRegistry[id], entityData)
-		}
-	}
-
-	extractEntityFeatures(entity: Entity) {
-		const position: Vector2 = {
-			x: entity.sprite.x,
-			y: entity.sprite.y
-		}
-
-		const data: EntityData = {
-			position: position,
-			type: entity.type,
-		}
-
-		return data
-	}
-
-	extractEntityData(entity: any) {
-		const data: EntityData = {
-			position: entity?.position,
-			type: entity?.type,
-		}
-
-		return data
-	}
-
-	extractSpawnData(spawn: any) {
-		const data: EmitterData = {
-			direction: spawn.direction,
-			type: spawn.type,
-			spawner: spawn.spawner
-		}
-
-		return data
-	}
-
-	killEntity(id: string) {
-		this.event.emit('object.kill', this.entitesRegistry[id], id);
-		delete this.entitesRegistry[id];
-		delete this.entitesLastseen[id];
-	}
-
-	joinGame(account_id: string, game_id: string) {
-		if (!this.game_id) {
-			const msg = constructBasicMessage("join", { ["game_id"]: game_id, ["account_id"]: account_id })
-
-			this.broadcast(msg)
-		} else {
-			this.log("already connected to game")
-		}
-	}
-
-	createGame(game_id: string) {
-		const msg = constructBasicMessage("create", { ["game_id"]: game_id })
-
-		this.broadcast(msg)
-	}
-
-
-	sendMessage(message: string = "") {
-		const msg = constructBasicMessage("msg", { ["msg"]: message })
-
-		this.broadcast(msg)
-	}
-
-
-	//can merge into startUpdate once projectile garbage collection is in place
-	spawn(spawns: EmitterData[]) {
-
-		const msg = constructBasicMessage("update", { ["spawns"]: spawns })
-		this.broadcast(msg)
-	}
-
-	startUpdate(id: string) {
+	startBroadcast(id: string) {
 		this.broadcastInterval = setInterval(
 			() => {
 				//add field for game data
-				this.broadcast(constructBasicMessage("update", { ["self"]: this.entitesRegistry[id] }));
+
+				this.broadcastMessage("update", { "self": this.entitesRegistry[id] });
 			},
 			this.config.broadcastInterval
 		);
 	}
 
-	broadcast(msg: string) {
-		if (this.socket) {
-			this.socket.send(msg);
-		} else {
-			console.log(this.socket)
-		}
-
-	}
-
-	stopUpdate() {
+	stopBroadcast() {
 		clearInterval(this.broadcastInterval);
 	}
 
-	log(msg: string, data: any = '') {
-		if (this.config.debug)
-			console.log('WEBSOCKET MULTIPLAYER: ' + msg, data);
+	broadcastMessage = (msg_type: string, data: { [id: string]: any }) => {
+		data["msg_type"] = msg_type
+		this.socket.send(JSON.stringify(data))
 	}
 }

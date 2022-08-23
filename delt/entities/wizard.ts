@@ -6,7 +6,6 @@ import getMovementSettings from './wizard.movement';
 import BlueWizard from "../assets/WizardBlue";
 import RedWizard from "../assets/WizardRed";
 import MainScene from '../scenes/mainScene';
-import { EmitterData } from '../websockets';
 
 const Vector2 = Phaser.Math.Vector2
 

@@ -3,8 +3,8 @@ import { Wizard } from '../entities/wizard';
 import keyboardBindings from '../keyboardBindings';
 import * as Fire from '../emitters/fire';
 import { Emitter } from '../emitters/fire';
-import PhaserWebsocketMultiplayerPlugin, { EmitterData, Vector2 } from '../websockets';
-import establishMultiplayer from '../websockets.config';
+import PhaserWebsocketMultiplayerPlugin from '../websockets';
+import establishMultiplayer, { EmitterData, extractEntityFeatures } from '../websockets.config';
 import WizardBlue from '../assets/WizardBlue';
 import { Entity } from '../entities/entity';
 
@@ -31,13 +31,7 @@ export default class MainScene extends Phaser.Scene {
         establishMultiplayer(this);
     }
 
-    public joinGame = (uid: string) => {
-
-        this.multiplayer.createGame("vans dungeon")
-
-        console.log("uid is:", uid)
-        //here enter NEAR account id and game name
-        this.multiplayer.joinGame("jacob.near", "vans dungeon")
+    public initialize = (uid: string) => {
 
         this.player = new Wizard(this, {
             color: 'blue',
@@ -48,17 +42,34 @@ export default class MainScene extends Phaser.Scene {
         this.player.setName(uid);
         this.player.create();
         this.entities[uid] = this.player;
-        this.multiplayer.registerEntity(uid, this.player);
+
+        this.multiplayer.entitesRegistry[uid] = extractEntityFeatures(this.player)
+
+        this.multiplayer.createGame("van.near", { game_id: "vans dungeon", autoconnect: true })
+
+        //this.multiplayer.getGames()
     }
 
-    public emitEntityProjectile = (spawn: EmitterData) => {
-        this.entities[spawn.spawner].emitProjectile(spawn.direction)
+    public handleEmitter = (spawn: EmitterData) => {
+        switch (spawn.type) {
+            case "projectile":
+                this.entities[spawn.spawner].emitProjectile(spawn.direction)
+                break;
+
+            default:
+                break;
+        }
     }
 
     public update = (t: number, dt: number) => {
-        Object.entries(this.entities).forEach(([key, entity]) => {
+        Object.entries(this.entities).forEach(([id, entity]) => {
             entity.update(t, dt)
-            this.multiplayer.updateEntity(key, entity)
+            //only updates if connected to game
+            if (this.multiplayer.game_id) {
+                this.multiplayer.entitesRegistry[id] = extractEntityFeatures(entity)
+            }
         });
     }
 }
+
+

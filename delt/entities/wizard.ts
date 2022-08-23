@@ -6,6 +6,7 @@ import getMovementSettings from './wizard.movement';
 import BlueWizard from "../assets/WizardBlue";
 import RedWizard from "../assets/WizardRed";
 import MainScene from '../scenes/mainScene';
+import { EmitterData } from '../websockets';
 
 const Vector2 = Phaser.Math.Vector2
 
@@ -48,7 +49,6 @@ const defaultConfig: SafeWizardConfig = {
 export class Wizard extends Entity {
     private static getAllTextures = () => [BlueWizard, RedWizard];
     public declare sprite: Phaser.GameObjects.Image;
-    public projectiles: Emitter[] = [];
     public movement!: IMovementSettings[];
     private textures!: ITextureList;
     private defaultTexture!: string;
@@ -124,6 +124,8 @@ export class Wizard extends Entity {
 
     public onPointerDown = (event: Phaser.Input.Pointer) => {
         this.projectiles.push(new Emitter(this.scene, this.sprite, event))
+
+        return this.sprite
     }
 
     public update = (t: number, dt: number) => {

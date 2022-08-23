@@ -1,5 +1,6 @@
 import Image from '../assets/particles/flares.png';
 import Json from '../assets/particles/flares.json';
+import { Vector } from 'matter';
 
 export const preload = (scene: Phaser.Scene) => {
     scene.load.atlas('flares', Image, Json);
@@ -14,7 +15,7 @@ export class Emitter {
 
     public declare velocity: Phaser.Types.Math.Vector2Like;
 
-    constructor(scene: Phaser.Scene, position: Phaser.GameObjects.Image, { x, y }: Phaser.Input.Pointer) {
+    constructor(scene: Phaser.Scene, position: Phaser.GameObjects.Image, direction: Vector) {
 
         // Marks the direction of the projectile
         const radToDeg = (rad: number) => rad * (180 / Math.PI);
@@ -22,12 +23,12 @@ export class Emitter {
         const px = position.x;
         const py = position.y;
 
-        const direction = Math.atan2(py - y, px - x);
+        const atan = Math.atan2(py - direction.y, px - direction.x);
 
         // Sends the projectile in the correct direction given the right speed
         const d = {
-            x: -radToDeg(Math.cos(direction)),
-            y: -radToDeg(Math.sin(direction))
+            x: -radToDeg(Math.cos(atan)),
+            y: -radToDeg(Math.sin(atan))
         };
 
         const speed = 0.07;

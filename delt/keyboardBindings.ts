@@ -1,6 +1,7 @@
 import 'phaser';
 import { Entity } from './entities/entity';
 import MainScene from './scenes/mainScene';
+import { EmitterData, Vector2 } from './websockets';
 
 // https://rexrainbow.github.io/phaser3-rex-notes/docs/site/touchevents/
 // https://rexrainbow.github.io/phaser3-rex-notes/docs/site/keyboardevents/
@@ -40,6 +41,14 @@ export default (scene: MainScene) => {
 
     scene.input.on('pointerdown', (event: Phaser.Input.Pointer) => {
         scene.player.onPointerDown(event);
+
+        const projectile: EmitterData = {
+            type: "projectile",
+            direction: event.position,
+            spawner: scene.player.name
+        }
+
+        scene.multiplayer.spawn([projectile])
     });
     scene.input.on('pointermove', (event: Phaser.Input.Pointer) => {
         scene.player.onMouseMove(event);

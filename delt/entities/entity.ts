@@ -1,9 +1,12 @@
 import 'phaser';
+import { Emitter } from '../emitters/fire';
+import { EmitterData, Vector2 } from '../websockets';
 
 export class Entity extends Phaser.GameObjects.GameObject {
     public readonly sprite!: Phaser.GameObjects.Image;
     protected _velocity!: number;
     protected _interval: number = 250;
+    public projectiles: Emitter[] = [];
     protected readonly _initialInterval: number = 250;
     protected isControlling: boolean = false;
     protected readonly id!: string;
@@ -39,5 +42,9 @@ export class Entity extends Phaser.GameObjects.GameObject {
 
     public destroy = () => {
 
+    }
+
+    public emitProjectile = (direction: Vector2) => {
+        this.projectiles.push(new Emitter(this.scene, this.sprite, direction))
     }
 }

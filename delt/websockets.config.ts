@@ -1,7 +1,8 @@
 import "phaser";
+import { Emitter } from "./emitters/fire";
 import { Wizard } from "./entities/wizard";
 import MainScene from "./scenes/mainScene";
-import { EntityData } from "./websockets";
+import { EmitterData, EntityData, Vector2 } from "./websockets";
 
 const establishMultiplayer = (scene: MainScene, game_id: string = "global") => {
 	scene.multiplayer.event.on('socket.open', () => scene.multiplayer.init(), scene);
@@ -18,7 +19,9 @@ const establishMultiplayer = (scene: MainScene, game_id: string = "global") => {
 		killClientEntity(id, entity, scene);
 	}, scene.multiplayer);
 
-	scene.multiplayer.event.on('socket.connected', (id: string, game_id: string) => scene.joinGame(id, game_id), scene);
+	scene.multiplayer.event.on('socket.connected', (id: string) => scene.joinGame(id), scene);
+
+	scene.multiplayer.event.on('spawn.create', (spawn: EmitterData) => scene.emitEntityProjectile(spawn), scene);
 
 	scene.multiplayer.connect("ws://localhost:42069");
 }
@@ -35,8 +38,6 @@ const createClientEntity = (id: string, entity: EntityData, scene: MainScene) =>
 	newWizard.preload();
 	newWizard.create();
 	scene.entities[id] = newWizard;
-
-
 }
 
 const updateClientEntity = (id: string, entity: EntityData, scene: MainScene) => {

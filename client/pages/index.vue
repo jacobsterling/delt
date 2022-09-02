@@ -9,10 +9,11 @@ onMounted(async () => {
     gameInstance.value = game.launch("delt-container")
   }
 })
+
 </script>
 
 <template>
-  <div>
+  <div class="w-100% h-100%">
     <div v-if="downloaded" id="delt-container" />
     <div v-else>
       Downloading...

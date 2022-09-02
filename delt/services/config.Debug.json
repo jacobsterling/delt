@@ -1,0 +1,30 @@
+{
+    "debug": true,
+    "gameConfig": {
+        "type": 0,
+        "width": 1920,
+        "height": 1080,
+        "pixelArt": true,
+        "render": {
+            "antialias": false,
+            "pixelArt": true
+        },
+        "physics": {
+            "default": "arcade",
+            "arcade": {
+                "debug": true,
+                "debugShowBody": true
+            }
+        },
+        "plugins": {
+            "global": [
+                {
+                    "key": "multiplayer",
+                    "plugin": {},
+                    "mapping": "multiplayer",
+                    "start": false
+                }
+            ]
+        }
+    }
+}

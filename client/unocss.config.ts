@@ -17,7 +17,7 @@ const presetDelt = (): Preset<Theme> => {
         "d-bg-base": "bg-white dark:bg-slate-900 warm:bg-gradient-to-b warm:from-amber-300 warm:to-amber-100 cold:bg-gradient-to-b cold:from-sky-300 cold:to-sky-100",
         "d-focus-base": "focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75",
         "d-text-base": "text-slate-900 dark:text-white",
-        "d-container-base": "mx-auto sm:px-6 px-4 py-4 max-w-screen-2xl",
+        "d-container-base": "sm:px-6 max-w-screen-2xl", // px-4 py-4 mx-auto
         "d-link-base": "",
 
         // Body

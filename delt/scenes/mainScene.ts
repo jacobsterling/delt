@@ -1,74 +1,49 @@
-import 'phaser';
-import { Wizard } from '../entities/wizard';
-import keyboardBindings from '../keyboardBindings';
-import * as Fire from '../emitters/fire';
-import { Emitter } from '../emitters/fire';
-import PhaserWebsocketMultiplayerPlugin from '../websockets';
-import establishMultiplayer, { EmitterData, extractEntityFeatures } from '../websockets.config';
-import WizardBlue from '../assets/WizardBlue';
-import { Entity } from '../entities/entity';
+import ComponentService from '../services/componentService';
+import PhaserMultiplayerPlugin from "../plugins/multiplayer";
+import Entity from '../entities/entity';
+import Affector from "../entities/affector"
 
-export type Entities = { [id: string]: Entity };
+export const radToDeg = (rad: number) => rad * (180 / Math.PI)
 
+export const getRandom = (min: number, max: number) => {
+    return Math.random() * (max - min) + min;
+}
 export default class MainScene extends Phaser.Scene {
-    public image!: Phaser.GameObjects.Image;
-    public player!: Wizard;
-    public emitter!: Emitter;
-    public entities: Entities = {};
-    public multiplayer!: PhaserWebsocketMultiplayerPlugin;
+    public components!: ComponentService
+    public multiplayer?: PhaserMultiplayerPlugin;
+    public entityPhysics!: Phaser.Physics.Arcade.Group;
+    public affectors!: Phaser.Physics.Arcade.Group;
 
     constructor() {
-        super({ key: 'MainScene' });
+        super({
+            key: 'MainScene',
+        })
     }
 
-    public preload = () => {
-        Wizard.preloadTextures(this);
-        Fire.preload(this);
+    init() {
+        this.multiplayer = new PhaserMultiplayerPlugin(this.plugins)
+        this.components = new ComponentService()
+
+        this.physics.world.setBounds(0, 0, 1920, 1080);
+        this.physics.world.setBoundsCollision();
+
+        this.entityPhysics = this.physics.add.group()
+        this.affectors = this.physics.add.group()
+
+        this.physics.add.collider(this.entityPhysics, this.affectors, (entity, effector) => {
+            (effector as Affector).affect(entity as Entity)
+        })
+
+        //this doesnt work ?
+        this.entityPhysics.world.on('worldbounds', (body: any) => {
+            console.log(body)
+        })
     }
 
-    public create = () => {
-        keyboardBindings(this);
-        establishMultiplayer(this);
-    }
-
-    public initialize = (uid: string) => {
-
-        this.player = new Wizard(this, {
-            color: 'blue',
-            control: true,
-            defaultTexture: WizardBlue.Down
-        });
-
-        this.player.setName(uid);
-        this.player.create();
-        this.entities[uid] = this.player;
-
-        this.multiplayer.entitesRegistry[uid] = extractEntityFeatures(this.player)
-
-        this.multiplayer.createGame("van.near", { game_id: "vans dungeon", autoconnect: true })
-
-        //this.multiplayer.getGames()
-    }
-
-    public handleEmitter = (spawn: EmitterData) => {
-        switch (spawn.type) {
-            case "projectile":
-                this.entities[spawn.spawner].emitProjectile(spawn.direction)
-                break;
-
-            default:
-                break;
-        }
-    }
+    create = () => { }
 
     public update = (t: number, dt: number) => {
-        Object.entries(this.entities).forEach(([id, entity]) => {
-            entity.update(t, dt)
-            //only updates if connected to game
-            if (this.multiplayer.game_id) {
-                this.multiplayer.entitesRegistry[id] = extractEntityFeatures(entity)
-            }
-        });
+        this.components.update(dt)
     }
 }
 

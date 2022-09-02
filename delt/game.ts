@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import GetConfig from './config';
+import GetConfig from './services/config';
 
 const launch = (containerId: string) => {
 	return new Phaser.Game(GetConfig(containerId).gameConfig);

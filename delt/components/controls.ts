@@ -61,7 +61,7 @@ export default class Controls implements IComponent {
     const scene = (this.player.scene as MainScene)
 
     if (scene.multiplayer) {
-      scene.multiplayer.broadcastSelf(dt)
+      scene.multiplayer.broadcastSelf(this.player)
     }
   }
 }

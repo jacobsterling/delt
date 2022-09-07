@@ -1,6 +1,7 @@
 <script setup lang="ts">
 
 import { Token } from "../../plugins/contract.client"
+
 const client = useSupabaseClient()
 const route = useRoute()
 

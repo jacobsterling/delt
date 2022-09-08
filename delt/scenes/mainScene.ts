@@ -12,7 +12,7 @@ export const getRandom = (min: number, max: number) => {
 }
 export default class MainScene extends Phaser.Scene {
     public components!: ComponentService
-    public multiplayer?: Multiplayer;
+    public multiplayer!: Multiplayer;
     public entityPhysics!: Phaser.Physics.Arcade.Group;
     public affectors!: Phaser.Physics.Arcade.Group;
 
@@ -44,6 +44,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     create = () => {
+        console.log("created")
         if (this.multiplayer) {
             this.multiplayer.events.on("game.spawn", (features: AffectorConfig, spawner_id: string) => {
                 const spawner = this.children.getByName(spawner_id)

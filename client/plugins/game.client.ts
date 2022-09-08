@@ -4,8 +4,8 @@
 import Phaser, { Game } from "phaser"
 import { AffectorConfig } from "~~/../delt/entities/affector"
 import { EntityConfig } from "~~/../delt/entities/entity"
+import Player, { PlayerConfig } from "~~/../delt/entities/player"
 
-import Player, { PlayerConfig } from "../../delt/entities/player"
 import MainScene, { getRandom } from "../../delt/scenes/mainScene"
 import Preloader from "../../delt/scenes/preloader"
 import DebugConfig from "./config.Debug.json"
@@ -38,7 +38,7 @@ export interface Multiplayer {
 
   register: (accountId: string) => void,
 
-  joinGame: (gameId: string, selfData: PlayerConfig) => void
+  joinGame: (gameId: string) => void //, selfData: PlayerConfig
 
   createGame: (gameConfig: gameConfig) => void
 
@@ -113,13 +113,12 @@ export default defineNuxtPlugin(() => {
       broadcast: false,
       broadcastMessage: (msgType: string, data: { [id: string]: any }) => {
         data.msg_type = msgType// used to inforce a msg_type
-        if (delt.multiplayer.socket && delt.multiplayer.self_id) {
+        if (delt.multiplayer.socket) {
           delt.multiplayer.socket.send(JSON.stringify(data))
         }
       },
 
       broadcastSelf: (self: Player) => {
-        console.log("broadcast")
         if (delt.multiplayer.broadcast && delt.multiplayer.self_id && delt.game) {
           delt.multiplayer.broadcastMessage("update", { self: extractEntityFeatures(self) })
         }
@@ -144,7 +143,7 @@ export default defineNuxtPlugin(() => {
 
         delt.multiplayer.events.on("game.created", (gameId: string) => {
           console.warn(gameId, " created.")
-          if (config.autoconnect) { delt.multiplayer.joinGame(gameId, config.autoconnect) }
+          if (config.autoconnect) { delt.multiplayer.joinGame(gameId) } // config.autoconnect
         }
         )
       },
@@ -169,7 +168,17 @@ export default defineNuxtPlugin(() => {
         }
       },
 
-      joinGame: (gameId: string, selfData: PlayerConfig) => {
+      joinGame: (gameId: string) => { // , selfData: PlayerConfig
+        const selfData: PlayerConfig = {
+          attackSpeed: 3,
+          control: true,
+          hp: 100,
+          speed: 200,
+          type: "wizard",
+          x: getRandom(100, 400),
+          y: getRandom(100, 400)
+        }
+
         delt.multiplayer.broadcastMessage("join", { data: selfData, game_id: gameId })
       },
 
@@ -196,15 +205,6 @@ export default defineNuxtPlugin(() => {
 
             // testing purposes
             delt.multiplayer.createGame({
-              autoconnect: {
-                attackSpeed: 3,
-                control: true,
-                hp: 100,
-                speed: 200,
-                type: "wizard",
-                x: getRandom(100, 400),
-                y: getRandom(100, 400)
-              },
               game_id: "vans dungeon"
             })
             break
@@ -258,13 +258,14 @@ export default defineNuxtPlugin(() => {
 
           case "joined":
             console.warn(res?.msg)
+            delt.multiplayer.self_id = res?.id
             delt.multiplayer.game = {
               game_id: res.game_id,
               game_state: {},
               host_id: res.host_id,
               players: {}
             }
-            delt.game.scene.start("MainScene", delt.multiplayer)
+            delt.game.scene.start("MainScene", { multiplayer: delt.multiplayer })
             delt.visible = true
             break
 
@@ -281,11 +282,8 @@ export default defineNuxtPlugin(() => {
           case "info":
             delete res.msg_type
             // eslint-disable-next-line no-case-declarations
-            const gameId = res.game_id
-            delete res.game_id
-            delt.multiplayer.games[gameId] = res
-            delt.multiplayer.events.emit("game.added", gameId)
-            console.table(delt.multiplayer.games)
+            delt.multiplayer.games[res.game_id] = res
+            delt.multiplayer.events.emit("game.added", res.game_id)
             break
 
           case "ended":
@@ -293,8 +291,6 @@ export default defineNuxtPlugin(() => {
             break
 
           case "connected":
-            delt.multiplayer.self_id = res?.id
-
             delt.multiplayer.events.emit("socket.connected")
             break
 
@@ -307,18 +303,11 @@ export default defineNuxtPlugin(() => {
             console.warn(res?.msg)
             delt.multiplayer.events.emit("socket.error", res?.msg)
 
-            // //temporary for testing 2 players
-            // if (res?.msg == "Game id already exists") {
-            // 	multiplayer.joinGame("darkholme.near", res?.game_id, {
-            // 		control: true,
-            // 		type: "wizard",
-            // 		x: getRandom(100, 400),
-            // 		y: getRandom(100, 400),
-            // 		hp: 100,
-            // 		speed: 200,
-            // 		attackSpeed: 3,
-            // 	})
-            // }
+            //  temporary for testing 2 players
+            if (res?.msg === "Account id already registered") {
+              delt.multiplayer.register("darkholme.near")
+            }
+
             break
 
           case "msg":

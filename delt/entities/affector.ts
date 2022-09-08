@@ -98,7 +98,7 @@ export default class Affector extends Phaser.Physics.Arcade.Sprite {
   public affect(entity: Entity) {
     const scene = (this.scene as Mainscene)
 
-    if (!scene.multiplayer || entity.name == scene.multiplayer.self_id || (!scene.multiplayer.players[entity.name] && scene.multiplayer.isHost())) {
+    if (!scene.multiplayer.game || entity.name == scene.multiplayer.self_id || (!scene.multiplayer.game.players[entity.name] && scene.multiplayer.isHost())) {
       Object.entries(this.affects).forEach(([id, affect]) => {
         affect.affect(entity, this)
       })

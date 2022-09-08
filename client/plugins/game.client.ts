@@ -40,6 +40,8 @@ export interface Multiplayer {
 
   joinGame: (gameId: string) => void //, selfData: PlayerConfig
 
+  leaveGame: () => void //, selfData: PlayerConfig
+
   createGame: (gameConfig: gameConfig) => void
 
   connect: (accountId?: string, url?: string) => void
@@ -182,6 +184,10 @@ export default defineNuxtPlugin(() => {
         delt.multiplayer.broadcastMessage("join", { data: selfData, game_id: gameId })
       },
 
+      leaveGame: () => {
+        delt.multiplayer.broadcastMessage("leave", {})
+      },
+
       onSocketClose: (_event: any) => {
         delt.multiplayer.game = undefined
         if (delt.game) {
@@ -280,6 +286,7 @@ export default defineNuxtPlugin(() => {
             delt.multiplayer.events.emit("game.left", delt.multiplayer.game.game_id)
             delt.multiplayer.broadcast = false
             delt.multiplayer.game = undefined
+            delt.game.scene.start("Preloader")
             break
 
           case "info":

@@ -27,6 +27,7 @@ export default class Player extends Entity {
 
             this.destroy()
             scene.entityPhysics.kill(this)
+            scene.multiplayer.leaveGame()
           })
         }
       }

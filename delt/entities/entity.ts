@@ -107,10 +107,10 @@ export default class Entity extends Phaser.Physics.Arcade.Sprite {
             scene.components.removeComponent(this, Movement)
 
             this?.anims.play("death", true).once("animationcomplete", () => {
-                if (!scene.multiplayer) {
+                if (!scene.multiplayer.game) {
                     this.destroy()
                     scene.entityPhysics.kill(this)
-                } else if (scene.multiplayer.players[this.name]) {
+                } else if (scene.multiplayer.game.players[this.name]) {
                     this.emit("player.destroy")
                 } else if (scene.multiplayer.isHost()) {
                     this.destroy()

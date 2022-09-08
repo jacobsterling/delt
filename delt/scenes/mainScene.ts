@@ -44,7 +44,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     create = () => {
-        console.log("created")
+
         if (this.multiplayer) {
             this.multiplayer.events.on("game.spawn", (features: AffectorConfig, spawner_id: string) => {
                 const spawner = this.children.getByName(spawner_id)
@@ -149,6 +149,7 @@ export default class MainScene extends Phaser.Scene {
                     }
                 }
             })
+            console.log("created")
         }
     }
 

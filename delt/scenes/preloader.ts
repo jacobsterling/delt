@@ -15,5 +15,7 @@ export default class Preloader extends Phaser.Scene {
     //change to load.aesprite
     this.load.spritesheet("wizard", Players.WizardBlue, { frameWidth: 32, frameHeight: 32 })//load these dynamiclly upon creating the first entity of this type, use loaded spritesheet for every entity after
     this.load.atlas('flares', Image, Json);
+
+    console.log("preloaded")
   }
 }

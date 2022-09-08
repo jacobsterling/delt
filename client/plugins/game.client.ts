@@ -197,10 +197,13 @@ export default defineNuxtPlugin(() => {
 
         switch (res?.msg_type) {
           case "notification":
+            delete res.msg_type
             console.warn(res?.msg)
             break
 
           case "registered":
+            delete res.msg_type
+            delt.multiplayer.accountId = res.account_id
             delt.multiplayer.events.emit("socket.registered")
 
             // testing purposes
@@ -287,16 +290,13 @@ export default defineNuxtPlugin(() => {
             break
 
           case "ended":
+            delt.game.scene.start("Preload")
+            delt.multiplayer.game = undefined
             delt.multiplayer.events.emit("game.ended", delt.multiplayer.game.game_id)
             break
 
           case "connected":
             delt.multiplayer.events.emit("socket.connected")
-            break
-
-          case "restored":
-            delt.multiplayer.self_id = res.id
-            delt.multiplayer.events.emit("socket.restored", res.id)
             break
 
           case "error":

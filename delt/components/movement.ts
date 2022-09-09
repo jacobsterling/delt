@@ -1,6 +1,6 @@
 import "phaser";
 import Entity from "../entities/entity";
-import { IComponent } from "../services/componentService"
+import { IComponent } from "./componentService"
 
 export default class Movement implements IComponent {
   public entity!: Entity

@@ -3,6 +3,7 @@ import short from "short-uuid";
 import Entity from "./entity"
 import Mainscene, { radToDeg } from "../scenes/mainScene"
 import affects, { Affects } from "./affects"
+import worldBounds from "../components/worldBounds"
 
 export type AffectorConfig = {
   x: number,//origin
@@ -62,7 +63,7 @@ export default class Affector extends Phaser.Physics.Arcade.Sprite {
       })
 
       if (config.direction && config.speed) {
-        this.setCollideWorldBounds(true)
+        scene.components.addComponent(this, new worldBounds(scene))
 
         const atan = Math.atan2(this.y - config.direction.y, this.x - config.direction.x);
 
@@ -78,7 +79,7 @@ export default class Affector extends Phaser.Physics.Arcade.Sprite {
         //this.body.destroy()
         scene.affectors.kill(this)
 
-        if (scene.multiplayer) {
+        if (scene.multiplayer.game) {
           scene.multiplayer.broadcastMessage("despawn", { "spawn_id": this.name })
         }
       }

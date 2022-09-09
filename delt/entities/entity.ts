@@ -2,7 +2,7 @@ import 'phaser';
 import MainScene, { getRandom } from '../scenes/mainScene';
 import Movement from "../components/movement"
 import short from "short-uuid"
-import DynamicTxt, { DynamicTxtConfig } from '../hud/dynamicTxt';
+import DynamicTxt, { DynamicTxtConfig } from '../components/dynamicTxt';
 
 const nameof = <T>(name: Extract<keyof T, string>): string => name;
 export interface ITextureList {
@@ -22,6 +22,8 @@ export default class Entity extends Phaser.Physics.Arcade.Sprite {
     public speed: number
     protected hp: number
 
+    readonly maxHp: number
+
     protected attackSpeed: number //attacks per second
 
     protected attackTimer?: Phaser.Time.TimerEvent
@@ -33,6 +35,7 @@ export default class Entity extends Phaser.Physics.Arcade.Sprite {
 
         this.speed = config.speed
         this.hp = config.hp
+        this.maxHp = config.hp
         this.attackSpeed = config.attackSpeed
 
         if (!config.name) {
@@ -95,63 +98,34 @@ export default class Entity extends Phaser.Physics.Arcade.Sprite {
         return this.hp
     }
 
-    public modHp(mod: number) {
+    public setFeatures(features: EntityConfig) {
+        const dhp = features.hp - this.getHp()
+        const ds = features.speed - this.getHp()
 
+        if (dhp !== 0) {
+            this.modHp(dhp)
+        }
+        if (ds !== 0) {
+            this.modSpeed(ds)
+        }
+
+        // do the same for setPosition as above ??
+        this.setPosition(features.x, features.y)
+    }
+
+    public modHp(mod: number) {
         const scene = (this.scene as MainScene)
 
-        this.hp += mod
-
-        console.log(this.hp)
+        this.hp = Phaser.Math.Clamp(this.hp + mod, 0, this.maxHp)
 
         if (this.hp <= 0) {
             scene.components.removeComponent(this, Movement)
 
             this?.anims.play("death", true).once("animationcomplete", () => {
-                if (!scene.multiplayer.game) {
-                    this.destroy()
-                    scene.entityPhysics.kill(this)
-                } else if (scene.multiplayer.game.players[this.name]) {
-                    this.emit("player.destroy")
-                } else if (scene.multiplayer.isHost()) {
-                    this.destroy()
-                    scene.entityPhysics.kill(this)
-                }
+                this.scene.events.emit("entity.destroy", this)
             })
-
         } else {
-            const { x, y } = this.getTopCenter()
-
-            var ax = getRandom(10, 70)
-            const ay = getRandom(20, 50)
-
-            var vx = getRandom(0, 50)
-            const vy = getRandom(-10, -70)
-
-            var color = "#FF0000"
-
-            //heals
-            if (mod > 0) {
-                ax = -ax
-                vx = -vx
-                color = "#00FF00"
-            }
-
-            const config: DynamicTxtConfig = {
-                x,
-                y,
-                txt: mod.toString(),
-                lifetime: 1000,
-                movement: {
-                    velocity: new Phaser.Math.Vector2(vx, vy),
-                    acceleration: new Phaser.Math.Vector2(ax, ay)
-                },
-                style: {
-                    color,
-                    fontSize: "17px"
-                }
-            }
-
-            new DynamicTxt(scene, config)
+            this.scene.events.emit("entity.damaged", this, mod)
         }
     }
 }

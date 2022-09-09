@@ -6,6 +6,7 @@ import { AffectorConfig } from "~~/../delt/entities/affector"
 import { EntityConfig } from "~~/../delt/entities/entity"
 import Player, { PlayerConfig } from "~~/../delt/entities/player"
 
+import GameUi from "../../delt/scenes/gameUi"
 import MainScene, { getRandom } from "../../delt/scenes/mainScene"
 import Preloader from "../../delt/scenes/preloader"
 import DebugConfig from "./config.Debug.json"
@@ -40,6 +41,8 @@ export interface Multiplayer {
 
   joinGame: (gameId: string) => void //, selfData: PlayerConfig
 
+  isHost: (id?: string) => boolean
+
   leaveGame: () => void //, selfData: PlayerConfig
 
   createGame: (gameConfig: gameConfig) => void
@@ -53,8 +56,6 @@ export interface Multiplayer {
   onSocketError: (event: any) => void
 
   onSocketClose: (event: any) => void
-
-  isHost: (id?: string) => boolean
 
   broadcastSelf: (self: Player) => void
 
@@ -99,7 +100,7 @@ export default defineNuxtPlugin(() => {
       if (debug) {
         config = delt.debugConfig
       }
-      config.scene = [Preloader, MainScene]
+      config.scene = [Preloader, MainScene, GameUi]
       config.scale = {
         // Center vertically and horizontally
         autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -126,7 +127,7 @@ export default defineNuxtPlugin(() => {
         }
       },
 
-      connect: (accountId?: string, url: string = "ws://localhost:42069") => {
+      connect: (accountId?: string, url: string = "ws://127.0.0.1:42069") => { //  ws://80.41.27.54:32323
         delt.multiplayer.socket = new WebSocket(url)
         delt.multiplayer.socket.addEventListener("open", delt.multiplayer.onSocketOpen.bind(this))
         delt.multiplayer.socket.addEventListener("message", delt.multiplayer.onSocketMessage.bind(this))
@@ -173,7 +174,6 @@ export default defineNuxtPlugin(() => {
       joinGame: (gameId: string) => { // , selfData: PlayerConfig
         const selfData: PlayerConfig = {
           attackSpeed: 3,
-          control: true,
           hp: 100,
           speed: 200,
           type: "wizard",
@@ -242,19 +242,21 @@ export default defineNuxtPlugin(() => {
               switch (key) {
                 case "entities":
                   Object.entries(Object(element)).forEach(([id, entity]) => {
-                    delt.multiplayer.events.emit("game.update.entity", id, extractEntityFeatures(entity))
+                    delt.multiplayer.events.emit("entity.update", id, extractEntityFeatures(entity))
                   })
                   break
 
                 case "players":
                   Object.entries(Object(element)).forEach(([id, player]) => {
-                    delt.multiplayer.events.emit("game.update.player", id, extractEntityFeatures(player))
+                    delt.multiplayer.events.emit("player.update", id, extractEntityFeatures(player))
                   })
                   break
 
                 case "game_state":
-                  delt.multiplayer.game.game_state = Object.assign(delt.multiplayer.game.game_state, element)
-                  delt.multiplayer.events.emit("game.update", delt.multiplayer.game.game_state)
+                  if (delt.multiplayer.game) {
+                    delt.multiplayer.game.game_state = Object.assign(delt.multiplayer.game.game_state, element)
+                    delt.multiplayer.events.emit("game.update", delt.multiplayer.game.game_state)
+                  }
                   // have object.create in here when difference in game data
                   break
 
@@ -283,10 +285,17 @@ export default defineNuxtPlugin(() => {
             break
 
           case "left":
-            delt.multiplayer.events.emit("game.left", delt.multiplayer.game.game_id)
-            delt.multiplayer.broadcast = false
-            delt.multiplayer.game = undefined
-            delt.game.scene.start("Preloader")
+            if (res.id === delt.multiplayer.self_id) {
+              delt.multiplayer.events.emit("game.left", delt.multiplayer.game.game_id)
+              delt.multiplayer.broadcast = false
+              delt.multiplayer.game = undefined
+              delt.game.scene.start("Preloader")
+              console.warn(res.game_id, " left.")
+            } else {
+              console.warn(res.msg)
+              delt.multiplayer.events.emit("player.destroy", delt.multiplayer.game.players[res.id])
+              delete delt.multiplayer.game.players[res.id]
+            }
             break
 
           case "info":

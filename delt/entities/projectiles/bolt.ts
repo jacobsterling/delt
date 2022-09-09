@@ -11,10 +11,6 @@ export class Bolt extends Affector {
     if (this.name) {
       const particles = scene.add.particles(config.texture);
 
-      this.body.world.addListener("worldbounds", () => { console.log('collision') })
-      this.body.world.on("worldbounds", () => { console.log('collision1') })
-      this.on("worldbounds", () => { console.log('collision2') })
-
       const emitterConfig: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig = {
         frame: 'red',
         radial: true,

@@ -1,37 +1,22 @@
 
 import Entity, { EntityConfig } from './entity';
-import Controls from '../components/controls';
-import MainScene from '../scenes/mainScene';
+import MainScene from "../scenes/mainScene";
 import { Bolt } from "./projectiles/bolt"
 import { AffectorConfig } from './affector';
 
 export interface PlayerConfig extends EntityConfig {
-  control: boolean;
+  //player stats etc
 }
 
 export default class Player extends Entity {
   constructor(scene: MainScene, config: PlayerConfig) {
     super(scene, config)
-    if (config.control) {
-      scene.components.addComponent(this, new Controls(scene))
-
-      this.on("destroy", () => {
-        (this.scene as MainScene).components.removeComponent(this, Controls)
-      })
-
-      if (scene.multiplayer) {
-        scene.multiplayer.broadcast = true
-
-        if (scene.multiplayer.self_id == this.name) {
-          this.on("player.destroy", () => {
-
-            this.destroy()
-            scene.entityPhysics.kill(this)
-            scene.multiplayer.leaveGame()
-          })
-        }
-      }
-    };
+    if (scene.multiplayer.self_id == this.name) {
+      scene.multiplayer.broadcast = true
+      this.scene.scene.run("GameUi", { player: this })
+    } else {
+      this.setImmovable()
+    }
   }
 
   public fire = (direction: Phaser.Math.Vector2) => {

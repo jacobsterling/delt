@@ -26,6 +26,15 @@ export default class ComponentService {
 
     if (!this.componentsByGameObject.has(go.name)) {
       this.componentsByGameObject.set(go.name, [])
+      go.on("destroy", () => {
+        const components = this.componentsByGameObject.get(go.name)
+        components!.forEach((component, i, list) => {
+          if (component.destroy) {
+            component.destroy()
+          }
+        })
+        this.componentsByGameObject.delete(go.name)
+      })
     }
 
     const list = this.componentsByGameObject.get(go.name) as IComponent[]
@@ -41,9 +50,11 @@ export default class ComponentService {
     if (component.start) {
       this.queuedForStart.push(component)
     }
+
+
   }
 
-  findComponent<ComponentType>(go: Phaser.GameObjects.GameObject, componentType: Constructor<ComponentType>) {
+  findComponent<ComponentType extends {}>(go: Phaser.GameObjects.GameObject, componentType: Constructor<ComponentType>) {
     const components = this.componentsByGameObject.get(go.name)
     if (!components) {
       return null
@@ -52,11 +63,15 @@ export default class ComponentService {
     return components.find(component => components instanceof componentType)
   }
 
-  removeComponent<ComponentType>(go: Phaser.GameObjects.GameObject, componentType: Constructor<ComponentType>) {
+  destroyComponent<ComponentType extends {}>(go: Phaser.GameObjects.GameObject, componentType: Constructor<ComponentType>) {
     const components = this.componentsByGameObject.get(go.name)
     if (components) {
       components.forEach((component, i, list) => {
         if (component instanceof componentType) {
+          const comp = list[i]
+          if (comp.destroy) {
+            comp.destroy()
+          }
           delete list[i]
         }
       }
@@ -66,11 +81,14 @@ export default class ComponentService {
   }
 
   destroy() {
-    Object.values(this.componentsByGameObject).forEach((component: IComponent) => {
-      if (component.destroy) {
-        component.destroy()
-      }
-    })
+    for (let components of this.componentsByGameObject.values()) {
+      components!.forEach((component, i, list) => {
+        if (component.destroy) {
+          component.destroy()
+        }
+      })
+    }
+    this.componentsByGameObject = new Map<string, IComponent[]>()
   }
 
   update(dt: number) {

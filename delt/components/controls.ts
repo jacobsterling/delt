@@ -1,16 +1,17 @@
 
 import Phaser from "phaser";
 import Player from "../entities/player";
-import { IComponent } from "../services/componentService";
-import { Crosshair } from "../hud/crosshair"
+import { IComponent } from "./componentService";
+import { Crosshair } from "../entities/crosshair"
 import KeyCodes = Phaser.Input.Keyboard.KeyCodes;
 import MainScene from "../scenes/mainScene";
+import GameUi from "../scenes/gameUi";
 
 export default class Controls implements IComponent {
   private player!: Player
   private readonly controls: { [id: string]: Phaser.Input.Keyboard.Key } = {}
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: GameUi) {
     //add keys bindings here
     Object.entries(scene.input.keyboard.addKeys(
       {

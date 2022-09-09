@@ -1,5 +1,6 @@
+import GameUi from "../scenes/gameUi";
 import MainScene from "../scenes/mainScene";
-import { IComponent } from "../services/componentService";
+import { IComponent } from "./componentService";
 
 export type DynamicTxtConfig = {
   x: number,
@@ -36,7 +37,7 @@ class MoveTxt implements IComponent {
 }
 
 export default class DynamicTxt extends Phaser.Physics.Arcade.Sprite {
-  constructor(scene: MainScene, config: DynamicTxtConfig) {
+  constructor(scene: GameUi, config: DynamicTxtConfig) {
     super(scene, config.x, config.y, "sprite")
 
     this.setVisible(false)
@@ -70,7 +71,6 @@ export default class DynamicTxt extends Phaser.Physics.Arcade.Sprite {
     }
 
     this.on("destroy", () => {
-      scene.components.removeComponent(this, MoveTxt)
       this.body.destroy()
       txt.destroy()
     })

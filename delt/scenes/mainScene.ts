@@ -1,4 +1,4 @@
-import ComponentService from '../services/componentService';
+import ComponentService from '../components/componentService';
 import Entity, { EntityConfig } from '../entities/entity';
 import Affector, { AffectorConfig } from "../entities/affector"
 import { Multiplayer } from "../../client/plugins/game.client"
@@ -30,6 +30,8 @@ export default class MainScene extends Phaser.Scene {
         this.physics.world.setBounds(0, 0, 1920, 1080);
         this.physics.world.setBoundsCollision();
 
+        this.physics.world.bounds.contains
+
         this.entityPhysics = this.physics.add.group()
         this.affectors = this.physics.add.group()
 
@@ -38,119 +40,97 @@ export default class MainScene extends Phaser.Scene {
         })
 
         //this doesnt work ?
-        this.entityPhysics.world.on('worldbounds', (body: any) => {
-            console.log(body)
-        })
+
     }
 
     create = () => {
+        this.multiplayer.events.on("game.spawn", (features: AffectorConfig, spawner_id: string) => {
+            const spawner = this.children.getByName(spawner_id)
 
-        if (this.multiplayer) {
-            this.multiplayer.events.on("game.spawn", (features: AffectorConfig, spawner_id: string) => {
-                const spawner = this.children.getByName(spawner_id)
+            if (spawner) {
+                features.spawner = spawner as Phaser.Physics.Arcade.Sprite
+            }
 
-                if (spawner) {
-                    features.spawner = spawner as Phaser.Physics.Arcade.Sprite
-                }
+            switch (features.type) {
+                case "bolt":
+                    new Bolt(this, features)
+                    break
 
-                switch (features.type) {
-                    case "bolt":
-                        new Bolt(this, features)
-                        break
+                default:
+                    new Affector(this, features)
+                    break
+            }
+        })
 
-                    default:
-                        new Affector(this, features)
-                        break
-                }
-            })
+        this.multiplayer.events.on("game.despawn", (spawn_id: string) => {
+            const spawn = this.children.getByName(spawn_id)
+            if (spawn) {
+                spawn.destroy()
+            }
+        })
 
-            this.multiplayer.events.on("game.despawn", (spawn_id: string) => {
-                const spawn = this.children.getByName(spawn_id)
+        this.multiplayer.events.on("game.affect", (affected_id: string, affector_id: string) => {
+            const affected = (this.children.getByName(affected_id) as Entity)
 
-                if (spawn) {
-                    spawn.destroy()
-                }
-            })
+            const affector = (this.children.getByName(affector_id) as Affector)
 
-            this.multiplayer.events.on("game.affect", (affected_id: string, affector_id: string) => {
-                const affected = (this.children.getByName(affected_id) as Entity)
+            if (affector) {
+                try {
+                    affector?.affect(affected)
+                } catch (error: unknown) {
+                    const err = error as Error
+                    switch (err.message) {
+                        case "affector.affect is not a function":
+                            break
 
-                const affector = (this.children.getByName(affector_id) as Affector)
-
-                if (affector) {
-                    try {
-                        affector?.affect(affected)
-                    } catch (error: unknown) {
-                        const err = error as Error
-                        switch (err.message) {
-                            case "affector.affect is not a function":
-                                break
-
-                            default:
-                                console.error(err)
-                                break
-                        }
+                        default:
+                            console.error(err)
+                            break
                     }
                 }
-            })
+            }
+        })
 
-            this.multiplayer.events.on("game.update.entity", (id: string, features: EntityConfig) => {
-                const entity = this.children.getByName(id) as Entity
-                if (!entity) {
-                    new Entity(this, features)
-                } else {
-                    // predictive movement ???
-                    const dhp = features.hp - entity.getHp()
-                    const ds = features.speed - entity.getHp()
-                    if (dhp !== 0) {
-                        entity.modHp(dhp)
-                    }
-                    if (ds !== 0) {
-                        entity.modSpeed(ds)
-                    }
-                    // do the same for setPosition as above ??
-                    entity.setPosition(features.x, features.y)
+        this.multiplayer.events.on("entity.update", (id: string, features: EntityConfig) => {
+            const entity = this.children.getByName(id) as Entity
+            if (!entity) {
+                new Entity(this, features)
+            } else {
+                entity.setFeatures(features)
+            }
+        })
+
+        this.multiplayer.events.on("player.update", (id: string, features: EntityConfig) => {
+            const player = this.children.getByName(id) as Player
+            if (player) {
+                if (id !== this.multiplayer.self_id) {
+                    player.setFeatures(features)
                 }
-            })
-
-            this.multiplayer.events.on("game.update.player", (id: string, features: EntityConfig) => {
-                const object = this.children.getByName(id) as Player
-
-                if (this.multiplayer) {
-                    if (object && id !== this.multiplayer.self_id) {
-                        const dhp = features.hp - object.getHp()
-                        const ds = features.speed - object.getHp()
-
-                        if (dhp !== 0) {
-                            object.modHp(dhp)
-                        }
-                        if (ds !== 0) {
-                            object.modSpeed(ds)
-                        }
-
-                        // do the same for setPosition as above ??
-                        object.setPosition(features.x, features.y)
-                    } else if (!object) {
-                        if (features.name && this.multiplayer.game) {
-                            if (features.name !== this.multiplayer.self_id) {
-                                // creates other player
-                                this.multiplayer.game.players[features.name] = new Player(this, {
-                                    control: false,
-                                    ...features
-                                }).setImmovable()
-                            } else {
-                                // creates self
-                                this.multiplayer.game.players[features.name] = new Player(this, {
-                                    control: true,
-                                    ...features
-                                })
-                            }
-                        }
-                    }
+            } else {
+                if (features.name && this.multiplayer.game) {
+                    this.multiplayer.game.players[features.name] = new Player(this, features)
                 }
-            })
-            console.log("created")
-        }
+            }
+        })
+
+        this.events.on("entity.destroy", (entity: Entity) => {
+            if (this.multiplayer.game) {
+                if (this.multiplayer.game.players[entity.name]) {
+                    this.events.emit("player.destroy", entity)
+                } else if (this.multiplayer.isHost()) {
+                    entity.destroy()
+                    this.entityPhysics.kill(entity)
+                }
+            }
+        })
+
+        this.events.on("player.destroy", (player: Player) => {
+            if (!this.multiplayer.game || player.name == this.multiplayer.self_id) {
+                player.destroy()
+                this.entityPhysics.kill(player)
+                this.multiplayer.leaveGame()
+            }
+        })
     }
 
     public update = (t: number, dt: number) => {

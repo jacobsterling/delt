@@ -24,9 +24,11 @@ export type gameConfig = {
 export interface Multiplayer {
   broadcast: boolean
   broadcastMessage: (msg_type: string, data: { [id: string]: any }) => void
-  events: Phaser.Events.EventEmitter;
+  events: Phaser.Events.EventEmitter
   socket?: WebSocket
   self_id?: string
+  displayName?: string
+
   games: { [id: string]: any } // game browser
   game?: { // connected game
     game_id: string
@@ -40,6 +42,8 @@ export interface Multiplayer {
   register: (accountId: string) => void,
 
   joinGame: (gameId: string) => void //, selfData: PlayerConfig
+
+  isModable: (id: string) => boolean
 
   isHost: (id?: string) => boolean
 
@@ -66,7 +70,6 @@ export interface Delt {
   game?: Game // self game instance
   config: Phaser.Types.Core.GameConfig,
   debugConfig: Phaser.Types.Core.GameConfig,
-  visible: boolean,
   launch: (containerId: string, debug: boolean) => void
   insertPlugin: (key: string, className: Class, debug: boolean) => void
   multiplayer: Multiplayer
@@ -100,7 +103,7 @@ export default defineNuxtPlugin(() => {
       if (debug) {
         config = delt.debugConfig
       }
-      config.scene = [Preloader, MainScene, GameUi]
+      config.scene = [Preloader, GameUi, MainScene]
       config.scale = {
         // Center vertically and horizontally
         autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -151,6 +154,7 @@ export default defineNuxtPlugin(() => {
         )
       },
 
+      displayName: undefined,
       events: new Phaser.Events.EventEmitter(),
       game: undefined,
       games: {},
@@ -171,16 +175,38 @@ export default defineNuxtPlugin(() => {
         }
       },
 
+      isModable: (id: string) => {
+        if (!delt.multiplayer.game) {
+          return true
+        } else if (delt.multiplayer.game.players[id]) {
+          if (id === delt.multiplayer.self_id) {
+            return true
+          } else {
+            return false
+          }
+        } else if (delt.multiplayer.isHost()) {
+          return true
+        } else {
+          return false
+        }
+      },
+
       joinGame: (gameId: string) => { // , selfData: PlayerConfig
+        console.log(delt.multiplayer.displayName)
         const selfData: PlayerConfig = {
-          attackSpeed: 3,
-          hp: 100,
-          speed: 200,
+          displayName: delt.multiplayer.displayName,
+          stats: {
+            attackSpeed: 3,
+            hp: 100,
+            hp_regen: 1,
+            mp: 100,
+            mp_regen: 1,
+            speed: 200
+          },
           type: "wizard",
           x: getRandom(100, 400),
           y: getRandom(100, 400)
         }
-
         delt.multiplayer.broadcastMessage("join", { data: selfData, game_id: gameId })
       },
 
@@ -209,7 +235,9 @@ export default defineNuxtPlugin(() => {
 
           case "registered":
             delete res.msg_type
+            console.log(res.account_id)
             delt.multiplayer.accountId = res.account_id
+            delt.multiplayer.displayName = res.account_id
             delt.multiplayer.events.emit("socket.registered")
 
             // testing purposes
@@ -277,7 +305,6 @@ export default defineNuxtPlugin(() => {
               players: {}
             }
             delt.game.scene.start("MainScene", { multiplayer: delt.multiplayer })
-            delt.visible = true
             break
 
           case "created":
@@ -348,9 +375,7 @@ export default defineNuxtPlugin(() => {
 
       self_id: undefined,
       socket: undefined
-    },
-
-    visible: false
+    }
   }) as Delt
 
   return {
@@ -393,10 +418,9 @@ export const extractAffectorFeatures = (affector: any) => {
 
 export const extractEntityFeatures = (entity: any) => {
   const features: EntityConfig = {
-    attackSpeed: entity.attackSpeed,
-    hp: entity.hp,
+    displayName: entity.displayName,
     name: entity.name,
-    speed: entity.speed,
+    stats: entity.stats,
     type: entity.type,
     x: entity.x,
     y: entity.y

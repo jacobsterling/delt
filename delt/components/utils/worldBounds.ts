@@ -1,6 +1,6 @@
 
-import { IComponent } from "./componentService"
-import MainScene from "../scenes/mainScene"
+import { IComponent } from "../componentService"
+import MainScene from "../../scenes/mainScene"
 
 export default class WorldBounds implements IComponent {
   private scene!: MainScene
@@ -18,7 +18,7 @@ export default class WorldBounds implements IComponent {
     const { x, y } = this.object.body.position;
 
     if (!this.scene.physics.world.bounds.contains(x, y)) {
-      this.object.destroy()
+      this.object.emit("worldbounds")
     }
   }
 }

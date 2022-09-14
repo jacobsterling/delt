@@ -3,7 +3,6 @@ import short from "short-uuid";
 import Entity from "./entity"
 import Mainscene, { radToDeg } from "../scenes/mainScene"
 import affects, { Affects } from "./affects"
-import worldBounds from "../components/worldBounds"
 
 export type AffectorConfig = {
   x: number,//origin
@@ -17,14 +16,16 @@ export type AffectorConfig = {
   id?: string,
   spawner?: Phaser.Physics.Arcade.Sprite
   affects: string[] //affect id's
+  exclude?: string[] //gam eobject ids to not effect
 }
 
 export default class Affector extends Phaser.Physics.Arcade.Sprite {
   public affects: Affects = {};//stored like this so 'effects' can be modified
   private spawner!: Phaser.Physics.Arcade.Sprite | Phaser.Scene//if null, spawned by scene
+  public exclude: string[] = []
 
   constructor(scene: Mainscene, config: AffectorConfig) {
-    super(scene, config.x, config.y, config.texture, 0)
+    super(scene, config.x, config.y, config.texture, "white")
     this.type = config.type
 
     if (config.spawner) {
@@ -48,6 +49,10 @@ export default class Affector extends Phaser.Physics.Arcade.Sprite {
     if (config.id) {
       this.setName(config.id)
 
+      if (config.exclude) {
+        this.exclude = config.exclude
+      }
+
       this.setVisible(false)
 
       scene.affectors.add(this)
@@ -63,8 +68,6 @@ export default class Affector extends Phaser.Physics.Arcade.Sprite {
       })
 
       if (config.direction && config.speed) {
-        scene.components.addComponent(this, new worldBounds(scene))
-
         const atan = Math.atan2(this.y - config.direction.y, this.x - config.direction.x);
 
         const d = {
@@ -99,11 +102,11 @@ export default class Affector extends Phaser.Physics.Arcade.Sprite {
   public affect(entity: Entity) {
     const scene = (this.scene as Mainscene)
 
-    if (!scene.multiplayer.game || entity.name == scene.multiplayer.self_id || (!scene.multiplayer.game.players[entity.name] && scene.multiplayer.isHost())) {
+    if (scene.multiplayer.isModable(entity.name)) {
       Object.entries(this.affects).forEach(([id, affect]) => {
         affect.affect(entity, this)
       })
-    } else if (scene.multiplayer) {
+    } else {
       scene.multiplayer.broadcastMessage("affect", { "affector_id": this.name, "affected_id": entity.name })
     }
   }

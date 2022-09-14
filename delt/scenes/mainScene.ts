@@ -4,6 +4,10 @@ import Affector, { AffectorConfig } from "../entities/affector"
 import { Multiplayer } from "../../client/plugins/game.client"
 import { Bolt } from '../entities/projectiles/bolt';
 import Player from '../entities/player';
+import Players from '../assets/Players';
+import Image from '../assets/particles/flares.png';
+import Json from '../assets/particles/flares.json';
+import GameUi from './gameUi';
 
 export const radToDeg = (rad: number) => rad * (180 / Math.PI)
 
@@ -15,6 +19,7 @@ export default class MainScene extends Phaser.Scene {
     public multiplayer!: Multiplayer;
     public entityPhysics!: Phaser.Physics.Arcade.Group;
     public affectors!: Phaser.Physics.Arcade.Group;
+    public ui!: GameUi
 
     constructor() {
         super({
@@ -23,6 +28,9 @@ export default class MainScene extends Phaser.Scene {
     }
 
     init(data: any) {
+        this.ui = this.scene.get("GameUi") as GameUi
+        this.ui.mainscene = this
+        this.scene.bringToTop(this.ui)
         this.multiplayer = data.multiplayer as Multiplayer;
 
         this.components = new ComponentService()
@@ -38,9 +46,12 @@ export default class MainScene extends Phaser.Scene {
         this.physics.add.collider(this.entityPhysics, this.affectors, (entity, effector) => {
             (effector as Affector).affect(entity as Entity)
         })
+    }
 
-        //this doesnt work ?
-
+    preload() {
+        //change to load.aesprite
+        this.load.spritesheet("wizard", Players.WizardBlue, { frameWidth: 32, frameHeight: 32 })//load these dynamiclly upon creating the first entity of this type, use loaded spritesheet for every entity after
+        this.load.atlas('flares', Image, Json);
     }
 
     create = () => {
@@ -91,15 +102,6 @@ export default class MainScene extends Phaser.Scene {
             }
         })
 
-        this.multiplayer.events.on("entity.update", (id: string, features: EntityConfig) => {
-            const entity = this.children.getByName(id) as Entity
-            if (!entity) {
-                new Entity(this, features)
-            } else {
-                entity.setFeatures(features)
-            }
-        })
-
         this.multiplayer.events.on("player.update", (id: string, features: EntityConfig) => {
             const player = this.children.getByName(id) as Player
             if (player) {
@@ -113,6 +115,24 @@ export default class MainScene extends Phaser.Scene {
             }
         })
 
+        this.multiplayer.events.on("entity.update", (id: string, features: EntityConfig) => {
+            const entity = this.children.getByName(id) as Entity
+
+            if (!entity) {
+                new Entity(this, features)
+            } else {
+                entity.setFeatures(features)
+            }
+        })
+
+        this.events.on("player.destroy", (player: Player) => {
+            if (this.multiplayer.isModable(player.name)) {
+                //player.destroy()
+                //this.entityPhysics.kill(player)
+                //this.multiplayer.leaveGame()
+            }
+        })
+
         this.events.on("entity.destroy", (entity: Entity) => {
             if (this.multiplayer.game) {
                 if (this.multiplayer.game.players[entity.name]) {
@@ -121,14 +141,6 @@ export default class MainScene extends Phaser.Scene {
                     entity.destroy()
                     this.entityPhysics.kill(entity)
                 }
-            }
-        })
-
-        this.events.on("player.destroy", (player: Player) => {
-            if (!this.multiplayer.game || player.name == this.multiplayer.self_id) {
-                player.destroy()
-                this.entityPhysics.kill(player)
-                this.multiplayer.leaveGame()
             }
         })
     }

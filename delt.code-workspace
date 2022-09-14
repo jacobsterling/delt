@@ -7,10 +7,10 @@
 			"path": "delt"
 		},
 		{
-			"path": "delt-contracts"
+			"path": "contracts"
 		},
 		{
-			"path": "..\\delt_server"
+			"path": "server"
 		}
 	]
 }

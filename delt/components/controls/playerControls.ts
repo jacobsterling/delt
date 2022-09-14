@@ -1,11 +1,10 @@
 
 import Phaser from "phaser";
-import Player from "../entities/player";
-import { IComponent } from "./componentService";
-import { Crosshair } from "../entities/crosshair"
+import Player from "../../entities/player";
+import { IComponent } from "../componentService";
 import KeyCodes = Phaser.Input.Keyboard.KeyCodes;
-import MainScene from "../scenes/mainScene";
-import GameUi from "../scenes/gameUi";
+import MainScene from "../../scenes/mainScene";
+import GameUi from "../../scenes/gameUi";
 
 export default class Controls implements IComponent {
   private player!: Player
@@ -28,8 +27,10 @@ export default class Controls implements IComponent {
       this.controls[id] = key
     })
 
-    scene.input.on('pointerdown', (event: Phaser.Input.Pointer) => this.player.fire(new Phaser.Math.Vector2(event.x, event.y)))
+    scene.input.on('pointerdown', (event: Phaser.Input.Pointer) => this.player.fire(scene.giveRelativePositionToCanvas(new Phaser.Math.Vector2(event.x, event.y))))
+
     const crosshair = new Crosshair(scene)
+
     scene.input.on('pointermove', (event: Phaser.Input.Pointer) => crosshair.onMouseMove(event))
   }
 
@@ -39,7 +40,7 @@ export default class Controls implements IComponent {
 
   update(dt: number) {
     const v = new Phaser.Math.Vector2(0, 0)
-    const speed = this.player.speed
+    const speed = this.player.getStats().speed
 
     if (speed) {
       if (this.controls.right.isDown || this.controls.d.isDown) {
@@ -64,5 +65,21 @@ export default class Controls implements IComponent {
     if (scene.multiplayer) {
       scene.multiplayer.broadcastSelf(this.player)
     }
+  }
+}
+
+class Crosshair extends Phaser.GameObjects.GameObject {
+  private position!: Phaser.Types.Math.Vector2Like;
+  private arc!: Phaser.GameObjects.Arc;
+
+  constructor(scene: Phaser.Scene) {
+    super(scene, "sprite");
+    this.position = { x: -100, y: 100 };
+    this.arc = this.scene.add.circle(this.position.x, this.position.y, 10);
+  }
+
+  public onMouseMove = (event: Phaser.Input.Pointer) => {
+    this.arc.x = event.x;
+    this.arc.y = event.y;
   }
 }

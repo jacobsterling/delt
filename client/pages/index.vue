@@ -15,7 +15,7 @@ if (delt) {
 
 <template>
   <div class="w-100% h-100%">
-    <div v-if="delt?.visible" id="delt-container" />
+    <div v-if="delt?.multiplayer.game" id="delt-container" />
     <div v-else>
       <DeltButton class="d-button-green" @click="delt?.multiplayer.getGames()">
         Refresh

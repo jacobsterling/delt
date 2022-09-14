@@ -1,7 +1,7 @@
 import Phaser from "phaser"
 import MainScene from "../../scenes/mainScene"
 import Affector, { AffectorConfig } from "../affector";
-
+import worldBounds from "../../components/utils/worldBounds"
 export class Bolt extends Affector {
   public emitter!: Phaser.GameObjects.Particles.ParticleEmitter
 
@@ -28,6 +28,12 @@ export class Bolt extends Affector {
       };
 
       this.emitter = particles.createEmitter(emitterConfig);
+
+      this.on("outside", () => {
+        this.destroy()
+      })
+
+      scene.components.addComponent(this, new worldBounds(scene))
 
       this.on("destroy", () => {
         this.emitter.remove()

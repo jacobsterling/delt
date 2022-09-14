@@ -1,42 +1,63 @@
 import 'phaser';
-import MainScene, { getRandom } from '../scenes/mainScene';
-import Movement from "../components/movement"
+import MainScene from '../scenes/mainScene';
+import Movement from "../components/controls/movement"
 import short from "short-uuid"
-import DynamicTxt, { DynamicTxtConfig } from '../components/dynamicTxt';
+import EntityUi from '../components/ui/entityUi';
+import OnScreen from '../components/utils/OnScreen';
 
 const nameof = <T>(name: Extract<keyof T, string>): string => name;
 export interface ITextureList {
     [key: string]: string
 }
 
+export type EntityStats = {
+    hp: number,
+    hp_regen: number,
+    mp_regen: number,
+    mp: number,
+    speed: number,
+    attackSpeed: number //attacks per second
+}
+
 export type EntityConfig = {
+    displayName: string,
     name?: string,//also id
     type: string,
     x: number,
     y: number,
-    hp: number,
-    speed: number,
-    attackSpeed: number //attacks per second
+    stats: EntityStats
 }
 export default class Entity extends Phaser.Physics.Arcade.Sprite {
-    public speed: number
-    protected hp: number
+    readonly displayName!: string
 
-    readonly maxHp: number
+    protected stats: EntityStats
 
-    protected attackSpeed: number //attacks per second
+    protected friendly: boolean = false
+
+    readonly startPosition: Phaser.Math.Vector2
+    protected maxHp: number
+    protected maxMp: number
+
+    protected regenTimer?: Phaser.Time.TimerEvent
 
     protected attackTimer?: Phaser.Time.TimerEvent
+
+    protected modable: boolean = true
+
+    public onScreen: boolean = false
 
     constructor(scene: MainScene, config: EntityConfig) {
         super(scene, config.x, config.y, config.type, 0)
 
         this.type = config.type;
+        this.stats = config.stats
 
-        this.speed = config.speed
-        this.hp = config.hp
-        this.maxHp = config.hp
-        this.attackSpeed = config.attackSpeed
+        this.startPosition = new Phaser.Math.Vector2(config.x, config.y)
+
+        this.displayName = config.displayName
+
+        this.maxHp = config.stats.hp
+        this.maxMp = config.stats.mp
 
         if (!config.name) {
             this.setName(short.generate())
@@ -54,53 +75,82 @@ export default class Entity extends Phaser.Physics.Arcade.Sprite {
         const { x, y } = this.body.offset
 
         this.body.setOffset(x, y + 3)
+
+        if (scene.multiplayer.isModable(this.name)) {
+            this.regenTimer = this.scene.time.addEvent({
+                delay: 1000,
+                loop: true,
+                callback: () => {
+                    this.modHp(this.stats.hp_regen)
+                    this.modMp(this.stats.mp_regen)
+                }
+            });
+        }
+
+        this.on("outside", () => {
+            this.onScreen = false
+        })
+
+        this.on("inside", () => {
+            this.onScreen = true
+        })
+
+        scene.ui.components.addComponent(this, new OnScreen(scene))
+        scene.ui.components.addComponent(this, new EntityUi(scene.ui))
+    }
+
+    public isFriendly() {
+        return this.friendly
     }
 
     public resetAttackTimer() {
+        if (this.attackTimer) {
+            this.attackTimer.destroy()
+        }
         this.attackTimer = this.scene.time.addEvent({
-            delay: 1000 / this.attackSpeed,
+            delay: 1000 / this.stats.attackSpeed,
         });
     }
 
-    public getAttackSpeed() {
-        return this.attackSpeed
+    public getStats() {
+        return this.stats
+    }
+
+    public getMaxHp() {
+        return this.maxHp
+    }
+
+    public getMaxMp() {
+        return this.maxMp
     }
 
     //to add special effects
     public modAttackSpeed(mod: number, duration?: number) {
-        this.attackSpeed += mod
+        this.stats.attackSpeed += mod
         if (duration) {
             this.scene.time.addEvent({
                 delay: duration, callback: () => {
-                    this.attackSpeed -= mod
+                    this.stats.attackSpeed -= mod
                 },
             });
         }
-    }
-
-    public getSpeed() {
-        return this.speed
     }
 
     //to add special effects
     public modSpeed(mod: number, duration?: number) {
-        this.speed += mod
+        this.stats.speed += mod
         if (duration) {
             this.scene.time.addEvent({
                 delay: duration, callback: () => {
-                    this.speed -= mod
+                    this.stats.speed -= mod
                 },
             });
         }
     }
 
-    public getHp() {
-        return this.hp
-    }
-
     public setFeatures(features: EntityConfig) {
-        const dhp = features.hp - this.getHp()
-        const ds = features.speed - this.getHp()
+        const dhp = features.stats.hp - this.stats.hp
+        const ds = features.stats.speed - this.stats.hp
 
         if (dhp !== 0) {
             this.modHp(dhp)
@@ -114,18 +164,51 @@ export default class Entity extends Phaser.Physics.Arcade.Sprite {
     }
 
     public modHp(mod: number) {
-        const scene = (this.scene as MainScene)
+        if (this.modable) {
+            const scene = (this.scene as MainScene)
 
-        this.hp = Phaser.Math.Clamp(this.hp + mod, 0, this.maxHp)
+            const prev = this.stats.hp
 
-        if (this.hp <= 0) {
-            scene.components.removeComponent(this, Movement)
+            this.stats.hp = Phaser.Math.Clamp(prev + mod, 0, this.maxHp)
 
-            this?.anims.play("death", true).once("animationcomplete", () => {
-                this.scene.events.emit("entity.destroy", this)
-            })
-        } else {
-            this.scene.events.emit("entity.damaged", this, mod)
+            if (this.stats.hp != prev) {
+
+                if (scene.multiplayer.game?.players[this.name]) {
+                    this.emit("player.hp.changed", mod)
+                    if (!this.isFriendly()) {
+                        this.emit("entity.hp.changed", mod)
+                    }
+                } else {
+                    this.emit("entity.hp.changed", mod)
+                }
+            }
+
+            if (this.stats.hp <= 0) {
+                this.modable = false
+
+                scene.components.destroyComponent(this, Movement)
+
+                this?.anims.play("death", true).once("animationcomplete", () => {
+                    this.scene.events.emit("entity.destroy", this)
+                })
+            }
+        }
+    }
+
+    public modMp(mod: number) {
+        if (this.modable) {
+            const scene = (this.scene as MainScene)
+
+            const prev = this.stats.mp
+
+            this.stats.mp = Phaser.Math.Clamp(this.stats.mp + mod, 0, this.maxMp)
+
+            if (this.stats.hp != prev) {
+                if (scene.multiplayer.game?.players[this.name]) {
+                    this.emit("player.mp.changed", mod)
+                }
+            }
+
         }
     }
 }

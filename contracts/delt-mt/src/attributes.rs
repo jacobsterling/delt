@@ -27,13 +27,6 @@ pub trait TokenAttributeHandler {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Stat {
-    pub quality: String,
-    pub tier: u64,
-    pub value: u64,
-}
-
-#[derive(Serialize, Deserialize)]
 pub struct TokenAttrs {
     pub token_id: TokenId,
     pub attrs: Map<String, Value>,

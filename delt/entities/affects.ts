@@ -21,17 +21,19 @@ const affects: Affects = {
 
     effects:
     {
-      damage: 5
+      damage: 10,
     },
 
     affect: (entity: Entity, self: Affector) => {
       const dmg = affects["magic damage"].effects.damage
 
-      entity.modHp(-dmg)
+      if (!self.exclude.includes(entity.name)) {
+        entity.modHp(-dmg)
 
-      self.destroy()
+        self.destroy()
+      }
     },
   }
 }
 
-export default affects
+export default affects 

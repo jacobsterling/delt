@@ -1,77 +1,34 @@
 import Phaser from "phaser"
-import Controls from "../components/controls"
-import PlayerUi from "../components/playerUi"
-import Entity from "../entities/entity"
-import Player from "../entities/player"
-import DynamicTxt, { DynamicTxtConfig } from "../components/dynamicTxt"
 import ComponentService from "../components/componentService"
-import MainScene, { getRandom } from "./mainScene"
-
+import MainScene from "./mainScene"
 export default class GameUi extends Phaser.Scene {
-  public player!: Player
   public mainscene!: MainScene
   public components!: ComponentService
 
   constructor() {
-    super({ key: "GameUi" })
+    super({ key: "GameUi", active: true })
   }
 
-  init(data: any) {
-    this.player = data.player as Player
-    this.mainscene = this.scene.get("MainScene") as MainScene
-
+  init() {
     this.components = new ComponentService()
 
-    this.components.addComponent(this.player, new Controls(this))
-    this.components.addComponent(this.player, new PlayerUi(this))
+    this.physics.world.setBounds(0, 0, 1920, 1080);
   }
 
   preload() { }
 
-  create() {
-    this.mainscene.events.on("entity.damaged", (entity: Entity, mod: number) => {
-      this.damageNumbers(entity, mod)
-      if (this.mainscene.multiplayer.game?.players[entity.name]) {
-        entity.emit("player.damaged", mod)
-      }
-    },
-      this)
+  create() { }
+
+  public getRelativePositionToCanvas = (pos: Phaser.Math.Vector2) => {
+    pos.x = (pos.x - this.mainscene.cameras.main.worldView.x) * this.mainscene.cameras.main.zoom
+    pos.y = (pos.y - this.mainscene.cameras.main.worldView.y) * this.mainscene.cameras.main.zoom
+    return pos
   }
 
-  damageNumbers(entity: Entity, mod: number) {
-    const { x, y } = entity.getTopCenter()
-
-    var ax = getRandom(10, 70)
-    const ay = getRandom(20, 50)
-
-    var vx = getRandom(0, 50)
-    const vy = getRandom(-10, -70)
-
-    var color = "#FF0000"
-
-    //heals
-    if (mod > 0) {
-      ax = -ax
-      vx = -vx
-      color = "#00FF00"
-    }
-
-    const config: DynamicTxtConfig = {
-      x,
-      y,
-      txt: mod.toString(),
-      lifetime: 1000,
-      movement: {
-        velocity: new Phaser.Math.Vector2(vx, vy),
-        acceleration: new Phaser.Math.Vector2(ax, ay)
-      },
-      style: {
-        color,
-        fontSize: "17px"
-      }
-    }
-
-    new DynamicTxt(this, config)
+  public giveRelativePositionToCanvas = (pos: Phaser.Math.Vector2) => {
+    pos.x = pos.x / this.mainscene.cameras.main.zoom + this.mainscene.cameras.main.worldView.x
+    pos.y = pos.y / this.mainscene.cameras.main.zoom + this.mainscene.cameras.main.worldView.y
+    return pos
   }
 
   public update = (t: number, dt: number) => {

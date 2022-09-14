@@ -1,6 +1,6 @@
-import GameUi from "../scenes/gameUi";
-import MainScene from "../scenes/mainScene";
-import { IComponent } from "./componentService";
+import GameUi from "../../scenes/gameUi";
+import MainScene from "../../scenes/mainScene";
+import { IComponent } from "../componentService";
 
 export type DynamicTxtConfig = {
   x: number,
@@ -29,22 +29,26 @@ class MoveTxt implements IComponent {
 
   update(dt: number) {
     if (this.body) {
-      this.text.setX(this.body.x)
-      this.text.setY(this.body.y)
+      const { x, y } = (this.text.scene as GameUi).getRelativePositionToCanvas(this.body.getCenter())
+      this.text.setPosition(x, y)
     }
-
   };
 }
 
 export default class DynamicTxt extends Phaser.Physics.Arcade.Sprite {
-  constructor(scene: GameUi, config: DynamicTxtConfig) {
+  constructor(scene: Phaser.Scene, config: DynamicTxtConfig) {// pass scene you want text to move relative too
     super(scene, config.x, config.y, "sprite")
 
     this.setVisible(false)
-    scene.physics.add.existing(this).setCollideWorldBounds(true)
+    scene.physics.add.existing(this)
 
-    const txt = scene.add.text(config.x, config.y, config.txt, config.style).setVisible(false);
-    scene.components.addComponent(this, new MoveTxt(txt))
+    const ui = this.scene.scene.get("GameUi") as GameUi
+
+    const { x, y } = ui.getRelativePositionToCanvas(this.getCenter())
+
+    const txt = ui.add.text(x, y, config.txt, config.style).setVisible(false);
+
+    ui.components.addComponent(this, new MoveTxt(txt))
 
     if (config.lifetime) {
       const tint = txt.tint
@@ -62,10 +66,12 @@ export default class DynamicTxt extends Phaser.Physics.Arcade.Sprite {
     }
 
     if (config.movement) {
-      const { x, y } = config.movement.velocity
-      this.setVelocity(x, y)
+      const { x: vx, y: vy } = config.movement.velocity
+      this.setVelocity(vx, vy)
+      console.log(vx, vy)
       if (config.movement.acceleration) {
         const { x: ax, y: ay } = config.movement.acceleration
+
         this.setAcceleration(ax, ay)
       }
     }

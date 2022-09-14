@@ -1,31 +1,51 @@
 use std::collections::HashMap;
 
-use crate::ext_contracts::{
-    ext_ft_contract, ext_mt_contract, ext_nft_contract, ext_self, StakeResolver,
-};
+use crate::ext_contracts::{ext_ft_contract, ext_mt_contract, ext_nft_contract};
 
 use crate::*;
-use near_contract_standards::non_fungible_token::{refund_deposit_to_account, Token, TokenId};
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::env::log_str;
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::serde_json::from_slice;
+use near_contract_standards::non_fungible_token::{refund_deposit_to_account, TokenId};
 use near_sdk::{
-    near_bindgen, require, AccountId, Balance, Gas, Promise, PromiseError, PromiseResult,
+    borsh::{self, BorshDeserialize, BorshSerialize},
+    env::panic_str,
+    near_bindgen, require,
+    serde::{Deserialize, Serialize},
+    AccountId, Balance, Gas, Promise,
 };
 #[derive(Deserialize, Serialize, BorshDeserialize, BorshSerialize, Debug)]
 pub struct Pool {
-    player_stakes: HashMap<AccountId, Vec<Stake>>,
+    pub stakers: HashMap<AccountId, Stakes>,
 
-    pool_results: Vec<AccountId>,
+    pub pool_results: Vec<AccountId>,
 
-    active: bool,
+    pub active: bool,
 
-    pvp: bool,
+    pub pvp: bool,
 }
 
-#[derive(Deserialize, Serialize, BorshDeserialize, BorshSerialize, Debug, Clone)]
-pub struct Stake {
+impl Pool {
+    fn new(
+        initial_stakes: Vec<(AccountId, Stakes)>,
+        pool_results: Vec<AccountId>,
+        pvp: bool,
+    ) -> Self {
+        let stakers = HashMap::new();
+
+        for (staker, stakes) in initial_stakes {
+            stakers.insert(staker, stakes);
+        }
+
+        Self {
+            active: false,
+            pool_results,
+            pvp,
+            stakers,
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, BorshDeserialize, BorshSerialize, Debug, Clone, PartialEq)]
+//used to identify stakes from NFT, MT & FT contracts
+pub struct StakeId {
     pub contract_id: AccountId,
 
     // for nft or mt contracts, should be left as none for fungable token
@@ -33,13 +53,16 @@ pub struct Stake {
 
     //should be left as none for nft's
     pub balance: Option<Balance>,
+}
+
+#[derive(Deserialize, Serialize, BorshDeserialize, BorshSerialize, Debug, Clone)]
+pub struct Stakes {
+    pub stakes: Vec<StakeId>,
 
     //key represents pool result and value is receiver of the stake given the result
     pub potential_recievers: Vec<(AccountId, AccountId)>,
 
     pub staked_on_result: AccountId,
-
-    pub staked: bool,
 }
 
 pub type PoolId = String;
@@ -52,14 +75,14 @@ pub trait Staking {
     fn create_stake_pool(
         &mut self,
         pool_id: PoolId,
-        stakes: Vec<(AccountId, Vec<Stake>)>,
         pool_results: Vec<AccountId>,
         pvp: bool,
+        initial_stakes: Vec<(AccountId, Stakes)>,
     );
 
     fn resolve_stake_pool(&mut self, pool_id: PoolId, stake_result: Option<AccountId>);
 
-    fn validate_stakes(&self, pool_id: PoolId) -> bool;
+    fn validate_stakes(&mut self, pool_id: PoolId) -> bool;
 
     fn transfer_stake(
         &self,
@@ -97,45 +120,18 @@ impl Staking for Contract {
     fn create_stake_pool(
         &mut self,
         pool_id: PoolId,
-        stakes: Vec<(AccountId, Vec<Stake>)>,
         pool_results: Vec<AccountId>,
         pvp: bool,
+        initial_stakes: Vec<(AccountId, Stakes)>,
     ) {
-        require!(
-            self.stake_pools.get(&pool_id).is_none(),
-            "pool_id already exists"
-        );
-
         let init_storage = env::storage_usage();
 
-        let mut player_stakes: HashMap<AccountId, Vec<Stake>> = HashMap::new();
-
-        for (player_id, _stakes) in stakes.into_iter() {
-            for stake in _stakes.iter() {
-                assert!(
-                    pool_results.contains(&stake.staked_on_result),
-                    "Given stake result not in pool results"
-                );
-
-                assert!(stake
-                    .potential_recievers
-                    .iter()
-                    .any(|(result, receiver)| pool_results.contains(&result)
-                        && receiver != &player_id
-                        && result != &stake.staked_on_result));
-            }
-            player_stakes.insert(player_id.clone(), _stakes);
-        }
-
-        let new_pool = Pool {
-            player_stakes,
-            active: false,
-            pool_results,
-            pvp,
-        };
-
-        if self.stake_pools.insert(&pool_id, &new_pool).is_some() {
-            panic!("Pool id already exists");
+        if self
+            .stake_pools
+            .insert(&pool_id, &Pool::new(initial_stakes, pool_results, pvp))
+            .is_some()
+        {
+            panic_str("Pool id already exists");
         }
 
         //refund unused storage deposit
@@ -145,34 +141,48 @@ impl Staking for Contract {
         );
     }
 
-    fn validate_stakes(&self, pool_id: PoolId) -> bool {
-        let pool = self
-            .stake_pools
-            .get(&pool_id)
-            .unwrap_or_else(|| panic!("Pool does not exist"));
+    fn validate_stakes(&mut self, pool_id: PoolId) -> bool {
+        match self.stake_pools.get(&pool_id) {
+            Some(pool) => {
+                let mut result: Vec<bool> = Vec::new();
 
-        let mut result: Vec<bool> = Vec::new();
-        for (_, stakes) in pool.player_stakes.into_iter() {
-            for stake in stakes.into_iter() {
-                if !stake.staked {
-                    if stake.token_id.is_some() {
-                        if stake.balance.is_some() {
-                            result.push(false);
-                        } else {
-                            result.push(false);
+                for (staker, required_stakes) in pool.stakers.into_iter() {
+                    if let Some(stakes) = self.stakes.get(&staker) {
+                        for required_stake in required_stakes.stakes {
+                            for (stake, staked_in_pool) in stakes.iter() {
+                                if stake == required_stake {
+                                    if let Some(id) = staked_in_pool {
+                                        if id == pool_id {
+                                            result.push(true);
+                                            break;
+                                        }
+                                    } else {
+                                        staked_in_pool = Some(pool_id);
+                                        result.push(true);
+                                        break;
+                                    }
+                                }
+                            }
+
+                            self.stakes.insert(&staker, &stakes);
                         }
                     } else {
-                        result.push(false);
+                        if required_stakes.stakes.len() > 0 {
+                            result.push(false);
+                        }
                     }
                 }
+
+                if result.len() > 0 {
+                    return result.into_iter().any(|x| x);
+                } else {
+                    return true;
+                };
             }
+
+            None => panic_str("Pool does not exist"),
         }
 
-        if result.len() > 0 {
-            return result.into_iter().any(|x| x);
-        } else {
-            return true;
-        };
         //self.stake_pools.insert(&pool_id, &stake_pool);
     }
 
@@ -184,7 +194,7 @@ impl Staking for Contract {
             .get(&pool_id)
             .unwrap_or_else(|| panic!("Pool does not exist"));
 
-        assert!(pool.active, "Pool is not active");
+        require!(pool.active, "Pool is not active");
 
         if let Some(result) = stake_result {
             assert!(
@@ -359,96 +369,5 @@ impl Staking for Contract {
         );
 
         self.stake_pools.remove(&pool_id);
-    }
-}
-
-#[near_bindgen]
-impl StakeResolver for Contract {
-    fn ft_on_transfer(&mut self, sender_id: AccountId, amount: U128, msg: String) {
-        let caller_id = env::signer_account_id();
-
-        let mut pool = self
-            .stake_pools
-            .get(&msg)
-            .unwrap_or_else(|| panic!("Pool does not exist"));
-
-        if let Some(stakes) = pool.player_stakes.get_mut(&sender_id) {
-            for stake in stakes.into_iter().filter(|_stake| {
-                _stake.contract_id == caller_id.clone()
-                    && _stake.token_id.is_none()
-                    && _stake.balance.is_some()
-            }) {
-                if stake.balance.unwrap() == amount.0 {
-                    stake.staked = true;
-                    break;
-                }
-            }
-        }
-        log!("ft callback !!!".to_string());
-    }
-
-    fn nft_on_transfer(
-        &mut self,
-        sender_id: AccountId,
-        previous_owner_id: AccountId,
-        token_id: TokenId,
-        msg: String,
-    ) {
-        let caller_id = env::signer_account_id();
-
-        let mut pool = self
-            .stake_pools
-            .get(&msg)
-            .unwrap_or_else(|| panic!("Pool does not exist"));
-
-        if let Some(stakes) = pool.player_stakes.get_mut(&previous_owner_id) {
-            for stake in stakes.into_iter().filter(|_stake| {
-                _stake.contract_id == caller_id.clone()
-                    && _stake.token_id.is_some()
-                    && _stake.balance.is_none()
-            }) {
-                if stake.token_id.as_ref().unwrap() == &token_id {
-                    stake.staked = true;
-                    break;
-                }
-            }
-        }
-    }
-
-    fn mt_on_transfer(
-        &mut self,
-        sender_id: AccountId,
-        previous_owner_ids: Vec<AccountId>,
-        token_ids: Vec<TokenId>,
-        amounts: Vec<U128>,
-        msg: String,
-    ) {
-        let caller_id = env::signer_account_id();
-
-        let mut pool = self
-            .stake_pools
-            .get(&msg)
-            .unwrap_or_else(|| panic!("Pool does not exist"));
-
-        assert!(token_ids.len() == previous_owner_ids.len() && token_ids.len() == amounts.len());
-
-        for (i, staker_id) in previous_owner_ids.into_iter().enumerate() {
-            if let Some(stakes) = pool.player_stakes.get_mut(&staker_id) {
-                for stake in stakes
-                    .into_iter()
-                    .filter(|_stake| _stake.contract_id == caller_id.clone())
-                {
-                    if let (Some(token_id), Some(balance)) =
-                        (stake.token_id.as_ref(), stake.balance)
-                    {
-                        if token_id == &token_ids[i] && balance == amounts[i].0 {
-                            stake.staked = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        log!("mt callback !!!".to_string());
     }
 }

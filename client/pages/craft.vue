@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { TokenMetadata, Stat, Attr } from "../plugins/near.client"
-const client = useSupabaseClient()
 const router = useRouter()
 
 const { $near: near } = useNuxtApp()

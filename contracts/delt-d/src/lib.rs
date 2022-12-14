@@ -1,42 +1,32 @@
-mod character;
+pub mod character;
 mod ext_contracts;
-mod staking;
+pub mod staking;
 mod utils;
 
 use near_contract_standards::fungible_token;
 
 use fungible_token::metadata::{FungibleTokenMetadata, FT_METADATA_SPEC};
 
-use character::Character;
+use character::AccountManagement;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{LazyOption, LookupMap, UnorderedMap, UnorderedSet};
+use near_sdk::collections::{LazyOption, LookupMap, UnorderedMap};
 use near_sdk::json_types::U128;
 use near_sdk::{
-    env, log, near_bindgen, require, AccountId, Balance, BorshStorageKey, CryptoHash,
-    PanicOnDefault, StorageUsage,
+    env, near_bindgen, require, AccountId, Balance, BorshStorageKey, CryptoHash, PanicOnDefault,
 };
-use serde_json::{to_string, Map};
-use staking::{Pool, PoolId, StakeId};
-use utils::hash_account_id;
+use staking::{StakeId, StakeManagement};
+use utils::{hash_account_id, refund_deposit_to_account};
 
-use crate::character::CharacterManagment;
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct Contract {
     pub metadata: LazyOption<FungibleTokenMetadata>,
 
-    pub default_attributes: LazyOption<String>,
+    accounts: AccountManagement,
 
-    pub stake_pools: UnorderedMap<PoolId, Pool>,
+    staking: StakeManagement,
 
-    pub stakes: LookupMap<AccountId, UnorderedSet<(StakeId, Option<PoolId>)>>,
-
-    /// AccountID -> Account balance.
-    pub accounts: LookupMap<AccountId, Character>,
-
-    //pub stakes:
-    /// The storage size in bytes for one account.
-    pub account_storage_usage: StorageUsage,
+    owner: AccountId,
 }
 
 //change from near icon
@@ -55,7 +45,7 @@ pub enum StorageKey {
 #[near_bindgen]
 impl Contract {
     #[init]
-    pub fn new() -> Self {
+    pub fn new(owner_id: AccountId) -> Self {
         require!(!env::state_exists(), "Already initialized");
 
         let metadata = FungibleTokenMetadata {
@@ -70,105 +60,30 @@ impl Contract {
 
         metadata.assert_valid();
 
-        let mut stakes = LookupMap::new(StorageKey::Stakes);
-
-        stakes.insert(
-            &env::signer_account_id(),
-            &UnorderedSet::new(StorageKey::StakesPerOwner {
-                account_hash: hash_account_id(&env::signer_account_id()),
-            }),
-        );
-
         Self {
+            owner: owner_id.to_owned(),
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
-            default_attributes: LazyOption::new(StorageKey::DefaultAttributes, None),
-            stakes,
-            stake_pools: UnorderedMap::new(StorageKey::StakePools),
-            accounts: LookupMap::new(StorageKey::Accounts),
-            account_storage_usage: 0,
+            staking: StakeManagement::new(StorageKey::Stakes, StorageKey::StakePools),
+            accounts: AccountManagement::new(StorageKey::Accounts, StorageKey::DefaultAttributes),
         }
-    }
-
-    pub fn death(&mut self, account_id: AccountId) {
-        require!(env::signer_account_id() == env::current_account_id());
-
-        let character = self.get_character(&account_id);
-
-        character.xp = 0;
     }
 
     pub fn ft_metadata(&self) -> FungibleTokenMetadata {
         self.metadata.get().unwrap()
     }
+
+    #[payable]
+    pub fn register(&mut self, account_id: Option<AccountId>) {
+        let init_storage = env::storage_usage();
+
+        let id = account_id.unwrap_or(env::signer_account_id());
+
+        self.staking.internal_register(&id);
+        self.accounts.internal_register(&id);
+
+        refund_deposit_to_account(
+            env::storage_usage() - init_storage,
+            env::signer_account_id(),
+        );
+    }
 }
-
-// impl StorageManagement for Character {
-//     // `registration_only` doesn't affect the implementation for vanilla fungible token.
-//     #[allow(unused_variables)]
-//     fn storage_deposit(
-//         &mut self,
-//         account_id: Option<AccountId>,
-//         registration_only: Option<bool>,
-//     ) -> StorageBalance {
-//         let amount: Balance = env::attached_deposit();
-//         let account_id = account_id.unwrap_or_else(env::predecessor_account_id);
-//         if self.accounts.contains_key(&account_id) {
-//             log!("The account is already registered, refunding the deposit");
-//             if amount > 0 {
-//                 Promise::new(env::predecessor_account_id()).transfer(amount);
-//             }
-//         } else {
-//             let min_balance = self.storage_balance_bounds().min.0;
-//             if amount < min_balance {
-//                 env::panic_str("The attached deposit is less than the minimum storage balance");
-//             }
-
-//             self.internal_register_account(&account_id);
-//             let refund = amount - min_balance;
-//             if refund > 0 {
-//                 Promise::new(env::predecessor_account_id()).transfer(refund);
-//             }
-//         }
-//         self.internal_storage_balance_of(&account_id).unwrap()
-//     }
-
-//     /// While storage_withdraw normally allows the caller to retrieve `available` balance, the basic
-//     /// Fungible Token implementation sets storage_balance_bounds.min == storage_balance_bounds.max,
-//     /// which means available balance will always be 0. So this implementation:
-//     /// * panics if `amount > 0`
-//     /// * never transfers Ⓝ to caller
-//     /// * returns a `storage_balance` struct if `amount` is 0
-//     fn storage_withdraw(&mut self, amount: Option<u128>) -> StorageBalance {
-//         assert_one_yocto();
-//         let predecessor_account_id = env::predecessor_account_id();
-//         if let Some(storage_balance) = self.internal_storage_balance_of(&predecessor_account_id) {
-//             match amount {
-//                 Some(amount) if amount.0 > 0 => {
-//                     env::panic_str("The amount is greater than the available storage balance");
-//                 }
-//                 _ => storage_balance,
-//             }
-//         } else {
-//             env::panic_str(
-//                 format!("The account {} is not registered", &predecessor_account_id).as_str(),
-//             );
-//         }
-//     }
-
-//     fn storage_unregister(&mut self, force: Option<bool>) -> bool {
-//         self.internal_storage_unregister(force).is_some()
-//     }
-
-//     fn storage_balance_bounds(&self) -> StorageBalanceBounds {
-//         let required_storage_balance =
-//             Balance::from(self.account_storage_usage) * env::storage_byte_cost();
-//         StorageBalanceBounds {
-//             min: required_storage_balance.into(),
-//             max: Some(required_storage_balance.into()),
-//         }
-//     }
-
-//     fn storage_balance_of(&self, account_id: AccountId) -> Option<StorageBalance> {
-//         self.internal_storage_balance_of(&account_id)
-//     }
-// }

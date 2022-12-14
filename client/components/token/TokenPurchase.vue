@@ -1,6 +1,6 @@
 
 <script setup lang="ts">
-import { FireIcon } from "@heroicons/vue/outline"
+import { FireIcon } from "@heroicons/vue/24/outline"
 const amount = ref<number>(undefined)
 
 const { $wallet: wallet, $contractRef: contractRef } = useNuxtApp()

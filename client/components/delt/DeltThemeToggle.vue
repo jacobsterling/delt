@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CubeIcon, FireIcon, MoonIcon, SunIcon } from "@heroicons/vue/outline"
+import { CubeIcon, FireIcon, MoonIcon, SunIcon } from "@heroicons/vue/24/outline"
 
 const mode = useColorMode({
   modes: {

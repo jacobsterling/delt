@@ -1,7 +1,5 @@
 <script setup lang="ts">
 
-const client = useSupabaseClient()
-
 const LIMIT = 5
 const FROM = ref(0)
 const TO = ref(LIMIT)

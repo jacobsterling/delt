@@ -1,7 +1,6 @@
 /* eslint-disable vue/sort-keys */
 
-import type { Preset } from "@unocss/core"
-import { mergeDeep } from "@unocss/core"
+import { mergeDeep, Preset } from "@unocss/core"
 import type { UnocssNuxtOptions } from "@unocss/nuxt"
 import { variantMatcher } from "@unocss/preset-mini/utils"
 import type { Theme } from "@unocss/preset-uno"

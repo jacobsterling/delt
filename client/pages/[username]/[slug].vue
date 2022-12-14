@@ -2,9 +2,8 @@
 
 import { ExclamationIcon, FireIcon } from "@heroicons/vue/outline"
 
-import { Stat, Attr } from "../../plugins/contract.client"
+import { Stat, Attr } from "../../plugins/near.client"
 
-const client = useSupabaseClient()
 const route = useRoute()
 
 const { $wallet: wallet, $contractRef: contractRef } = useNuxtApp()

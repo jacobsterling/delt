@@ -24,30 +24,23 @@ const DATA_IMAGE_SVG_NEAR_ICON: &str = "data:image/svg+xml,%3Csvg xmlns='http://
 #[near_bindgen]
 impl Contract {
     /// Initializes the contract with the given total supply owned by the given `owner_id` with
-    /// default metadata (for example purposes only).
-    #[init]
-    pub fn new_default_meta(owner_id: AccountId, total_supply: U128) -> Self {
-        Self::new(
-            owner_id,
-            total_supply,
-            FungibleTokenMetadata {
-                spec: FT_METADATA_SPEC.to_string(),
-                name: "DELT fungible token".to_string(),
-                symbol: "DELT".to_string(),
-                icon: Some(DATA_IMAGE_SVG_NEAR_ICON.to_string()),
-                reference: None,
-                reference_hash: None,
-                decimals: 24,
-            },
-        )
-    }
-
-    /// Initializes the contract with the given total supply owned by the given `owner_id` with
     /// the given fungible token metadata.
     #[init]
-    pub fn new(owner_id: AccountId, total_supply: U128, metadata: FungibleTokenMetadata) -> Self {
+    pub fn new(owner_id: AccountId, total_supply: U128) -> Self {
         assert!(!env::state_exists(), "Already initialized");
+
+        let metadata = FungibleTokenMetadata {
+            spec: FT_METADATA_SPEC.to_string(),
+            name: "DELT fungible token".to_string(),
+            symbol: "DELT".to_string(),
+            icon: Some(DATA_IMAGE_SVG_NEAR_ICON.to_string()),
+            reference: None,
+            reference_hash: None,
+            decimals: 24,
+        };
+
         metadata.assert_valid();
+
         let mut this = Self {
             token: FungibleToken::new(owner_id.clone(), b"a".to_vec()),
             metadata: LazyOption::new(b"m".to_vec(), Some(&metadata)),

@@ -3,23 +3,32 @@ name = "delt_server"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 actix = "0.13.0"
 actix-web = "4.0.1"
 actix-web-actors = "4.1.0"
-cgmath = "0.18.0"
+actix-web-httpauth = "0.8.0"
+actix-http = "3.2.2"
 lazy_static = "1.4.0"
 serde = { version = "1.0.137", features = ["derive"] }
 serde_json = "1.0.81"
-near-sdk = "4.0.0"
-reqwest = "0.11.11"
-
-[dependencies.uuid]
-version = "1.1.1"
-features = [
-    "v4",                # Lets you generate random UUIDs
-    "fast-rng",          # Use a faster (but still sufficiently random) RNG
-    "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
-]
+near-jsonrpc-client = "0.4.0"
+near-primitives = "0.15.0"
+near-crypto = "0.15.0"
+near-jsonrpc-primitives = "0.15.0"
+futures = "0.3"
+base64 = "0.13"
+rand = "0.8.5"
+uuid = { version = "1.2.2", features = ["v4", "fast-rng", "serde"] }
+delt-d = { path = "../contracts/delt-d" }
+dotenv = "0.15.0"
+diesel = { version = "2.0.2", features = [
+  "uuid",
+  "r2d2",
+  "postgres",
+  "chrono",
+  "serde_json",
+] }
+diesel_migrations = "2.0.0"
+chrono = "0.4.22"
+bcrypt = "0.13.0"

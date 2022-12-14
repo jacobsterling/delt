@@ -1,0 +1,35 @@
+{
+  "content": {
+    "update": {
+      "active": {},
+      "kill_list": [],
+      "spawns": {
+        "3d2c3aef-0cc8-4dce-8a8f-22abbefc1385": {
+          "attributes": {
+            "attack_speed": 0.5,
+            "hp": 100,
+            "hp_regen": 1,
+            "max_hp": 100,
+            "max_mp": 100,
+            "mp": 100,
+            "mp_regen": 1,
+            "speed": 50
+          },
+          "display": {
+            "height": 10,
+            "name": "quikc",
+            "width": 10
+          },
+          "manager": "quikc",
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "type": "player"
+        }
+      }
+    },
+    "update_type": "entities"
+  },
+  "msg_type": "update"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "delt-server",
+  "version": "1.0.0",
+  "description": "delt server",
+  "author": "Jacob Sterling",
+  "license": "MIT",
+  "scripts": {
+    "start-db": "pg_ctl start -D F:\\delt\\db",
+    "update-tables": "diesel migration redo --all"
+  }
+}

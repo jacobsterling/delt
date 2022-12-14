@@ -38,7 +38,9 @@ enum StorageKey {
 #[near_bindgen]
 impl MTContract {
     #[init]
-    pub fn new_default_meta(owner_id: AccountId) -> Self {
+    pub fn new(owner_id: AccountId) -> Self {
+        require!(!env::state_exists(), "Already initialized");
+
         let metadata = MtContractMetadata {
             spec: MT_METADATA_SPEC.to_string(),
             name: "Delt Multitoken".to_string(),
@@ -49,12 +51,6 @@ impl MTContract {
             reference_hash: None,
         };
 
-        Self::new(owner_id, metadata)
-    }
-
-    #[init]
-    pub fn new(owner_id: AccountId, metadata: MtContractMetadata) -> Self {
-        require!(!env::state_exists(), "Already initialized");
         metadata.assert_valid();
 
         Self {

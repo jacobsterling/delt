@@ -1,9 +1,14 @@
-use std::collections::HashMap;
+use std::{
+    cmp::Eq,
+    collections::{HashMap, HashSet},
+    hash::Hash,
+    ops::Add,
+};
 
-use crate::ext_contracts::{ext_ft_contract, ext_mt_contract, ext_nft_contract};
+use crate::ext_contracts::{ext_ft_contract, ext_mt_contract, ext_nft_contract, ext_self};
 
 use crate::*;
-use near_contract_standards::non_fungible_token::{refund_deposit_to_account, TokenId};
+use near_contract_standards::non_fungible_token::TokenId;
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     env::panic_str,
@@ -11,58 +16,288 @@ use near_sdk::{
     serde::{Deserialize, Serialize},
     AccountId, Balance, Gas, Promise,
 };
-#[derive(Deserialize, Serialize, BorshDeserialize, BorshSerialize, Debug)]
+use near_sdk::{env::current_account_id, IntoStorageKey};
+
+use utils::refund_deposit_to_account;
+
+#[derive(BorshDeserialize, BorshSerialize)]
+pub struct StakeManagement {
+    pub stake_pools: UnorderedMap<PoolId, Pool>,
+
+    stakes: LookupMap<AccountId, UnorderedMap<StakeId, Option<PoolId>>>,
+}
+#[derive(Serialize, Deserialize, BorshDeserialize, BorshSerialize, Debug)]
 pub struct Pool {
-    pub stakers: HashMap<AccountId, Stakes>,
+    pub owner: AccountId,
 
-    pub pool_results: Vec<AccountId>,
+    pub required_xp: u128,
 
+    //pool result -> staker -> (stake / potential rewards)
+    pub required_stakes: Stakes,
+
+    // governs if the pool can receive more stakes
     pub active: bool,
 
-    pub pvp: bool,
+    // true once all stakes have been transferred to respective player
+    pub resolved: bool,
+
+    pub result: Option<AccountId>,
+}
+
+#[derive(Serialize, Deserialize, BorshDeserialize, BorshSerialize, Debug)]
+pub struct Stakes(pub HashMap<AccountId, HashMap<AccountId, HashMap<StakeId, AccountId>>>);
+
+impl Stakes {
+    pub fn new(pool_results: HashSet<AccountId>) -> Self {
+        let mut stakes = HashMap::new();
+
+        for result in pool_results {
+            stakes.insert(result, HashMap::new());
+        }
+
+        Self(stakes)
+    }
+
+    pub fn add_stake(
+        &mut self,
+        pool_result: AccountId,
+        staker: AccountId,
+        stake: StakeId,
+        receivers: HashMap<AccountId, AccountId>,
+    ) {
+        let mut added = false;
+
+        for (result, stakes) in self.0.iter_mut() {
+            if result == &pool_result {
+                stakes.entry(staker.to_owned()).or_insert_with(HashMap::new);
+                added = true;
+            } else {
+                let receiver = receivers
+                    .get(&result)
+                    .unwrap_or(&current_account_id())
+                    .to_owned();
+
+                require!(receiver != staker, "Staker cannot be a potential receiver");
+
+                stakes
+                    .entry(receiver)
+                    .or_insert_with(HashMap::new)
+                    .insert(stake.to_owned(), staker.to_owned());
+            }
+        }
+
+        assert!(added, "cannot find {} in pool results", pool_result);
+    }
+
+    pub fn add_result(&mut self, pool_result: AccountId) {
+        assert!(
+            self.0.insert(pool_result, HashMap::new()).is_none(),
+            "pool result already exists"
+        );
+    }
 }
 
 impl Pool {
-    fn new(
-        initial_stakes: Vec<(AccountId, Stakes)>,
-        pool_results: Vec<AccountId>,
-        pvp: bool,
-    ) -> Self {
-        let stakers = HashMap::new();
-
-        for (staker, stakes) in initial_stakes {
-            stakers.insert(staker, stakes);
-        }
-
+    fn new(owner: AccountId, pool_results: HashSet<AccountId>, required_xp: u128) -> Self {
         Self {
+            owner,
+            required_xp,
             active: false,
-            pool_results,
-            pvp,
-            stakers,
+            resolved: false,
+            required_stakes: Stakes::new(pool_results),
+            result: None,
+        }
+    }
+}
+#[derive(
+    Deserialize,
+    Serialize,
+    BorshDeserialize,
+    BorshSerialize,
+    Debug,
+    Clone,
+    Eq,
+    PartialEq,
+    Hash,
+    PartialOrd,
+)]
+pub struct StakeId {
+    pub contract_id: AccountId,
+
+    pub token: TokenType,
+}
+
+impl StakeId {
+    fn transfer(&self, receiver_id: AccountId, msg: String, amount: Option<u128>) {
+        //remaining amount
+        match &self.token {
+            TokenType::NFT { token_id } => {
+                ext_nft_contract::ext(self.contract_id.to_owned())
+                    .nft_transfer_call(
+                        receiver_id.to_owned(),
+                        token_id.to_owned(),
+                        None,
+                        Some("Delt stake".to_string()),
+                        msg,
+                    )
+                    .then(
+                        ext_self::ext(env::current_account_id())
+                            .resolve_transfer(self.to_owned(), receiver_id),
+                    );
+            }
+            TokenType::FT { balance } => {
+                let transfer_amount = amount.unwrap_or(balance.to_owned());
+
+                require!(
+                    &transfer_amount <= balance,
+                    "Transfer amount given exceeds registered balance"
+                );
+
+                ext_ft_contract::ext(self.contract_id.to_owned())
+                    .ft_transfer_call(
+                        receiver_id.to_owned(),
+                        U128(transfer_amount),
+                        Some("Delt stake".to_string()),
+                        msg,
+                    )
+                    .then(
+                        ext_self::ext(env::current_account_id())
+                            .resolve_transfer(self.to_owned(), receiver_id),
+                    );
+            }
+            TokenType::MT { token_id, balance } => {
+                let transfer_amount = amount.unwrap_or(balance.to_owned());
+
+                require!(
+                    &transfer_amount <= balance,
+                    "Transfer amount given exceeds registered balance"
+                );
+
+                ext_mt_contract::ext(self.contract_id.to_owned())
+                    .mt_transfer_call(
+                        receiver_id.to_owned(),
+                        token_id.to_owned(),
+                        U128(transfer_amount),
+                        None,
+                        Some("Delt Stake".to_string()),
+                        msg,
+                    )
+                    .then(
+                        ext_self::ext(env::current_account_id())
+                            .resolve_transfer(self.to_owned(), receiver_id),
+                    );
+            }
+        }
+    }
+
+    fn verify(&self, account_id: AccountId) -> Promise {
+        match &self.token {
+            TokenType::NFT { token_id } => {
+                ext_nft_contract::ext(self.contract_id.to_owned()).nft_token(token_id.to_owned())
+            }
+
+            TokenType::FT { .. } => {
+                ext_ft_contract::ext(self.contract_id.to_owned()).ft_balance_of(account_id)
+            }
+
+            TokenType::MT { token_id, .. } => ext_mt_contract::ext(self.contract_id.to_owned())
+                .mt_balance_of(account_id, token_id.to_owned()),
         }
     }
 }
 
-#[derive(Deserialize, Serialize, BorshDeserialize, BorshSerialize, Debug, Clone, PartialEq)]
-//used to identify stakes from NFT, MT & FT contracts
-pub struct StakeId {
-    pub contract_id: AccountId,
-
-    // for nft or mt contracts, should be left as none for fungable token
-    pub token_id: Option<TokenId>,
-
-    //should be left as none for nft's
-    pub balance: Option<Balance>,
+#[derive(
+    Deserialize,
+    Serialize,
+    BorshDeserialize,
+    BorshSerialize,
+    Debug,
+    Clone,
+    Eq,
+    Hash,
+    PartialEq,
+    PartialOrd,
+)]
+pub enum TokenType {
+    NFT { token_id: TokenId },
+    FT { balance: u128 },
+    MT { token_id: TokenId, balance: u128 },
 }
 
-#[derive(Deserialize, Serialize, BorshDeserialize, BorshSerialize, Debug, Clone)]
-pub struct Stakes {
-    pub stakes: Vec<StakeId>,
+impl TokenType {
+    fn eq_type(&self, other: &Self) -> bool {
+        match self {
+            Self::NFT { .. } => match other {
+                Self::NFT { .. } => true,
 
-    //key represents pool result and value is receiver of the stake given the result
-    pub potential_recievers: Vec<(AccountId, AccountId)>,
+                _ => false,
+            },
+            Self::FT { .. } => match other {
+                Self::FT { .. } => true,
 
-    pub staked_on_result: AccountId,
+                _ => false,
+            },
+            Self::MT { .. } => match other {
+                Self::MT { .. } => true,
+
+                _ => false,
+            },
+        }
+    }
+
+    fn get_amount(&self) -> Option<&u128> {
+        match self {
+            Self::NFT { .. } => None,
+            Self::FT { balance } => Some(balance),
+            Self::MT { balance, .. } => Some(balance),
+        }
+    }
+
+    pub fn add_amount(&self, amount: u128) -> Option<Self> {
+        match self {
+            Self::FT { balance } => match balance.checked_add(amount) {
+                Some(new_balance) => Some(Self::FT {
+                    balance: new_balance,
+                }),
+
+                None => None,
+            },
+
+            Self::MT { token_id, balance } => match balance.checked_add(amount) {
+                Some(new_balance) => Some(Self::MT {
+                    balance: new_balance,
+                    token_id: token_id.to_string(),
+                }),
+
+                None => None,
+            },
+
+            _ => None,
+        }
+    }
+
+    pub fn remove_amount(&self, amount: u128) -> Option<Self> {
+        match self {
+            Self::FT { balance } => match balance.checked_sub(amount) {
+                Some(new_balance) => Some(Self::FT {
+                    balance: new_balance,
+                }),
+
+                None => None,
+            },
+
+            Self::MT { token_id, balance } => match balance.checked_sub(amount) {
+                Some(new_balance) => Some(Self::MT {
+                    balance: new_balance,
+                    token_id: token_id.to_string(),
+                }),
+
+                None => None,
+            },
+
+            _ => None,
+        }
+    }
 }
 
 pub type PoolId = String;
@@ -72,65 +307,72 @@ const GAS_FOR_TRANSFER_CALL: Gas = Gas(25_000_000_000_000 + BASIC_GAS.0);
 const NO_DEPOSIT: Balance = 0;
 
 pub trait Staking {
-    fn create_stake_pool(
+    fn create_pool(
         &mut self,
         pool_id: PoolId,
-        pool_results: Vec<AccountId>,
-        pvp: bool,
-        initial_stakes: Vec<(AccountId, Stakes)>,
-    );
+        pool_results: HashSet<AccountId>,
+        required_xp: u128,
+    ) -> Pool;
 
-    fn resolve_stake_pool(&mut self, pool_id: PoolId, stake_result: Option<AccountId>);
-
-    fn validate_stakes(&mut self, pool_id: PoolId) -> bool;
-
-    fn transfer_stake(
-        &self,
-        pool_id: PoolId,
-        staker_id: AccountId,
-        receiver_id: AccountId,
-        index: usize,
-    );
-
-    fn verify_stake(
-        &self,
-        pool_id: PoolId,
-        staker_id: AccountId,
-        check_staker: bool,
-        index: usize,
-    ) -> Promise;
-
-    fn assert_stake(
+    fn stake(
         &mut self,
-        pool_id: PoolId,
+        stake_id: StakeId,
         staker_id: AccountId,
-        index: usize,
-        assertion: bool,
+        pool_result: AccountId,
+        pool_id: PoolId,
+        receivers: HashMap<AccountId, AccountId>,
     );
 
-    fn get_pool(&self, pool_id: PoolId) -> Pool;
+    fn unstake(&mut self, stake_id: StakeId, staker_id: AccountId);
 
-    fn toggle_pool(&mut self, pool_id: PoolId, toggle: bool);
+    fn register_stake(&mut self, stake_id: StakeId, staker_id: AccountId);
+
+    fn unregister_stake(
+        &mut self,
+        stake_id: StakeId,
+        staker_id: AccountId,
+        reregister: Option<AccountId>,
+    );
+
+    fn transfer_stake(&self, stake_id: StakeId, receiver_id: AccountId, amount: Option<u128>);
+
+    fn get_stakes(&self, staker_id: AccountId) -> Vec<(StakeId, Option<PoolId>)>;
+
+    fn verify_stake(&self, stake_id: StakeId, check_id: Option<AccountId>) -> Promise;
+
+    fn get_pools(&self, owner: Option<AccountId>) -> HashMap<PoolId, Pool>;
+
+    fn toggle_pool_active(&mut self, pool_id: PoolId, toggle: bool);
+
+    fn assert_pool_result(&mut self, pool_id: PoolId, pool_result: Option<AccountId>);
+
+    fn distribute_stakes(&mut self, pool_id: PoolId);
 
     fn remove_pool(&mut self, pool_id: PoolId);
 }
 
 #[near_bindgen]
 impl Staking for Contract {
-    fn create_stake_pool(
+    #[payable]
+    fn create_pool(
         &mut self,
         pool_id: PoolId,
-        pool_results: Vec<AccountId>,
-        pvp: bool,
-        initial_stakes: Vec<(AccountId, Stakes)>,
-    ) {
+        pool_results: HashSet<AccountId>,
+        required_xp: u128,
+    ) -> Pool {
+        require!(
+            self.accounts
+                .characters
+                .get(&env::signer_account_id())
+                .is_some(),
+            "Account is not registered"
+        );
+
         let init_storage = env::storage_usage();
 
-        if self
-            .stake_pools
-            .insert(&pool_id, &Pool::new(initial_stakes, pool_results, pvp))
-            .is_some()
-        {
+        let pool = Pool::new(env::signer_account_id(), pool_results, required_xp);
+
+        if self.staking.stake_pools.insert(&pool_id, &pool).is_some() {
             panic_str("Pool id already exists");
         }
 
@@ -139,235 +381,397 @@ impl Staking for Contract {
             env::storage_usage() - init_storage,
             env::signer_account_id(),
         );
+
+        pool
     }
 
-    fn validate_stakes(&mut self, pool_id: PoolId) -> bool {
-        match self.stake_pools.get(&pool_id) {
-            Some(pool) => {
-                let mut result: Vec<bool> = Vec::new();
+    #[payable]
+    fn stake(
+        &mut self,
+        stake_id: StakeId,
+        staker_id: AccountId,
+        pool_result: AccountId,
+        pool_id: PoolId,
+        receivers: HashMap<AccountId, AccountId>,
+    ) {
+        require!(
+            env::signer_account_id() == self.owner || env::signer_account_id() == staker_id,
+            "Restricted function"
+        );
 
-                for (staker, required_stakes) in pool.stakers.into_iter() {
-                    if let Some(stakes) = self.stakes.get(&staker) {
-                        for required_stake in required_stakes.stakes {
-                            for (stake, staked_in_pool) in stakes.iter() {
-                                if stake == required_stake {
-                                    if let Some(id) = staked_in_pool {
-                                        if id == pool_id {
-                                            result.push(true);
-                                            break;
-                                        }
-                                    } else {
-                                        staked_in_pool = Some(pool_id);
-                                        result.push(true);
-                                        break;
-                                    }
-                                }
-                            }
+        let init_storage = env::storage_usage();
 
-                            self.stakes.insert(&staker, &stakes);
+        let mut pool = self
+            .staking
+            .stake_pools
+            .get(&pool_id)
+            .unwrap_or_else(|| panic_str("given pool id does not exist"));
+
+        require!(!pool.active, "Pool is already active");
+
+        pool.required_stakes.add_stake(
+            pool_result,
+            staker_id.to_owned(),
+            stake_id.to_owned(),
+            receivers,
+        );
+
+        self.staking.stake_pools.insert(&pool_id, &pool);
+
+        match self.staking.stakes.get(&staker_id) {
+            Some(mut stakes) => {
+                match stakes.insert(&stake_id, &Some(pool_id)) {
+                    Some(existing) => {
+                        if let Some(existing_pool) = existing {
+                            panic_str(&format!("Stake already staked in pool: {}", existing_pool));
                         }
-                    } else {
-                        if required_stakes.stakes.len() > 0 {
-                            result.push(false);
+                    }
+
+                    None => panic_str("Stake is not registered"),
+                }
+
+                self.staking.stakes.insert(&staker_id, &stakes);
+            }
+
+            None => panic_str("Account is not registered"),
+        }
+
+        refund_deposit_to_account(
+            env::storage_usage() - init_storage,
+            env::signer_account_id(),
+        );
+    }
+
+    fn unstake(&mut self, stake_id: StakeId, staker_id: AccountId) {
+        require!(
+            env::signer_account_id() == self.owner || env::signer_account_id() == staker_id,
+            "Restricted function"
+        );
+
+        match self.staking.stakes.get(&staker_id) {
+            Some(stakes) => {
+                match stakes.get(&stake_id) {
+                    Some(existing_pool) => {
+                        if let Some(pool_id) = existing_pool {
+                            panic_str(&format!("Still staked in pool: {}", pool_id));
+                        }
+
+                        stake_id.transfer(
+                            staker_id.to_owned(),
+                            current_account_id().to_string(),
+                            None,
+                        );
+                    }
+
+                    None => {
+                        let mut transfered = false;
+
+                        if let Some(transfer_amount) = stake_id.token.get_amount() {
+                            for (stake, _) in stakes.iter().filter(|(stake, existing_pool)| {
+                                stake.token.eq_type(&stake_id.token)
+                                    && existing_pool.is_none()
+                                    && stake_id.contract_id == stake.contract_id
+                            }) {
+                                stake.transfer(
+                                    staker_id.to_owned(),
+                                    current_account_id().to_string(),
+                                    Some(transfer_amount.to_owned()),
+                                );
+
+                                transfered = true;
+                                break;
+                            }
+                        }
+
+                        if !transfered {
+                            panic_str("Stake is not registered")
                         }
                     }
                 }
 
-                if result.len() > 0 {
-                    return result.into_iter().any(|x| x);
-                } else {
-                    return true;
-                };
+                self.staking.stakes.insert(&staker_id, &stakes);
             }
 
-            None => panic_str("Pool does not exist"),
+            None => panic_str("Account is not registered"),
         }
-
-        //self.stake_pools.insert(&pool_id, &stake_pool);
     }
 
-    fn resolve_stake_pool(&mut self, pool_id: PoolId, stake_result: Option<AccountId>) {
-        assert!(env::signer_account_id() == env::current_account_id());
+    #[payable]
+    fn register_stake(&mut self, mut stake_id: StakeId, staker_id: AccountId) {
+        require!(
+            env::signer_account_id() == self.owner,
+            "Restricted function"
+        );
 
-        let mut pool = self
-            .stake_pools
-            .get(&pool_id)
-            .unwrap_or_else(|| panic!("Pool does not exist"));
+        let init_storage = env::storage_usage();
 
-        require!(pool.active, "Pool is not active");
-
-        if let Some(result) = stake_result {
-            assert!(
-                pool.pool_results.contains(&result),
-                "Result not contained in pool results"
-            );
-
-            for (player, stakes) in pool.player_stakes.into_iter() {
-                for (index, stake) in stakes.into_iter().enumerate() {
-                    if result != stake.staked_on_result && stake.staked {
-                        for (_, receiver) in stake
-                            .potential_recievers
-                            .into_iter()
-                            .filter(|(stake_result, _)| stake_result == &result)
-                        {
-                            self.transfer_stake(pool_id.clone(), player.clone(), receiver, index);
+        match self.staking.stakes.get(&staker_id) {
+            Some(mut stakes) => {
+                if let Some(merge_amount) = stake_id.token.get_amount() {
+                    for (stake, _) in stakes.iter().filter(|(stake, existing_pool)| {
+                        stake.token.eq_type(&stake_id.token)
+                            && existing_pool.is_none()
+                            && stake_id.contract_id == stake.contract_id
+                    }) {
+                        if let Some(merged) = stake_id.token.add_amount(merge_amount.to_owned()) {
+                            stake_id.token = merged;
+                            stakes.remove(&stake);
                             break;
                         }
                     }
                 }
+
+                stakes.insert(&stake_id, &None);
+
+                self.staking.stakes.insert(&staker_id, &stakes);
             }
+
+            None => panic_str("Account not registered"),
         }
 
-        pool.active = false;
+        refund_deposit_to_account(
+            env::storage_usage() - init_storage,
+            env::signer_account_id(),
+        );
     }
 
-    fn transfer_stake(
-        &self,
-        pool_id: PoolId,
+    fn unregister_stake(
+        &mut self,
+        stake_id: StakeId,
         staker_id: AccountId,
-        receiver_id: AccountId,
-        index: usize,
+        reregister: Option<AccountId>,
     ) {
-        assert_eq!(env::signer_account_id(), env::current_account_id());
+        require!(
+            env::signer_account_id() == self.owner,
+            "Restricted function"
+        );
 
-        let pool = self.get_pool(pool_id.clone());
+        match self.staking.stakes.get(&staker_id) {
+            Some(mut stakes) => {
+                let mut unstaked = false;
 
-        let stakes = pool
-            .player_stakes
-            .get(&staker_id)
-            .unwrap_or_else(|| panic!("Staker does not exist"));
+                match stakes.remove(&stake_id) {
+                    Some(pool) => {
+                        if let Some(pool_id) = pool {
+                            panic_str(&format!("Stake is staked in pool: {}", pool_id));
+                        }
+                        unstaked = true;
+                    }
 
-        let stake = stakes
-            .get(index)
-            .unwrap_or_else(|| panic!("Staker does not exist"));
+                    None => {
+                        if let Some(unstake_amount) = stake_id.token.get_amount() {
+                            for (mut stake, _) in stakes.iter().filter(|(stake, existing_pool)| {
+                                stake.token.eq_type(&stake_id.token)
+                                    && existing_pool.is_none()
+                                    && stake_id.contract_id == stake.contract_id
+                            }) {
+                                if let Some(unmerged) =
+                                    stake.token.remove_amount(unstake_amount.to_owned())
+                                {
+                                    stakes.remove(&stake);
+                                    stake.token = unmerged;
+                                    stakes.insert(&stake, &None);
+                                    unstaked = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                };
 
-        if let Some(token_id) = &stake.token_id {
-            if let Some(balance) = stake.balance {
-                ext_mt_contract::ext(stake.contract_id.to_owned()).mt_transfer_call(
-                    receiver_id,
-                    token_id.to_owned(),
-                    U128(balance),
-                    None,
-                    Some("Delt Stake".to_string()),
-                    format!("{} {}", pool_id, index),
-                );
-            } else {
-                ext_nft_contract::ext(stake.contract_id.to_owned()).nft_transfer_call(
-                    receiver_id,
-                    token_id.to_owned(),
-                    None,
-                    Some("Delt stake".to_string()),
-                    format!("{} {}", pool_id, index),
-                );
+                if unstaked {
+                    if let Some(staker) = reregister {
+                        require!(staker != staker_id, "Cannot reregister to same account");
+
+                        self.register_stake(stake_id, staker);
+                    }
+                } else {
+                    panic_str("Stake cannot be unregistered");
+                }
             }
-        } else {
-            ext_ft_contract::ext(stake.contract_id.to_owned()).ft_transfer_call(
-                receiver_id,
-                U128(stake.balance.unwrap()),
-                Some("Delt stake".to_string()),
-                format!("{} {}", pool_id, index),
+
+            None => panic_str("Account not registered"),
+        }
+    }
+
+    fn transfer_stake(&self, stake_id: StakeId, receiver_id: AccountId, amount: Option<u128>) {
+        require!(
+            env::signer_account_id() == self.owner,
+            "Restricted function"
+        );
+
+        stake_id.transfer(receiver_id, current_account_id().to_string(), amount);
+    }
+
+    fn assert_pool_result(&mut self, pool_id: PoolId, pool_result: Option<AccountId>) {
+        require!(
+            env::signer_account_id() == self.owner,
+            "Restricted function"
+        );
+
+        let mut pool = self
+            .staking
+            .stake_pools
+            .get(&pool_id)
+            .unwrap_or_else(|| panic_str("given pool id does not exist"));
+
+        require!(pool.active, "Pool is not active");
+
+        if let Some(result) = &pool_result {
+            require!(
+                pool.required_stakes.0.get(result).is_some(),
+                "Result not contained in pool results"
             );
         }
+
+        pool.result = pool_result;
+
+        self.staking.stake_pools.insert(&pool_id, &pool);
     }
 
-    fn verify_stake(
-        &self,
-        pool_id: PoolId,
-        staker_id: AccountId,
-        check_staker: bool,
-        index: usize,
-    ) -> Promise {
-        let pool = self.get_pool(pool_id);
+    fn get_stakes(&self, staker_id: AccountId) -> Vec<(StakeId, Option<PoolId>)> {
+        match self.staking.stakes.get(&staker_id) {
+            Some(stakes) => {
+                let mut stakes_vec = Vec::new();
+                for (id, stake) in stakes.iter() {
+                    stakes_vec.push((id, stake));
+                }
 
-        let stake_owner = if check_staker {
-            staker_id.clone()
-        } else {
-            env::current_account_id()
-        };
-
-        let stakes = pool
-            .player_stakes
-            .get(&staker_id)
-            .unwrap_or_else(|| panic!("Staker does not exist"));
-
-        let stake = stakes
-            .get(index)
-            .unwrap_or_else(|| panic!("Staker does not exist"));
-
-        if let Some(token_id) = &stake.token_id {
-            if stake.balance.is_some() {
-                ext_mt_contract::ext(stake.contract_id.to_owned())
-                    .mt_balance_of(stake_owner, token_id.to_owned())
-            } else {
-                ext_nft_contract::ext(stake.contract_id.to_owned()).nft_token(token_id.to_owned())
+                stakes_vec
             }
-        } else {
-            ext_ft_contract::ext(stake.contract_id.to_owned()).ft_balance_of(stake_owner)
+
+            None => panic_str("No stakes for given account id"),
         }
     }
 
-    fn assert_stake(
-        &mut self,
-        pool_id: PoolId,
-        staker_id: AccountId,
-        index: usize,
-        assertion: bool,
-    ) {
-        assert_eq!(env::signer_account_id(), env::current_account_id());
-
-        let mut pool = self
-            .stake_pools
-            .get(&pool_id)
-            .unwrap_or_else(|| panic!("Pool does not exist"));
-
-        let mut stakes = pool
-            .player_stakes
-            .get(&staker_id)
-            .unwrap_or_else(|| panic!("Staker does not exist"))
-            .clone();
-
-        if let Some(stake) = stakes.get_mut(index) {
-            stake.staked = assertion;
-
-            pool.player_stakes.insert(staker_id, stakes);
-
-            self.stake_pools.insert(&pool_id, &pool);
-        };
+    fn verify_stake(&self, stake_id: StakeId, check_id: Option<AccountId>) -> Promise {
+        stake_id.verify(check_id.unwrap_or(env::current_account_id()))
     }
 
-    fn get_pool(&self, pool_id: PoolId) -> Pool {
-        self.stake_pools
-            .get(&pool_id)
-            .unwrap_or_else(|| panic!("Pool does not exist"))
+    fn get_pools(&self, owner: Option<AccountId>) -> HashMap<PoolId, Pool> {
+        self.staking.internal_get_pools(&owner)
     }
 
-    fn toggle_pool(&mut self, pool_id: PoolId, toggle: bool) {
-        assert_eq!(env::signer_account_id(), env::current_account_id());
+    fn distribute_stakes(&mut self, pool_id: PoolId) {
+        require!(
+            env::signer_account_id() == self.owner,
+            "Restricted function"
+        );
 
         let mut pool = self
+            .staking
             .stake_pools
             .get(&pool_id)
-            .unwrap_or_else(|| panic!("Pool does not exist"));
+            .unwrap_or_else(|| panic_str("given pool id does not exist"));
+
+        require!(pool.active, "Pool is not active");
+
+        match pool.result {
+            Some(result) => {
+                let stake_receviers = pool.required_stakes.0.remove(&result).unwrap();
+
+                for (receiver, rewards) in stake_receviers.iter() {
+                    for (reward, rewarder) in rewards.iter() {
+                        self.unregister_stake(
+                            reward.to_owned(),
+                            rewarder.to_owned(),
+                            Some(receiver.to_owned()),
+                        );
+                    }
+                }
+            }
+
+            None => panic_str("Pool result is required"),
+        }
+    }
+
+    fn toggle_pool_active(&mut self, pool_id: PoolId, toggle: bool) {
+        require!(
+            env::signer_account_id() == self.owner,
+            "Restricted function"
+        );
+
+        let mut pool = self
+            .staking
+            .stake_pools
+            .get(&pool_id)
+            .unwrap_or_else(|| panic_str("given pool id does not exist"));
 
         pool.active = toggle;
 
-        self.stake_pools.insert(&pool_id, &pool);
+        self.staking.stake_pools.insert(&pool_id, &pool);
     }
 
     fn remove_pool(&mut self, pool_id: PoolId) {
-        assert_eq!(env::signer_account_id(), env::current_account_id());
-
-        let pool = self
-            .stake_pools
-            .get(&pool_id)
-            .unwrap_or_else(|| panic!("Pool does not exist"));
-
-        assert!(!pool.active, "Pool is active");
-        assert!(
-            !self.validate_stakes(pool_id.clone()),
-            "Existing stakes in pool"
+        require!(
+            env::signer_account_id() == self.owner,
+            "Restricted function"
         );
 
-        self.stake_pools.remove(&pool_id);
+        assert!(
+            self.staking
+                .stake_pools
+                .get(&pool_id)
+                .unwrap_or_else(|| panic_str("given pool id does not exist"))
+                .resolved,
+            "Pool is unresolved"
+        );
+
+        self.staking.stake_pools.remove(&pool_id);
+    }
+}
+
+impl StakeManagement {
+    pub fn new<S, P>(stakes_prefix: S, stake_pools_prefix: P) -> Self
+    where
+        S: IntoStorageKey,
+        P: IntoStorageKey,
+    {
+        let mut stakes = LookupMap::new(stakes_prefix);
+
+        let self_id = env::current_account_id();
+
+        stakes.insert(
+            &self_id,
+            &UnorderedMap::new(StorageKey::StakesPerOwner {
+                account_hash: hash_account_id(&self_id),
+            }),
+        );
+
+        Self {
+            stake_pools: UnorderedMap::new(stake_pools_prefix),
+            stakes,
+        }
+    }
+
+    pub fn internal_get_pools(&self, owner: &Option<AccountId>) -> HashMap<PoolId, Pool> {
+        let mut pools = HashMap::new();
+
+        for (pool_id, pool) in self.stake_pools.iter() {
+            if let Some(id) = owner {
+                if &pool.owner == id {
+                    pools.insert(pool_id, pool);
+                }
+            } else {
+                pools.insert(pool_id, pool);
+            }
+        }
+
+        pools
+    }
+
+    pub fn internal_register(&mut self, account_id: &AccountId) {
+        if self
+            .stakes
+            .insert(
+                account_id,
+                &UnorderedMap::new(StorageKey::StakesPerOwner {
+                    account_hash: hash_account_id(account_id),
+                }),
+            )
+            .is_some()
+        {
+            panic_str("Account aleady registered");
+        }
     }
 }

@@ -1,8 +1,8 @@
 use delt_ft::Contract;
 use near_contract_standards::fungible_token::core::FungibleTokenCore;
 use near_contract_standards::storage_management::StorageManagement;
-use near_sdk::test_utils::{accounts, VMContextBuilder};
-use near_sdk::{env, log, MockedBlockchain};
+use near_sdk::log;
+use near_sdk::test_utils::accounts;
 use near_sdk::{testing_env, Balance};
 
 use crate::{get_context, set_caller};
@@ -14,7 +14,7 @@ const TOTAL_SUPPLY: Balance = 1_000_000_000_000_000;
 fn test_new() {
     let mut context = get_context(accounts(1));
     testing_env!(context.build());
-    let contract = Contract::new_default_meta(accounts(1).into(), TOTAL_SUPPLY.into());
+    let contract = Contract::new(accounts(1).into(), TOTAL_SUPPLY.into());
     testing_env!(context.is_view(true).build());
     assert_eq!(contract.ft_total_supply().0, TOTAL_SUPPLY);
     assert_eq!(contract.ft_balance_of(accounts(1)).0, TOTAL_SUPPLY);
@@ -32,7 +32,7 @@ fn test_default() {
 fn test_transfer() {
     let mut context = get_context(accounts(2));
 
-    let mut contract = Contract::new_default_meta(accounts(0).into(), TOTAL_SUPPLY.into());
+    let mut contract = Contract::new(accounts(0).into(), TOTAL_SUPPLY.into());
 
     let transfer_amount = TOTAL_SUPPLY / 3;
 
@@ -78,7 +78,7 @@ fn test_transfer() {
 fn test_transfer_on_behalf_of() {
     let mut context = get_context(accounts(2));
 
-    let mut contract = Contract::new_default_meta(accounts(0).into(), TOTAL_SUPPLY.into());
+    let mut contract = Contract::new(accounts(0).into(), TOTAL_SUPPLY.into());
 
     let transfer_amount = TOTAL_SUPPLY / 3;
 

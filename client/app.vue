@@ -1,17 +1,16 @@
 <script setup lang="ts">
+// viewport: "width=device-width, initial-scale=1, maximum-scale=1"
 useHead({
   bodyAttrs: {
     class: "d-body"
   },
-  charset: "utf-8",
   link: [
     { href: "favicon.svg", rel: "icon", type: "image/svg+xml" }
   ],
   meta: [
-    { content: "NFT Design and Apparel Marketplace.", name: "description" }
+    { charset: "utf-8", content: "NFT Design and Apparel Marketplace.", name: "description" }
   ],
-  titleTemplate: title => `DELT | ${title}`,
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1"
+  titleTemplate: title => `DELT | ${title}`
 })
 </script>
 

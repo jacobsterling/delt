@@ -1,12 +1,12 @@
 use delt_mt::multi_token::approval::MultiTokenApproval;
 use delt_mt::multi_token::core::MultiTokenCore;
-use delt_mt::multi_token::metadata::{MultiTokenMetadataProvider, TokenMetadata};
-use delt_mt::{MTContract, Market, Stat, TokenAttributeHandler};
+use delt_mt::multi_token::metadata::MultiTokenMetadataProvider;
+use delt_mt::{MTContract, Market, TokenAttributeHandler};
 
-use delt_mt::multi_token::token::{Token, TokenId};
+use delt_mt::multi_token::token::TokenId;
 use near_sdk::env::{self, log_str};
 use near_sdk::json_types::U128;
-use near_sdk::serde_json::{json, to_string, Map, Value};
+use near_sdk::serde_json::{json, to_string};
 use near_sdk::test_utils::{accounts, VMContextBuilder};
 use near_sdk::testing_env;
 
@@ -16,7 +16,7 @@ use crate::{create_token_md_3, init_tokens, set_caller};
 fn get_contract_metadata() {
     let mut context = VMContextBuilder::new();
     set_caller(&mut context, 0);
-    let contract = MTContract::new_default_meta(accounts(0));
+    let contract = MTContract::new(accounts(0));
     contract.mt_metadata();
 }
 
@@ -27,7 +27,7 @@ fn test_set_token_stats() {
     set_caller(&mut context, 0);
 
     testing_env!(context.attached_deposit(10u128.pow(24)).build()); // deposit of 1 near
-    let mut contract = MTContract::new_default_meta(accounts(0));
+    let mut contract = MTContract::new(accounts(0));
 
     let (token, token_2, token_3) = init_tokens(&mut contract);
 
@@ -38,10 +38,10 @@ fn test_set_token_stats() {
         json!(
             {
                 "defence": {
-                    "malleable": Stat {
-                        tier: 0,
-                        quality: "rubber".to_string(),
-                        value: 1
+                    "malleable": {
+                        "tier": 0,
+                        "quality": "rubber".to_string(),
+                        "value": 1
                     }
                 }
             }
@@ -67,7 +67,7 @@ fn test_mint_existing() {
     testing_env!(context.attached_deposit(10u128.pow(24)).build()); // deposit of 1 near
 
     log_str(&env::attached_deposit().to_string());
-    let mut contract = MTContract::new_default_meta(accounts(0));
+    let mut contract = MTContract::new(accounts(0));
 
     let (token, token_2, token_3) = init_tokens(&mut contract);
 
@@ -88,7 +88,7 @@ fn test_burn() {
 
     testing_env!(context.attached_deposit(10u128.pow(24)).build()); // deposit of 1 near
 
-    let mut contract = MTContract::new_default_meta(accounts(0));
+    let mut contract = MTContract::new(accounts(0));
 
     let (token, token_2, token_3) = init_tokens(&mut contract);
 
@@ -114,7 +114,7 @@ fn test_merge() {
 
     testing_env!(context.attached_deposit(10u128.pow(24)).build()); // deposit of 1 near
 
-    let mut contract = MTContract::new_default_meta(accounts(0));
+    let mut contract = MTContract::new(accounts(0));
 
     let (token, token_2, token_3) = init_tokens(&mut contract);
 
@@ -151,7 +151,7 @@ fn test_merge() {
 fn test_transfer() {
     let mut context = VMContextBuilder::new();
     set_caller(&mut context, 0);
-    let mut contract = MTContract::new_default_meta(accounts(0));
+    let mut contract = MTContract::new(accounts(0));
     testing_env!(context.attached_deposit(10u128.pow(24)).build());
 
     let (token, _, _) = init_tokens(&mut contract);
@@ -202,7 +202,7 @@ fn test_transfer_amount_must_be_positive() {
     let mut context = VMContextBuilder::new();
     set_caller(&mut context, 0);
 
-    let mut contract = MTContract::new_default_meta(accounts(0));
+    let mut contract = MTContract::new(accounts(0));
     testing_env!(context.attached_deposit(1).build());
     let (token, _, _) = init_tokens(&mut contract);
     contract.register(token.token_id.clone(), accounts(1));
@@ -215,7 +215,7 @@ fn test_transfer_amount_must_be_positive() {
 fn test_sender_account_must_have_sufficient_balance() {
     let mut context = VMContextBuilder::new();
     set_caller(&mut context, 0);
-    let mut contract = MTContract::new_default_meta(accounts(0));
+    let mut contract = MTContract::new(accounts(0));
     let (token, _, _) = init_tokens(&mut contract);
     contract.register(token.token_id.clone(), accounts(1));
     testing_env!(context.attached_deposit(1).build());
@@ -229,7 +229,7 @@ fn test_sender_account_must_have_sufficient_balance() {
 fn test_transfers_require_one_yocto() {
     let mut context = VMContextBuilder::new();
     set_caller(&mut context, 0);
-    let mut contract = MTContract::new_default_meta(accounts(0));
+    let mut contract = MTContract::new(accounts(0));
     let (token, _, _) = init_tokens(&mut contract);
     contract.register(token.token_id.clone(), accounts(1));
     contract.mt_transfer(accounts(1), token.token_id.clone(), U128(1000), None, None)
@@ -240,7 +240,7 @@ fn test_transfers_require_one_yocto() {
 fn test_receiver_must_be_registered() {
     let mut context = VMContextBuilder::new();
     set_caller(&mut context, 0);
-    let mut contract = MTContract::new_default_meta(accounts(0));
+    let mut contract = MTContract::new(accounts(0));
     let (token, _, _) = init_tokens(&mut contract);
     contract.register(token.token_id.clone(), accounts(1));
     testing_env!(context.attached_deposit(1).build());
@@ -253,7 +253,7 @@ fn test_receiver_must_be_registered() {
 fn test_cannot_transfer_to_self() {
     let mut context = VMContextBuilder::new();
     set_caller(&mut context, 0);
-    let mut contract = MTContract::new_default_meta(accounts(0));
+    let mut contract = MTContract::new(accounts(0));
     let (token, _, _) = init_tokens(&mut contract);
     contract.register(token.token_id.clone(), accounts(1));
     testing_env!(context.attached_deposit(1).build());
@@ -264,9 +264,9 @@ fn test_cannot_transfer_to_self() {
 #[test]
 fn test_batch_transfer() {
     let mut context = VMContextBuilder::new();
-    let mut contract = MTContract::new_default_meta(accounts(0));
+    let mut contract = MTContract::new(accounts(0));
     set_caller(&mut context, 0);
-    testing_env!(context.attached_deposit(10u128.pow(24)).build()); 
+    testing_env!(context.attached_deposit(10u128.pow(24)).build());
     let (quote_token, base_token, _) = init_tokens(&mut contract);
 
     contract.register(quote_token.token_id.clone(), accounts(1));
@@ -318,7 +318,7 @@ fn test_batch_transfer() {
 #[should_panic(expected = "The account doesn't have enough balance")]
 fn test_batch_transfer_all_balances_must_be_sufficient() {
     let mut context = VMContextBuilder::new();
-    let mut contract = MTContract::new_default_meta(accounts(0));
+    let mut contract = MTContract::new(accounts(0));
     set_caller(&mut context, 0);
 
     let (quote_token, base_token, _) = init_tokens(&mut contract);
@@ -339,7 +339,7 @@ fn test_batch_transfer_all_balances_must_be_sufficient() {
 #[test]
 fn test_purchace() {
     let mut context = VMContextBuilder::new();
-    let mut contract = MTContract::new_default_meta(accounts(0));
+    let mut contract = MTContract::new(accounts(0));
     set_caller(&mut context, 0);
 
     testing_env!(context.attached_deposit(10u128.pow(24)).build());
@@ -393,7 +393,7 @@ fn test_purchace() {
 #[test]
 fn test_purchace_w_approval() {
     let mut context = VMContextBuilder::new();
-    let mut contract = MTContract::new_default_meta(accounts(0));
+    let mut contract = MTContract::new(accounts(0));
     set_caller(&mut context, 0);
 
     testing_env!(context.attached_deposit(10u128.pow(24)).build());
@@ -451,7 +451,7 @@ fn test_purchace_w_approval() {
 fn test_auction() {
     let mut context = VMContextBuilder::new();
 
-    let mut contract = MTContract::new_default_meta(accounts(0));
+    let mut contract = MTContract::new(accounts(0));
     set_caller(&mut context, 0);
 
     testing_env!(context.attached_deposit(10u128.pow(24)).build());
@@ -529,7 +529,7 @@ fn test_auction() {
 fn test_auction_w_approval() {
     let mut context = VMContextBuilder::new();
 
-    let mut contract = MTContract::new_default_meta(accounts(0));
+    let mut contract = MTContract::new(accounts(0));
     set_caller(&mut context, 0);
 
     testing_env!(context.attached_deposit(10u128.pow(24)).build());

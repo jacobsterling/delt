@@ -4,7 +4,7 @@
 import Json from "~~/assets/particles/flares.json"
 import Image from "~~/assets/particles/flares.png"
 import Players from "~~/assets/Players"
-import { ActiveConnection } from "~~/plugins/websocket.client"
+import { WebSocketConnection } from "~~/composables/useWebSocket"
 import { ServerUpdate, PlayerStats } from "~~/types/server"
 
 import ComponentService from "../components"
@@ -35,7 +35,7 @@ export const getRandom = (min: number, max: number): number => {
 
 export default class BaseScene extends Phaser.Scene {
     public components!: ComponentService
-    public ws!: ActiveConnection
+    public ws!: WebSocketConnection
     public entityPhysics!: Phaser.Physics.Arcade.Group
     public ui!: GameUi
 
@@ -49,7 +49,7 @@ export default class BaseScene extends Phaser.Scene {
         })
     }
 
-    init({ session, state }: { session: ActiveConnection, state: SessionState }) {
+    init({ session, state }: { session: WebSocketConnection, state: SessionState }) {
         this.ui = this.scene.get("GameUi") as GameUi
         this.ui.mainscene = this
         this.scene.bringToTop(this.ui)

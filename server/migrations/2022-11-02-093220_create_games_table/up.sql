@@ -3,12 +3,17 @@ CREATE TABLE games (
   creator VARCHAR NOT NULL,
   FOREIGN KEY(creator)
     REFERENCES users,
-  result JSON,
-  pool_id TEXT UNIQUE,
-  lvl_required INT NOT NULL DEFAULT 0,
+  config JSONB NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   ended_at TIMESTAMP,
-  logs JSONB NOT NULL DEFAULT '{}'
+  expiry TIMESTAMP
+);
+
+CREATE TABLE pools (
+  id TEXT PRIMARY KEY,
+  result JSONB,
+  registered_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  resolved_at TIMESTAMP
 );
 
 CREATE TABLE sessions (
@@ -16,17 +21,22 @@ CREATE TABLE sessions (
   game_id VARCHAR NOT NULL,
   FOREIGN KEY(game_id)
     REFERENCES games,
+  pool_id TEXT,
+  FOREIGN KEY(pool_id)
+    REFERENCES pools,
   creator VARCHAR NOT NULL,
   FOREIGN KEY(creator)
     REFERENCES users,
   password VARCHAR,
   private BOOLEAN NOT NULL DEFAULT FALSE,
-  started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  started_at TIMESTAMP,
   ended_at TIMESTAMP,
   last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   logs JSONB NOT NULL DEFAULT '{}',
-  state JSONB NOT NULL DEFAULT '{}'
+  state JSONB NOT NULL
 );
+
 
 CREATE TABLE whitelist (
   session_id uuid,
@@ -46,7 +56,11 @@ CREATE TABLE player_sessions(
     REFERENCES sessions,
   FOREIGN KEY(user_id)
     REFERENCES users,
-  started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  account_id VARCHAR,
+  FOREIGN KEY(account_id)
+    REFERENCES accounts,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   ended_at TIMESTAMP,
-  info JSONB NOT NULL
+  resolved_at TIMESTAMP,
+  info JSONB
 );

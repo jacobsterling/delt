@@ -1,9 +1,10 @@
 
 import { H3Event } from "h3"
 
-import { authCheck } from "~/server/app/services/userService"
+import prisma from "~~/server/database"
 
 export default defineEventHandler(async (event) => {
+
   const isAllowed = await protectAuthRoute(event)
 
   if (!isAllowed) {
@@ -13,14 +14,14 @@ export default defineEventHandler(async (event) => {
 
 async function protectAuthRoute(event: H3Event): Promise<boolean> {
   const protectedRoutes = [
-    "/api/ask-jack/ask",
-    "/api/ask-jack/edit-question/",
-    "api/ask-jack/delete-question"
+    "/api/games/create"
   ]
 
   if (!event?.path || !protectedRoutes.includes(event.path)) {
     return true
   }
 
-  return await authCheck(event)
+  const auth_token = getCookie(event, "auth_token")
+
+  return auth_token ? await prisma.user_sessions.findUnique({ where: { auth_token } }) !== undefined : false
 }

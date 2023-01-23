@@ -1,14 +1,15 @@
-<script setup lang="ts">
+<script setup lang="ts">import { Ref } from 'vue';
 
-const { $manager } = useNuxtApp()
+const game: Ref<Phaser.Game | undefined> = ref()
 
 onMounted(() => {
-  $manager.launch("delt-container")
+  game.value = useGame("delt-container", true)
 })
 
 onUnmounted(() => {
-  $manager.game?.destroy(false)
+  game.value?.destroy(false)
 })
+
 </script>
 
 <template>

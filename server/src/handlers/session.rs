@@ -1,15 +1,18 @@
 use crate::{
     db::{
-        models::{NewPlayerSession, Session},
+        models::{PlayerSession, Session},
         schema, DB,
     },
-    types::{Content, GameId, Logs, SessionState, UserId},
+    handlers::GLOBAL,
+    types::{Content, GameId, Logs, PlayerInfo, PlayerStats, SessionState, UserId},
 };
 use actix::{prelude::Actor, ActorContext, AsyncContext, Context, Handler, MessageResult};
-use chrono::Local;
-use diesel::{insert_into, prelude::*, sql_types::Jsonb, update};
+use chrono::{Local, NaiveDateTime};
+use diesel::{prelude::*, sql_types::Jsonb, update};
+use near_primitives::types::AccountId;
 use std::{
     collections::{HashMap, HashSet},
+    str::FromStr,
     sync::Mutex,
     time::{Duration, Instant},
 };
@@ -22,6 +25,7 @@ pub struct SessionActor {
     pub game_id: GameId,
     pub host: UserId,
     pub clients: Mutex<HashMap<UserId, ClientInfo>>,
+    pub pool_id: Option<String>,
     pub resolved: bool,
     pub state: Mutex<SessionState>,
     pub logger: Logs,
@@ -38,6 +42,7 @@ impl SessionActor {
             game_id,
             state,
             logs,
+            pool_id,
             ..
         }: Session,
         host: UserId,
@@ -51,29 +56,16 @@ impl SessionActor {
             state: Mutex::new(state),
             logger: logs,
             tick: Instant::now(),
+            pool_id,
         }
     }
 
-    pub fn end(&self) {
-        let clients = self.clients.lock().unwrap();
-
-        let msg = ServerMessage::Ended {
-            session_id: self.id.to_owned(),
-        };
-
-        for (_, ClientInfo { actor, .. }) in clients.iter() {
-            actor.do_send(msg.to_owned());
-        }
-
-        let mut session_guard = SESSIONS.lock().unwrap();
-
-        session_guard.remove(&self.id);
-
+    pub fn log(&self) {
         let mut db = DB.get();
 
         let conn = db.as_mut().unwrap();
 
-        use schema::sessions::dsl::{ended_at, id, last_update, logs, sessions, state};
+        use schema::sessions::dsl::{id, last_update, logs, sessions, state};
 
         let session_state = self.state.lock().unwrap().to_owned();
 
@@ -83,18 +75,28 @@ impl SessionActor {
                 logs.eq(self.logger.as_sql::<Jsonb>()),
                 state.eq(session_state.as_sql::<Jsonb>()),
                 last_update.eq(Local::now().naive_local()),
-                ended_at.eq(Local::now().naive_local()),
             ))
             .execute(conn)
         {
-            Ok(_) => println!(),
+            Ok(_) => {}
 
-            Err(e) => println!(
-                "session_id: {}, failed to update db with final update. Error: {}",
-                &self.id,
-                e.to_string()
-            ),
-        };
+            Err(_) => {}
+        }
+
+        let clients = self.clients.lock().unwrap();
+
+        use schema::player_sessions::dsl::{ended_at, info, player_sessions, session_id, user_id};
+
+        for uid in clients.keys() {
+            update(player_sessions)
+                .filter(session_id.eq(&self.id).and(user_id.eq(uid)))
+                .set((
+                    info.eq(session_state.player_info(&uid)),
+                    ended_at.eq(None::<NaiveDateTime>),
+                ))
+                .execute(conn)
+                .ok();
+        }
     }
 }
 
@@ -113,7 +115,7 @@ impl Actor for SessionActor {
 
             for (id, client_info) in clients.iter() {
                 actors.push(client_info.actor.to_owned());
-                players.insert(id.to_owned(), client_info.player_info(&id, &session_state));
+                players.insert(id.to_owned(), session_state.player_info(&id));
             }
 
             let tick = ServerMessage::Tick {
@@ -133,59 +135,91 @@ impl Actor for SessionActor {
             // else if self.resolved {}
         });
 
-        ctx.run_interval(LOG_INTERVAL, |act, _| {
-            let mut db = DB.get();
-
-            let conn = db.as_mut().unwrap();
-
-            use schema::sessions::dsl::{id, last_update, logs, sessions, state};
-
-            let session_state = act.state.lock().unwrap().to_owned();
-
-            match update(sessions)
-                .filter(id.eq(&act.id))
-                .set((
-                    logs.eq(act.logger.as_sql::<Jsonb>()),
-                    state.eq(session_state.as_sql::<Jsonb>()),
-                    last_update.eq(Local::now().naive_local()),
-                ))
-                .execute(conn)
-            {
-                Ok(_) => {}
-
-                Err(_) => {}
-            }
-
-            let guard = act.clients.lock().unwrap();
-
-            use schema::player_sessions::dsl::{info, player_sessions, session_id, user_id};
-
-            for (uid, client_info) in guard.iter() {
-                let player_info = client_info.player_info(&uid, &session_state);
-
-                match insert_into(player_sessions)
-                    .values(NewPlayerSession {
-                        info: player_info.to_owned(),
-                        session_id: act.id.to_owned(),
-                        user_id: uid.to_owned(),
-                    })
-                    .on_conflict((session_id, user_id))
-                    .do_update()
-                    .set(info.eq(player_info))
-                    .execute(conn)
-                {
-                    Ok(_) => {}
-
-                    Err(_) => {}
-                }
-            }
-        });
+        ctx.run_interval(LOG_INTERVAL, |act, _| act.log());
     }
 
     fn stopped(&mut self, _ctx: &mut Self::Context) {
         let mut session_guard = SESSIONS.lock().unwrap();
 
         session_guard.remove(&self.id);
+    }
+}
+
+impl Handler<SessionEnd> for SessionActor {
+    type Result = ();
+
+    fn handle(&mut self, _: SessionEnd, _: &mut Context<Self>) {
+        self.log();
+
+        let clients = self.clients.lock().unwrap();
+
+        let mut db = DB.get();
+
+        let conn = db.as_mut().unwrap();
+
+        let session_state = self.state.lock().unwrap().to_owned();
+
+        use schema::player_sessions::dsl::{player_sessions, session_id};
+
+        match player_sessions
+            .filter(session_id.eq(&self.id))
+            .get_results::<PlayerSession>(conn)
+        {
+            Ok(res) => {
+                for PlayerSession {
+                    user_id,
+                    account_id,
+                    ..
+                } in res.iter()
+                {
+                    let PlayerStats {
+                        kills,
+                        xp_accrual,
+                        death,
+                    } = session_state.stats.get(user_id).unwrap();
+
+                    if let Some(account_id) = match account_id {
+                        Some(s) => AccountId::from_str(s).ok(),
+                        None => None,
+                    } {
+                        let xp = match death {
+                            Some(_) => None,
+                            None => Some(xp_accrual),
+                        };
+
+                        GLOBAL.do_send(PlayerSessionResolve {
+                            session_id: self.id.to_owned(),
+                            account_id: account_id.to_owned(),
+                            xp: xp.copied(),
+                        });
+                    }
+
+                    if let Some(pool_id) = &self.pool_id {}
+                }
+
+                use schema::sessions::dsl::{ended_at, id, sessions};
+
+                match update(sessions)
+                    .filter(id.eq(&self.id))
+                    .set(ended_at.eq(Local::now().naive_local()))
+                    .execute(conn)
+                {
+                    Ok(_) => println!(),
+
+                    Err(e) => println!(
+                        "session_id: {}, failed to end. Error: {}",
+                        &self.id,
+                        e.to_string()
+                    ),
+                };
+            }
+
+            Err(e) => println!(
+                "session_id: {}, failed to end. Error: {}",
+                &self.id,
+                e.to_string()
+            ),
+        }
     }
 }
 
@@ -202,22 +236,6 @@ impl Handler<SessionMessage> for SessionActor {
     }
 }
 
-impl Handler<SessionQuery> for SessionActor {
-    type Result = MessageResult<SessionQuery>;
-
-    fn handle(&mut self, _: SessionQuery, _: &mut Context<Self>) -> Self::Result {
-        let mut players = HashMap::new();
-
-        let session_state = self.state.lock().unwrap().to_owned();
-
-        for (id, info) in self.clients.lock().unwrap().iter() {
-            players.insert(id.to_owned(), info.player_info(id, &session_state));
-        }
-
-        MessageResult((self.state.lock().unwrap().to_owned(), players))
-    }
-}
-
 impl Handler<Join> for SessionActor {
     type Result = MessageResult<Join>;
 
@@ -226,6 +244,7 @@ impl Handler<Join> for SessionActor {
         Join {
             user_id,
             player_info,
+            account_id,
         }: Join,
         ctx: &mut Context<Self>,
     ) -> Self::Result {
@@ -235,7 +254,10 @@ impl Handler<Join> for SessionActor {
 
         let mut clients = self.clients.lock().unwrap();
 
-        clients.insert(user_id.to_owned(), ClientInfo::new(client_actor.to_owned()));
+        clients.insert(
+            user_id.to_owned(),
+            ClientInfo::new(client_actor.to_owned(), account_id),
+        );
 
         let mut notif = Content::new();
 
@@ -258,8 +280,8 @@ impl Handler<Join> for SessionActor {
             .entities
             .set_managed(&player_info.managed_entities, &user_id);
 
-        for (id, info) in clients.iter() {
-            players.insert(id.to_owned(), info.player_info(id, &session_state));
+        for (id, _) in clients.iter() {
+            players.insert(id.to_owned(), session_state.player_info(id));
         }
 
         println!("[Server] {:?} has joined {}", &user_id, &self.id);
@@ -269,50 +291,57 @@ impl Handler<Join> for SessionActor {
 }
 
 impl Handler<Leave> for SessionActor {
-    type Result = ();
+    type Result = MessageResult<Leave>;
 
-    fn handle(&mut self, Leave(user_id): Leave, ctx: &mut Context<Self>) {
+    fn handle(&mut self, Leave(user_id): Leave, ctx: &mut Context<Self>) -> Self::Result {
         let mut clients = self.clients.lock().unwrap();
 
-        if let Some(info) = clients.remove(&user_id) {
-            let mut notif = Content::new();
+        match clients.remove(&user_id) {
+            Some(_) => {
+                let mut notif = Content::new();
 
-            notif
-                .insert("id", &user_id)
-                .insert("message", &format!("{} left.", &user_id));
+                notif
+                    .insert("id", &user_id)
+                    .insert("message", &format!("{} left.", &user_id));
 
-            let mut session_state = self.state.lock().unwrap();
+                let mut session_state = self.state.lock().unwrap();
 
-            let mut managed_entites = session_state.entities.managed(&user_id);
+                let mut managed_entites = session_state.entities.managed(&user_id);
 
-            ctx.notify(SessionMessage {
-                msg: ServerMessage::Left {
-                    user_id: user_id.to_owned(),
-                    managed_entities: managed_entites.to_owned(),
-                },
-                exclude: vec![user_id.to_owned()],
-            });
+                ctx.notify(SessionMessage {
+                    msg: ServerMessage::Left {
+                        user_id: user_id.to_owned(),
+                        managed_entities: managed_entites.to_owned(),
+                    },
+                    exclude: vec![user_id.to_owned()],
+                });
 
-            println!("[Server] {:?} has left {}", &user_id, self.id.to_owned());
+                println!("[Server] {:?} has left {}", &user_id, self.id.to_owned());
 
-            info.actor.do_send(SessionEnded(self.id.to_owned()));
+                match clients.iter().next() {
+                    Some((new_manager, _)) => {
+                        managed_entites = session_state.entities.managed(&user_id);
 
-            match clients.iter().next() {
-                Some((new_manager, _)) => {
-                    managed_entites = session_state.entities.managed(&user_id);
+                        session_state
+                            .entities
+                            .set_managed(&managed_entites, new_manager);
 
-                    session_state
-                        .entities
-                        .set_managed(&managed_entites, new_manager);
-
-                    if user_id == self.host {
-                        self.host = new_manager.to_owned()
+                        if user_id == self.host {
+                            self.host = new_manager.to_owned()
+                        }
                     }
-                }
 
-                None => ctx.stop(),
-            };
-        };
+                    None => ctx.stop(),
+                };
+
+                MessageResult(Some((
+                    self.id.to_owned(),
+                    session_state.player_info(&user_id),
+                )))
+            }
+
+            None => MessageResult(None),
+        }
     }
 }
 

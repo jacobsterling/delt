@@ -1,18 +1,14 @@
-use std::ops::Sub;
-
+use crate::multi_token::events::{MtBid, MtListed, MtUnlisted};
 use near_sdk::collections::UnorderedMap;
 use near_sdk::env::log_str;
 use near_sdk::BlockHeight;
 use serde::{Deserialize, Serialize};
-use serde_json::to_string;
-
-use crate::multi_token::events::{MtBid, MtListed, MtUnlisted};
 
 use crate::{
     multi_token::{
         core::StorageKey,
         token::ClearedApproval,
-        utils::{check_and_apply_approval, expect_approval, refund_deposit_to_account, Entity},
+        utils::{check_and_apply_approval, expect_approval, Entity},
     },
     *,
 };

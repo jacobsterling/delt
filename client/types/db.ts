@@ -1,10 +1,12 @@
+import { SessionState } from "~~/game/scenes/baseScene"
+
 export interface PlayerStats {
   kills: number
   xp_accrual: number
+  death?: Date,
 }
 
 export type PlayerInfo = {
-  ping: number,
   managed_entities: string[],
   stats: PlayerStats
 }
@@ -16,51 +18,60 @@ export interface User {
   last_login?: Date
 }
 
-export interface NewUser {
-  id: string
-  password: string
-  email: string
-}
-
 export interface UserSession {
   auth_token: string
   user_id: string
   started_at: Date
   ended_at?: Date
-  connection_created_at?: Date
-  connection_ended_at?: Date
-}
-
-export interface NewUserSession {
-  auth_token: string
-  user_id: string
 }
 
 export interface Account {
   account_id: string
   user_id: string
-  interactions: number
+  last_active?: Date
+  rewards: { [time: string]: string }
 }
 
-export interface NewAccount {
-  account_id: string
-  user_id: string
+export type GameConfig = {
+  player_limit: number
+  teams: number
+  level_required: number
+  session_attempts?: number
+  player_attempts?: number
 }
 
 export interface Game {
   id: string
   creator: string
-  result?: any
-  pool_id?: string
-  lvl_required: number
+  config: GameConfig
   created_at: Date
-  ended_at?: Date,
-  logs: any
+  ended_at?: Date
+  expiry?: Date
 }
 
-export interface NewGame {
+export interface Session {
   id: string
-  creator: string
+  game_id: string
   pool_id?: string
-  lvl_required?: number
+  creator: string
+  password: boolean
+  private: boolean
+  players: number
+  whitelist?: string[]
+  created_at: Date
+  started_at?: Date
+  ended_at?: Date
+  last_update?: Date
+  logs: { [time: string]: string }
+  state: SessionState
+}
+
+export interface PlayerSession {
+  session_id: string
+  user_id: string
+  account_id?: string
+  created_at: Date
+  ended_at?: Date
+  resolved_at?: String
+  info?: PlayerInfo
 }

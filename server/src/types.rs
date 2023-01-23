@@ -4,7 +4,7 @@ use diesel::{
     expression::AsExpression,
     pg::{Pg, PgValue},
     serialize::{self, Output, ToSql},
-    sql_types::{Int4, Jsonb},
+    sql_types::Jsonb,
 };
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -22,17 +22,6 @@ pub type UserId = String;
 
 use std::hash::{Hash, Hasher};
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct SessionView {
-    pub creator: UserId,
-    pub started_at: NaiveDateTime,
-    pub game_id: GameId,
-    pub game_creator: UserId,
-    pub created_at: NaiveDateTime,
-    pub players: i32,
-    pub password: bool,
-}
-
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, AsExpression, FromSqlRow)]
 #[diesel(sql_type = Jsonb)]
 pub struct SessionState {
@@ -47,8 +36,21 @@ pub struct SessionState {
     pub data: Content,
 }
 
-fn default_scene() -> String {
-    "BaseScene".to_string()
+impl SessionState {
+    fn default_scene() -> String {
+        "BaseScene".to_string()
+    }
+
+    pub fn player_info(&self, id: &UserId) -> PlayerInfo {
+        PlayerInfo {
+            managed_entities: self.entities.managed(id),
+            stats: self
+                .stats
+                .get(id)
+                .unwrap_or(&PlayerStats::default())
+                .to_owned(),
+        }
+    }
 }
 
 impl ToSql<Jsonb, Pg> for SessionState
@@ -93,7 +95,6 @@ impl Default for SessionState {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, AsExpression, FromSqlRow)]
 #[diesel(sql_type = Jsonb)]
 pub struct PlayerInfo {
-    pub ping: u32,
     pub managed_entities: HashSet<EntityId>,
     pub stats: PlayerStats,
 }
@@ -122,7 +123,6 @@ impl FromSql<Jsonb, Pg> for PlayerInfo {
 impl Default for PlayerInfo {
     fn default() -> Self {
         Self {
-            ping: 0,
             managed_entities: HashSet::new(),
             stats: PlayerStats::default(),
         }
@@ -132,7 +132,8 @@ impl Default for PlayerInfo {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct PlayerStats {
     pub kills: i32,
-    pub xp_accrual: u64,
+    pub xp_accrual: u128,
+    pub death: Option<NaiveDateTime>,
 }
 
 impl Default for PlayerStats {
@@ -140,12 +141,12 @@ impl Default for PlayerStats {
         Self {
             kills: 0,
             xp_accrual: 0,
+            death: None,
         }
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, AsExpression, FromSqlRow, PartialOrd)]
-#[diesel(sql_type = Int4)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
 pub struct Lvl(pub i32);
 
 impl Default for Lvl {
@@ -164,18 +165,45 @@ impl Lvl {
     }
 }
 
-impl ToSql<Int4, Pg> for Lvl {
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, AsExpression, FromSqlRow)]
+#[diesel(sql_type = Jsonb)]
+pub struct GameConfig {
+    pub player_limit: i32,
+    pub teams: i32,
+    pub lvl_required: Lvl,
+    pub session_attempts: Option<i64>,
+    pub player_attempts: Option<i64>,
+}
+
+impl ToSql<Jsonb, Pg> for GameConfig
+where
+    Value: ToSql<Jsonb, Pg>,
+{
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
-        <i32 as ToSql<Int4, Pg>>::to_sql(&self.0, &mut out.reborrow())
+        let config = to_value(&self).unwrap();
+
+        <Value as ToSql<Jsonb, Pg>>::to_sql(&config, &mut out.reborrow())
     }
 }
 
-impl FromSql<Int4, Pg> for Lvl {
+impl FromSql<Jsonb, Pg> for GameConfig {
     fn from_sql(bytes: PgValue) -> deserialize::Result<Self> {
-        match from_slice::<Lvl>(bytes.as_bytes()) {
-            Ok(lvl) => Ok(lvl),
+        match from_slice::<GameConfig>(bytes.as_bytes()) {
+            Ok(config) => Ok(config),
 
-            Err(_) => Ok(Lvl::default()),
+            Err(_) => Ok(GameConfig::default()),
+        }
+    }
+}
+
+impl Default for GameConfig {
+    fn default() -> Self {
+        Self {
+            player_limit: 1,
+            lvl_required: Lvl::default(),
+            teams: 1,
+            session_attempts: None,
+            player_attempts: None,
         }
     }
 }
@@ -316,7 +344,7 @@ pub struct Spawn {
 impl Default for Spawn {
     fn default() -> Self {
         Self {
-            scene: default_scene(),
+            scene: SessionState::default_scene(),
             zone: (Position::default(), Position::default()),
         }
     }

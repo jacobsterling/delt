@@ -1,13 +1,14 @@
 use crate::types::{
-    Content, Entities, EntityId, GameId, PlayerInfo, PlayerStats, SessionState, SessionView, Spawn,
-    UserId,
+    Content, Entities, EntityId, PlayerInfo, PlayerStats, SessionState, Spawn, UserId,
 };
 use actix::prelude::*;
-use serde::{Deserialize, Serialize};
+use chrono::NaiveDateTime;
+use near_primitives::types::AccountId;
+use serde::{Deserialize, Serialize, Serializer};
 use serde_json::to_string;
 use std::{
     collections::{HashMap, HashSet},
-    fmt,
+    fmt, io,
 };
 use uuid::Uuid;
 
@@ -17,35 +18,16 @@ use uuid::Uuid;
 #[rtype(result = "()")]
 pub enum ClientMessage {
     Update(Update),
-    Create {
-        game_id: GameId,
-        #[serde(default = "Option::default")]
-        password: Option<String>,
-        #[serde(default = "Option::default")]
-        whitelist: Option<Vec<UserId>>,
-        #[serde(default = "SessionState::default")]
-        state: SessionState,
-    },
-    Join {
-        session_id: Uuid,
-        #[serde(default = "Option::default")]
-        password: Option<String>,
-    },
     Message {
         msg: String,
         //list of Uuids for privite group chat
         #[serde(default = "Vec::new", skip_serializing_if = "Vec::is_empty")]
         reciptiants: Vec<UserId>,
     },
-    Leave,
-    Sessions {
-        #[serde(default = "Option::default")]
-        session_id: Option<String>,
-        #[serde(default = "Option::default")]
-        game_id: Option<GameId>,
-        #[serde(default = "Option::default")]
-        host_id: Option<UserId>,
+    Join {
+        session_id: Uuid,
     },
+    Leave,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -64,6 +46,7 @@ pub enum Update {
     },
     ChangeSpawn(Spawn),
     Stats(PlayerStats),
+    Ready,
 }
 
 #[derive(Message, Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -77,10 +60,6 @@ pub enum ServerMessage {
         state: SessionState,
         players: HashMap<UserId, PlayerInfo>,
     },
-    Created {
-        session_id: Uuid,
-        game_id: GameId,
-    },
     Message {
         sender: UserId,
         msg: String,
@@ -90,16 +69,13 @@ pub enum ServerMessage {
         state: SessionState,
         players: HashMap<UserId, PlayerInfo>,
     },
+    Starting(NaiveDateTime),
     Left {
         user_id: UserId,
         managed_entities: HashSet<EntityId>,
     },
-    Ended {
-        session_id: Uuid,
-    },
     Disconnected,
     Connected,
-    Sessions(HashMap<Uuid, SessionView>),
     Notification(Content),
 }
 
@@ -109,20 +85,21 @@ impl ServerMessage {
     }
 }
 
-#[derive(Message, Debug, Serialize)]
+#[derive(Message, Debug)]
 #[rtype(result = "()")]
-#[serde(tag = "error_type", content = "error")]
-#[serde(rename_all = "snake_case")]
 pub enum ServerError {
-    Query(String),
+    Std(io::Error),
+    Serde(serde_json::Error),
+    Database(diesel::result::Error),
     Transaction(String),
-    UnexpectedResponse(String),
-    Restricted(String),
-    Internal(String),
-    DbError(String),
+    Query(String),
 }
 
 impl ServerError {
+    pub fn new(kind: io::ErrorKind, msg: &str) -> Self {
+        Self::Std(io::Error::new(kind, msg))
+    }
+
     pub fn to_message(&self) -> String {
         let mut body = Content::new();
 
@@ -131,6 +108,15 @@ impl ServerError {
         body.insert("content", &self);
 
         to_string(&body).unwrap()
+    }
+}
+
+impl Serialize for ServerError {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
     }
 }
 
@@ -146,11 +132,12 @@ impl fmt::Display for ServerError {
 #[rtype(result = "(SessionState, HashMap<UserId, PlayerInfo>)")]
 pub struct Join {
     pub user_id: UserId,
+    pub account_id: Option<AccountId>,
     pub player_info: PlayerInfo,
 }
 
 #[derive(Message)]
-#[rtype(result = "()")]
+#[rtype(result = "Option<(Uuid, PlayerInfo)>")]
 pub struct Leave(pub UserId);
 
 #[derive(Message)]
@@ -159,11 +146,6 @@ pub struct SessionUpdate {
     pub updater: UserId,
     pub update: Update,
 }
-
-#[derive(Message)]
-#[rtype(result = "(SessionState, HashMap<UserId, PlayerInfo>)")]
-pub struct SessionQuery;
-
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct SessionMessage {
@@ -173,4 +155,16 @@ pub struct SessionMessage {
 
 #[derive(Message)]
 #[rtype(result = "()")]
+pub struct SessionEnd;
+
+#[derive(Message)]
+#[rtype(result = "()")]
 pub struct SessionEnded(pub Uuid);
+
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct PlayerSessionResolve {
+    pub session_id: Uuid,
+    pub account_id: AccountId,
+    pub xp: Option<u128>,
+}

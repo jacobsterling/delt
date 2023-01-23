@@ -1,37 +1,65 @@
-<script setup lang="ts">
+<!-- eslint-disable camelcase -->
+<script setup lang="ts">import { Token } from "~~/types/contracts"
 
-import { Token } from "../../plugins/contract.client"
-
-const client = useSupabaseClient()
 const route = useRoute()
+const router = useRouter()
 
-const { $wallet: wallet, $contractRef: contractRef } = useNuxtApp()
-const profile = await useUsername(route.params.username)
+const { $near } = useNuxtApp()
 
-const { data: tokens } = await client.from("tokens").select("*").eq("owner", profile.account)
+const profile = await useUser(route.params.username as string)
 
-const removeListing = async (token: Token) => {
-  await contractRef.removeListing(wallet, token)
+const user = await useUser()
+
+if (!profile) {
+  router.push("/404")
+}
+
+const LIMIT = 5
+const FROM = ref(0)
+const TO = ref(LIMIT)
+const status = ref(true)
+
+const restricted = profile!.id !== user?.id
+
+const accounts = await useAccounts(profile!.id)
+
+const tokens_by_account: { [account_id: string]: Token[] } = reactive({})
+
+for (const account of accounts) {
+  tokens_by_account[account.account_id] = await $near?.deltmt.mt_tokens_for_owner(account.account_id, FROM.value, LIMIT)
+}
+
+const selected_account = ref(accounts[0].account_id)
+
+const loadTokens = async () => {
+  FROM.value = TO.value + 1
+  TO.value = FROM.value + LIMIT
+  const newtokens = await $near.deltmt.mt_tokens_for_owner(selected_account.value, FROM.value, LIMIT)
+  tokens_by_account[selected_account.value].concat(newtokens)
+  if (tokens_by_account[selected_account.value].length < LIMIT) {
+    status.value = false
+  }
 }
 
 </script>
 
 <template>
-  <div class="inline-flex justify-center">
-    <TokenCard v-for="token in tokens" :key="token.slug" :item="token">
-      <li>
-        <TokenPurchase :item="token" />
-      </li>
-      <li>
-        <DeltButton class="d-button-sky p-1 flex" @click="removeListing(token)">
-          <div class="flex-inline justify-between align-center">
-            <ExclamationIcon class="d-icon-6" />
-            <div class="flex text-center">
-              Remove Listing
-            </div>
-          </div>
-        </DeltButton>
-      </li>
+  <div>
+    {{ profile }}
+    <div class="inline-flex justify-center">
+      <DeltButton v-for="id of Object.keys(tokens_by_account.value)" :key="id" @click="selected_account = id">
+        {{ id }}
+      </DeltButton>
+    </div>
+
+    <TokenCard v-for="token in tokens_by_account[selected_account]" :key="token.slug" :item="token">
+      <TokenPurchase :item="token" />
     </TokenCard>
+
+    <footer class="w-100% justify-center">
+      <DeltButton v-if="status" class="d-button-cyan flex" @click="loadTokens">
+        Load more items
+      </DeltButton>
+    </footer>
   </div>
 </template>

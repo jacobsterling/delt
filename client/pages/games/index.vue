@@ -1,0 +1,121 @@
+<!-- eslint-disable camelcase -->
+<script setup lang="ts">
+
+import { Ref } from "vue"
+
+import { ArrowPathIcon, ArrowLeftCircleIcon } from "@heroicons/vue/24/outline"
+
+import { Game } from "~~/types/db"
+import { SessionView } from "~~/types/server"
+
+const { $websocket, $manager } = useNuxtApp()
+
+const router = useRouter()
+
+const connection = ref(await $websocket?.connect())
+
+const sessions: Ref<{ [id: string]: SessionView }> = ref(connection.value?.sessions || {})
+
+const games: Ref<Game[]> = ref([])
+
+const selected_game: Ref<Game | undefined> = ref(undefined)
+
+const refreshGames = async () => {
+  try {
+    games.value = await $manager?.get() || games.value
+  } catch (e) {
+    console.error("Query Games Error: ", e)
+  }
+}
+
+await refreshGames()
+
+const refreshSessions = async () => {
+  try {
+    sessions.value = await $websocket.connection?.get() || sessions.value
+  } catch (e) {
+    console.error("Query Sessions Error: ", e)
+  }
+}
+
+</script>
+
+<template>
+  <div>
+    <div v-if="selected_game">
+      {{ selected_game }}
+
+      <div class="flex-inline justify-between w-80% my-5">
+
+        <ArrowLeftIcon class="d-icon-6" @click="selected_game = undefined" />
+
+        <ArrowPathIcon class="d-icon-6" @click="refreshSessions()" />
+
+        <DeltButton class="d-button-green" @click="router.push(`games/create-${selected_game?.id}`)">
+          Create Session
+        </DeltButton>
+
+      </div>
+      <h2 class="my-3">
+        Sessions
+      </h2>
+
+      <table>
+        <tr>
+          <th class="px-4">
+            Id
+          </th>
+          <th class="px-4">
+            Players
+          </th>
+        </tr>
+        <tr v-for="[id, session] of Object.entries(sessions).filter(value => value[1].game_id == selected_game?.id)"
+          :key="id" class="d-button-emerald" @click="router.push(`games/${id}`)">
+          <td class="px-4">
+            {{ id }}
+          </td>
+          <td class="px-4">
+            {{ `${session.players}/${selected_game.config.player_limit}` }}
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div v-else>
+
+      <div class="flex-inline justify-between w-80%">
+        <ArrowPathIcon class="d-icon-6" @click="refreshGames()" />
+
+        <DeltButton class="d-button-green" @click="router.push('/games/create-')">
+          Create Game
+        </DeltButton>
+      </div>
+
+      <table class="w-80% my-5">
+        <tr>
+          <th class="px-4">
+            Game Id
+          </th>
+          <th class="px-4">
+            Creator
+          </th>
+          <th class="px-4">
+            Created At
+          </th>
+        </tr>
+        <div v-for="game of games" :key="game.id" @click="selected_game = game">
+          <tr class="d-button-green">
+            <td class="px-4">
+              {{ game.id }}
+            </td>
+            <td class="px-4">
+              {{ game.creator }}
+            </td>
+            <td class="px-4">
+              {{ game.created_at }}
+            </td>
+          </tr>
+        </div>
+      </table>
+    </div>
+  </div>
+</template>

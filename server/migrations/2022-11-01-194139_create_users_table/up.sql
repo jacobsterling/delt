@@ -3,14 +3,16 @@ CREATE TABLE users (
 	password VARCHAR NOT NULL,
 	email VARCHAR UNIQUE NOT NULL,
 	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  last_login TIMESTAMP
+  last_login TIMESTAMP,
+  settings JSONB NOT NULL DEFAULT '{}'
 );
 
 CREATE TABLE accounts (
   account_id VARCHAR PRIMARY KEY,
   user_id VARCHAR( 50 ) NOT NULL,
   FOREIGN KEY (user_id) REFERENCES users,
-  interactions INT NOT NULL DEFAULT 0 --number of contract interactions made through server
+  last_active TIMESTAMP,
+  rewards JSONB NOT NULL DEFAULT '{}' --contract interactions made through server
 );
 
 CREATE TABLE roles(
@@ -28,7 +30,5 @@ CREATE TABLE user_sessions (
   FOREIGN KEY(user_id)
     REFERENCES users,
   started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  ended_at TIMESTAMP,
-  connection_created_at TIMESTAMP,
-  connection_ended_at TIMESTAMP
+  ended_at TIMESTAMP
 );

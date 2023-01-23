@@ -4,10 +4,14 @@ use actix_web_actors::ws;
 use actix_web_httpauth::middleware::HttpAuthentication;
 use dotenv::from_path;
 use handlers::client::ClientActor;
+use serde_json::json;
 
 use std::{env, net::Ipv4Addr, path};
 
-use crate::db::{run_migrations, validator};
+use crate::{
+    db::{run_migrations, validator},
+    handlers::contract_methods::set_default_attributes,
+};
 
 mod db;
 mod handlers;
@@ -52,6 +56,22 @@ async fn main() -> std::io::Result<()> {
 
     from_path(&*ENV_PATH).expect("Error fetching env variables");
     // run_migrations();
+
+    // let attributes = json!({//must match PlayerAttributes type at game\entities\player.ts
+    //     "attack_speed": 0.5,
+    //     "hp": 100,
+    //     "hp_regen": 1,
+    //     "max_hp": 100,
+    //     "max_mp": 100,
+    //     "mp": 100,
+    //     "mp_regen": 1,
+    //     "speed": 200
+    // });
+
+    // match set_default_attributes(&attributes).await {
+    //     Ok(res) => println!("attributes set"),
+    //     Err(e) => println!("contract error {}", e),
+    // }
 
     HttpServer::new(move || {
         App::new()

@@ -1,47 +1,44 @@
-import { z, parseBodyAs } from "@sidebase/nuxt-parse"
+import { z } from "@sidebase/nuxt-parse"
 import { compare } from "bcrypt"
-import { ZodError } from "zod"
 
-import { getMappedError } from "~~/server/app/errors/errorMapper"
-import sendDefaultErrorResponse from "~~/server/app/errors/responses/defaultErrorsResponse"
-import sendZodErrorResponse from "~~/server/app/errors/responses/zodErrorsResponse"
-import { makeSession } from "~~/server/app/services/sessionService"
-import { getUserByEmail, getUserById } from "~~/server/database/repositories/userRepository"
+import { User } from "~~/types/db"
+import parseBody from "~~/server/app/parse"
+import { userByEmail, userById } from "~~/server/database/users"
+import { createAuth } from "~~/server/database/auth"
 
-const standardAuthError = getMappedError("Authentication", "Invalid Credentials")
-
-const bodySchema = z.object({
+const body_schema = z.object({
   password: z.string({
     required_error: "password required"
   }).min(8, { message: "password must be at least 8 characters" }),
-  usernameOrEmail: z.string({
+  username_email: z.string({
     required_error: "username or email required"
   })
     .min(1, { message: "username or email required" })
 })
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler<User | void>(async (event) => {
+  const { username_email, password } = await parseBody(event, body_schema)
+
+  const email_regex = /\/^(([^<>()[]\.,;:s@\"]+(.[^<>()[]\.,;:s@\"]+)*)|(\".+\"))@(([[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}])|(([a-zA-Z-0-9]+.)+[a-zA-Z]{2,}))$\//
+
   try {
-    const data = await parseBodyAs(event, bodySchema)
+    const user = email_regex.test(username_email) ? await userByEmail(username_email) : await userById(username_email)
 
-    const emailRegex = /\/^(([^<>()[]\.,;:s@\"]+(.[^<>()[]\.,;:s@\"]+)*)|(\".+\"))@(([[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}])|(([a-zA-Z-0-9]+.)+[a-zA-Z]{2,}))$\//
+    if (user) {
+      if (!user.password || !await compare(password, user.password)) {
+        throw createError({ data: "password", statusCode: 401, statusMessage: "Incorrect Password" })
+      }
 
-    const user = emailRegex.test(data.usernameOrEmail) ? await getUserByEmail(data.usernameOrEmail) : await getUserById(data.usernameOrEmail)
+      const session = await createAuth(user.id)
 
-    if (user === null) {
-      return sendError(event, createError({ data: standardAuthError, statusCode: 401 }))
+      setCookie(event, "auth_token", session.auth_token, { httpOnly: false, path: "/" })
+
+      return user as User
     }
 
-    if (user.password === undefined || !await compare(data.password, user.password)) {
-      sendError(event, createError({ data: standardAuthError, statusCode: 401 }))
-    }
+    throw createError({ data: "id", statusCode: 404, statusMessage: "Username or email does not exist" })
 
-    return await makeSession(event, user.id)
-  } catch (error: any) {
-    if (error.data instanceof ZodError) {
-      return sendZodErrorResponse(event, error.data)
-    }
-
-    return sendDefaultErrorResponse(event, "Unauthenticated", 401, error)
+  } catch (e: any) {
+    return sendError(event, e)
   }
 })

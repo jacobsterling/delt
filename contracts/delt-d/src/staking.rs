@@ -1,8 +1,8 @@
 use std::{
     cmp::Eq,
     collections::{HashMap, HashSet},
+    fmt,
     hash::Hash,
-    ops::Add,
 };
 
 use crate::ext_contracts::{ext_ft_contract, ext_mt_contract, ext_nft_contract, ext_self};
@@ -18,6 +18,7 @@ use near_sdk::{
 };
 use near_sdk::{env::current_account_id, IntoStorageKey};
 
+use serde_json::to_string;
 use utils::refund_deposit_to_account;
 
 #[derive(BorshDeserialize, BorshSerialize)]
@@ -26,7 +27,7 @@ pub struct StakeManagement {
 
     stakes: LookupMap<AccountId, UnorderedMap<StakeId, Option<PoolId>>>,
 }
-#[derive(Serialize, Deserialize, BorshDeserialize, BorshSerialize, Debug)]
+#[derive(Serialize, Deserialize, BorshDeserialize, BorshSerialize, Debug, Clone)]
 pub struct Pool {
     pub owner: AccountId,
 
@@ -44,7 +45,7 @@ pub struct Pool {
     pub result: Option<AccountId>,
 }
 
-#[derive(Serialize, Deserialize, BorshDeserialize, BorshSerialize, Debug)]
+#[derive(Serialize, Deserialize, BorshDeserialize, BorshSerialize, Debug, Clone)]
 pub struct Stakes(pub HashMap<AccountId, HashMap<AccountId, HashMap<StakeId, AccountId>>>);
 
 impl Stakes {
@@ -125,6 +126,12 @@ pub struct StakeId {
     pub contract_id: AccountId,
 
     pub token: TokenType,
+}
+
+impl fmt::Display for StakeId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", to_string(self).unwrap())
+    }
 }
 
 impl StakeId {

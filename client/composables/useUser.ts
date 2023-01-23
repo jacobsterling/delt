@@ -3,19 +3,26 @@ import { User } from "~~/types/db"
 
 import useAuth from "./useAuth"
 
-export default async (): Promise<User | null> => {
-  const auth_cookie = useAuth().value
-  const user = useState<User | null>("user")
+export default async (user_id?: string): Promise<User | null> => {
+  if (user_id) {
+    const { data } = await useFetch<User>("/api/users", { body: user_id, method: "POST" })
 
-  if (auth_cookie && !user.value) {
-    const cookieHeaders = useRequestHeaders(["cookie"])
+    return data.value
 
-    const { data } = await useFetch<User>("/api/auth/get", {
-      headers: cookieHeaders as HeadersInit
-    })
+  } else {
+    const auth_cookie = useAuth().value
+    const user = useState<User | null>("user")
 
-    user.value = data.value
+    if (auth_cookie && !user.value) {
+      const cookieHeaders = useRequestHeaders(["cookie"])
+
+      const { data } = await useFetch<User>("/api/auth", {
+        headers: cookieHeaders as HeadersInit
+      })
+
+      user.value = data.value
+    }
+
+    return user.value
   }
-
-  return user.value
 }

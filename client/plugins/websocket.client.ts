@@ -1,53 +1,52 @@
-/* eslint-disable no-use-before-define */
-/* eslint-disable indent */
-/* eslint-disable camelcase */
-
 import Phaser from "phaser"
+import { Ref } from "vue"
 
 import { EntityConfigs } from "../game/entities"
 import Entity from "../game/entities/entity"
 import BaseScene, { SessionState } from "../game/scenes/baseScene"
-import { PlayerInfo } from "../types/db"
-import { ServerError, ServerMessage, ServerTick, ServerUpdate, SessionConfig, SessionView } from "../types/server"
+import { PlayerInfo, PlayerSession } from "../types/db"
+import { ServerError, ServerMessage, ServerTick, ServerUpdate } from "../types/server"
 
-export interface WebSocketConnection {
-  connect: () => Promise<{ sessions?: { [id: string]: SessionView }, restored_session?: SessionState }>
-  connection?: ActiveConnection
-}
-
-export type ConnectionResult = { sessions?: { [id: string]: SessionView }, restored_session?: SessionState }
-
-export default defineNuxtPlugin(() => {
-  const websocket = reactive<WebSocketConnection>({
-    connect: async () => {
-      const user = await useUser()
-      const auth_token = useAuth().value
-
-      if (user && auth_token) {
-        websocket.connection = new ActiveConnection(user.id, auth_token)
-        try {
-          const res = await websocket.connection.awaitEvents<ConnectionResult>(["session.connected", "session.joined"])
-          return res
-        } catch (e) {
-          console.error("Connection Error:", e)
-          return {}
-        }
-      }
-
-      console.error("Not logged in")
-      return {}
-    },
-    connection: undefined
-  }) as WebSocketConnection
+export default defineNuxtPlugin(async () => {
+  const connection: Ref<WebSocketConnection | undefined> = ref(undefined)
 
   return {
     provide: {
-      websocket
+      websocket: {
+        connect: async (): Promise<Ref<WebSocketConnection>> => {
+          if (connection.value) {
+            return connection as Ref<WebSocketConnection>
+          } else {
+            const user = await useUser()
+            const auth_token = useAuth().value
+
+            if (user && auth_token) {
+              const conn = new WebSocketConnection(user.id, auth_token)
+
+              conn.awaitEvents(["session.connected"])
+
+              connection.value = conn
+
+              connection.value.events.on("session.disconnected", () => {
+                connection.value = undefined
+              })
+
+              return connection as Ref<WebSocketConnection>
+            }
+
+            throw createError({ statusCode: 402, statusMessage: "Not Signed In" });
+          }
+        },
+        connection
+      } as {
+        connect: () => Promise<Ref<WebSocketConnection>>,
+        connection: Ref<WebSocketConnection | undefined>
+      }
     }
   }
 })
 
-export class ActiveConnection extends WebSocket {
+export class WebSocketConnection extends WebSocket {
   sendMessage(msg: ServerMessage): void {
     this.send(JSON.stringify(msg))
   }
@@ -56,7 +55,7 @@ export class ActiveConnection extends WebSocket {
     this.sendMessage({ content: update, msg_type: "update" })
   }
 
-  async awaitEvents<T>(events: string[] = [], timeout = 10000): Promise<T> {
+  async awaitEvents<T>(events: string[] = [], timeout: number | undefined = 10000): Promise<T> {
     return await new Promise<T>((resolve, reject) => {
       for (const event of events) {
         this.events.once(event, (res: T) => {
@@ -73,27 +72,36 @@ export class ActiveConnection extends WebSocket {
         for (const event of events) {
           this.events.removeListener(event, undefined, this, true)
         }
-        reject(new Error(res.error_type))
+        reject(createError({ statusMessage: res.error_type, data: res.error }))
       })
 
       const timer = setTimeout(() => {
         for (const event of events) {
           this.events.removeListener(event, undefined, this, true)
         }
-        reject(new Error("timout reached waiting for events"))
+        reject(createError({ statusCode: 408, statusMessage: "Request Timeout" }))
       }, timeout)
     })
   }
 
-  async create(config: SessionConfig): Promise<{ session_id: string, game_id: string }> {
-    this.sendMessage({ content: config, msg_type: "create" })
+  async join(session_id: string, account_id?: string, password?: string): Promise<SessionState> {
 
-    return await this.awaitEvents(["session.created"])
-  }
+    const { data, error } = await useFetch<PlayerSession>("/api/sessions/join", {
+      body: {
+        session_id,
+        account_id,
+        password
+      },
+      method: "POST"
+    })
 
-  async join(session_id: string, password?: string): Promise<SessionState> {
-    this.sendMessage({ content: { password, session_id }, msg_type: "join" })
-    return await this.awaitEvents(["session.joined"])
+    if (data.value) {
+      this.sendMessage({ content: { session_id }, msg_type: "join" })
+
+      return await this.awaitEvents<SessionState>(["session.joined"])
+    }
+
+    throw error.value?.data || createError({ statusCode: 500, statusMessage: "Error joining session" });
   }
 
   async leave(): Promise<void> {
@@ -104,17 +112,6 @@ export class ActiveConnection extends WebSocket {
       } catch (e) {
         console.error("Leave Error: ", e)
       }
-    }
-  }
-
-  async get(query: { session_id?: string, game_id?: string, host_id?: string } = {}): Promise<{ [id: string]: SessionView }> {
-    this.sendMessage({ content: query, msg_type: "sessions" })
-
-    try {
-      return await this.awaitEvents(["session.query"])
-    } catch (e) {
-      console.error("Get Sessions Error: ", e)
-      return {}
     }
   }
 
@@ -138,6 +135,7 @@ export class ActiveConnection extends WebSocket {
   session?: {
     id: string
     players: { [user_id: string]: PlayerInfo }
+    state: SessionState,
     update: { active: { [name: string]: EntityConfigs }, spawns: { [spawn_id: string]: EntityConfigs }, kill_list: string[] }
   }
 
@@ -156,8 +154,6 @@ export class ActiveConnection extends WebSocket {
     })
 
     this.addEventListener("close", (event: any) => {
-      const { $websocket } = useNuxtApp()
-      $websocket.connection = undefined
       this.events.emit("session.close", event)
     })
 
@@ -174,6 +170,7 @@ export class ActiveConnection extends WebSocket {
           const { tick, players, state } = content as ServerTick
 
           this.session!.players = players
+          this.session!.state = state
 
           this.events.emit("session.tick", state, tick)
           break
@@ -200,7 +197,7 @@ export class ActiveConnection extends WebSocket {
         case "joined":
           // eslint-disable-next-line no-case-declarations
           const { players: init_players, session_id: id, state: init_state } = content as { players: { [id: string]: PlayerInfo }, state: SessionState, session_id: string }
-          this.session = { id, players: init_players, update: { active: {}, kill_list: [], spawns: {} } }
+          this.session = { id, players: init_players, state: init_state, update: { active: {}, kill_list: [], spawns: {} } }
 
           this.events.emit("session.joined", init_state)
           break
@@ -216,19 +213,14 @@ export class ActiveConnection extends WebSocket {
         case "disconnected":
           // eslint-disable-next-line no-case-declarations
           const { $websocket } = useNuxtApp()
-          $websocket.connection = undefined
+          $websocket.connection.value = undefined
           this.events.emit("session.disconnected")
           break
 
         case "connected":
 
-          this.events.emit("session.connected", content as { [id: string]: SessionView })
+          this.events.emit("session.connected")
           // testing purposes
-          break
-
-        case "sessions":
-          console.log(content)
-          this.events.emit("session.query", content as { [id: string]: SessionView })
           break
 
         case "error":
@@ -244,21 +236,3 @@ export class ActiveConnection extends WebSocket {
     })
   }
 }
-
-// export interface WebSocketConnection extends WebSocket {
-//   sendMessage(msg: ServerMessage): void
-//   sendUpdate(update: ServerUpdate): void
-//   sendUpdate(update: ServerUpdate): void
-//   create(config: SessionConfig): Promise<string | ServerError>
-//   join(session_id: string, password?: string): Promise<SessionState | ServerError>
-//   leave(): Promise<void>
-//   get(query: { session_id?: string, game_id?: string, host_id?: string }): Promise<{ [id: string]: SessionView }>
-//   update(scene: BaseScene): void
-//   username: string
-//   active_session?: {
-//     id: string
-//     players: { [user_id: string]: PlayerInfo }
-//     update: { active: { [name: string]: EntityConfigs }, spawns: { [spawn_id: string]: EntityConfigs }, kill_list: string[] }
-//   }
-//   events: Phaser.Events.EventEmitter
-// }

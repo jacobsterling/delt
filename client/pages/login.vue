@@ -1,20 +1,32 @@
 <script setup lang="ts">
+import { NuxtError } from "#app";
 import type { Ref } from "vue"
+import { internalError } from "~~/server/app/errors";
 
-const usernameOrEmail = ref("")
-const password = ref("")
-const errors: Ref<Map<string, { message: InputValidation; }> | undefined> = ref(undefined)
+const username_email: Ref<string | undefined> = ref(undefined)
+const password: Ref<string | undefined> = ref(undefined)
+const error: Ref<NuxtError | undefined> = ref(undefined)
 
 definePageMeta({
   middleware: "guest"
 })
 
 async function postLoginForm() {
+
   try {
-    await useLogin(usernameOrEmail.value, password.value)
+    if (!username_email.value) {
+      throw createError({ statusCode: 422, statusMessage: "Username or Email required", data: "id" })
+    }
+
+    if (!password.value) {
+      throw createError({ statusCode: 422, statusMessage: "Password required", data: "password" })
+    }
+
+    await useLogin(username_email.value, password.value)
     useRouter().back()
+
   } catch (e: any) {
-    errors.value = useErrorMapper(e.data)
+    error.value = isNuxtError(e) ? e : internalError
   }
 }
 </script>
@@ -27,21 +39,26 @@ async function postLoginForm() {
           Sign In
         </h2>
       </div>
-      <div v-if="response?.hasErrors && errors"
-        class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-3" role="alert">
+      <div v-if="error && !error.data"
+        class="bg-red-100 border border-red-400 text-red-700 px-4 py-1 rounded relative mt-3" role="alert">
         <ul class="block sm:inline">
-          <li v-for="[key, value] in errors" :key="key">
-            {{ value.message }}
-          </li>
+          {{ error.statusMessage || "Internal Error" }}
         </ul>
       </div>
       <form class="mt-8 space-y-6" action="#" method="POST" @submit.prevent>
         <div class="rounded-md shadow-sm -space-y-px mb-1">
           <div>
             <label for="email-address" class="sr-only">Username or Email</label>
-            <input id="username" v-model="usernameOrEmail" type="email" name="username" required
+            <input id="username" v-model="username_email" type="email" name="username" required
               class="dark:bg-slate-500 dark:text-white dark:placeholder-white appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 focus:z-10 sm:text-sm"
-              :class="errors?.has('username') ? ' border-red-500' : ''" placeholder="Username">
+              :class="error?.data == 'id' ? ' border-red-500' : ''" placeholder="Username or Email"
+              @keyup.enter="postLoginForm">
+            <div v-if="error?.data == 'id'"
+              class="bg-red-100 border border-red-400 text-red-700 px-4 py-1 my-2 rounded relative" role="alert">
+              <ul class="block sm:inline">
+                {{ error.statusMessage }}
+              </ul>
+            </div>
           </div>
         </div>
         <div>
@@ -49,15 +66,23 @@ async function postLoginForm() {
           <input id="password" v-model="password" name="password" type="password" autocomplete="current-password"
             required
             class="dark:bg-slate-500 dark:text-white dark:placeholder-white appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 focus:z-10 sm:text-sm"
-            :class="errors?.has('password') ? ' border-red-500' : ''" placeholder="Password">
+            :class="error?.data == 'password' ? ' border-red-500' : ''" placeholder="Password"
+            @keyup.enter="postLoginForm">
+          <div v-if="error?.data == 'password'"
+            class="bg-red-100 border border-red-400 text-red-700 px-4 py-1 rounded relative" role="alert">
+            <ul class="block sm:inline">
+              {{ error.statusMessage }}
+            </ul>
+          </div>
         </div>
 
         <div class="flex items-center justify-between">
-          <div class="text-sm">
-            <a href="#" class="font-medium text-emerald-600 hover:text-emerald-500">
-              Forgot your password?
-            </a>
-          </div>
+          <a href="#" class="text-sm font-medium text-emerald-600 hover:text-emerald-500">
+            Forgot your password?
+          </a>
+          <a href="/register" class="text-sm font-medium text-emerald-600 hover:text-emerald-500">
+            Register
+          </a>
         </div>
       </form>
       <button

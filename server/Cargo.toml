@@ -31,4 +31,3 @@ diesel = { version = "2.0.2", features = [
 ] }
 diesel_migrations = "2.0.0"
 chrono = "0.4.22"
-bcrypt = "0.13.0"

@@ -22,19 +22,10 @@ export type ServerMessage = {
   msg_type: string
 }
 
-export type SessionView = {
-  game_id: string,
-  creator: string,
-  game_creator: string,
-  created_at: string,
-  started_at: string,
-  players: number,
-  password: boolean
-}
-
 export type SessionConfig = {
   game_id: string
   whitelist?: string[]
   password?: string
   state?: SessionState
+  pool_id?: string
 };

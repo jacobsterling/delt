@@ -1,18 +1,20 @@
-import { NewUser, User } from "~~/types/db"
+import { User } from "~~/types/db"
 
-export default async (id: string, password: string, email: string): Promise<User | null> => {
-  const { data } = await useFetch<User>("/api/auth/register", {
+export default async (id: string, password: string, email: string): Promise<User> => {
+  const { data, error } = await useFetch<User>("/api/auth/register", {
     body: {
       email,
       id,
       password
-    } as NewUser,
+    },
     method: "POST"
   })
 
   if (data.value) {
     useState("user").value = data.value
+    return data.value
   }
 
-  return data.value
+  throw error.value?.data || createError({ statusCode: 500, statusMessage: "Error registering user" });
+
 }

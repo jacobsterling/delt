@@ -1,16 +1,16 @@
 
-import { z, parseBodyAs } from "@sidebase/nuxt-parse"
-import { hash } from "bcrypt"
+import { z } from "@sidebase/nuxt-parse"
 
-import { makeSession } from "~~/server/app/services/sessionService"
-import { doesUserExist } from "~~/server/app/services/userService"
-import { createUser } from "~~/server/database/repositories/userRepository"
 
 import { User } from "../../../types/db"
 
-const bodySchema = z.object({
+import parseBody from "~~/server/app/parse"
+import { create, userByEmail, userById } from "~~/server/database/users"
+
+
+const body_schema = z.object({
   email: z.string({
-    required_error: "valid email required"
+    required_error: "email required"
   }).email({ message: "valid email required" }),
   id: z.string({
     required_error: "username required"
@@ -22,18 +22,27 @@ const bodySchema = z.object({
     .min(8, { message: "password must be at least 8 characters" })
 })
 
-export default defineEventHandler<User | null>(async (event) => {
-  const body = await parseBodyAs(event, bodySchema)
+export default defineEventHandler<User | void>(async (event) => {
 
-  const userExists = await doesUserExist(body.email, body.id)
+  const { email, id, password } = await parseBody(event, body_schema)
 
-  if (userExists.value) {
-    sendError(event, createError({ statusCode: 422, statusMessage: userExists.message }))
+  const email_regex = /\/^(([^<>()[]\.,;:s@\"]+(.[^<>()[]\.,;:s@\"]+)*)|(\".+\"))@(([[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}])|(([a-zA-Z-0-9]+.)+[a-zA-Z]{2,}))$\//
+
+  if (!email_regex.test(email)) {
+    throw createError({ statusCode: 422, statusMessage: `Invalid email format`, data: "email" })
   }
 
-  body.password = await hash(body.password, 10)
+  try {
+    if (await userByEmail(id)) {
+      throw createError({ statusCode: 409, statusMessage: `"${email}" is in use`, data: "email" })
+    }
 
-  const user = await createUser(body)
+    if (await userById(id)) {
+      throw createError({ statusCode: 409, statusMessage: `"${id}" is in use`, data: "id" })
+    }
 
-  return await makeSession(event, user.id) as User | null
+    return await create(email, id, password) as User
+  } catch (e: any) {
+    return sendError(event, e)
+  }
 })

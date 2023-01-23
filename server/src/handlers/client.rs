@@ -12,11 +12,17 @@ use actix::{
 };
 use actix_web_actors::ws;
 use chrono::Local;
-use diesel::{prelude::*, update};
-use serde_json::from_str;
-use std::time::{Duration, Instant};
 
-use super::{create, get_sessions, join, messages::*, session::SessionActor};
+use diesel::{prelude::*, update};
+use near_primitives::types::AccountId;
+use serde_json::from_str;
+use std::{
+    str::FromStr,
+    time::{Duration, Instant},
+};
+use uuid::Uuid;
+
+use super::{messages::*, session::SessionActor};
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
 const TIMEOUT: Duration = Duration::from_secs(10);
@@ -24,7 +30,6 @@ const TIMEOUT: Duration = Duration::from_secs(10);
 #[derive(Debug, Clone)]
 pub struct ClientActor {
     pub id: UserId,
-    auth: String,
     pub session: Option<Addr<SessionActor>>,
     hb: Instant,
     hb_handle: Option<SpawnHandle>,
@@ -46,56 +51,121 @@ impl Handler<ServerError> for ClientActor {
     }
 }
 
-impl Handler<SessionEnded> for ClientActor {
-    type Result = ();
-
-    fn handle(&mut self, SessionEnded(session_id): SessionEnded, ctx: &mut Self::Context) {
-        use schema::player_sessions::dsl::{ended_at, player_sessions, session_id as id, user_id};
-
-        let mut db = DB.get();
-
-        let conn = db.as_mut().unwrap();
-
-        match update(player_sessions)
-            .filter(
-                user_id
-                    .eq(&self.id)
-                    .and(id.eq(&session_id))
-                    .and(ended_at.is_not_null()),
-            )
-            .set(ended_at.eq(Local::now().naive_local()))
-            .execute(conn)
-        {
-            Ok(_) => {}
-
-            Err(e) => ctx.notify(ServerError::DbError(e.to_string())),
-        };
-
-        self.session = None;
-
-        ctx.notify(ServerMessage::Ended { session_id });
-    }
+fn heartbeat(ctx: &mut ws::WebsocketContext<ClientActor>) -> SpawnHandle {
+    ctx.run_interval(HEARTBEAT_INTERVAL, |act, ctx| {
+        let elapsed = act.hb.elapsed().as_secs();
+        if elapsed > TIMEOUT.as_secs() {
+            ctx.stop();
+            return;
+        }
+    })
 }
 
 impl ClientActor {
-    pub fn new(id: UserId, auth: String) -> Self {
+    pub fn new(id: UserId) -> Self {
         Self {
             id,
-            auth,
             session: None,
             hb: Instant::now(),
             hb_handle: None,
         }
     }
 
-    fn heartbeat(&self, ctx: &mut ws::WebsocketContext<Self>) -> SpawnHandle {
-        ctx.run_interval(HEARTBEAT_INTERVAL, |act, ctx| {
-            let elapsed = act.hb.elapsed().as_secs();
-            if elapsed > TIMEOUT.as_secs() {
-                ctx.stop();
-                return;
+    fn leave(&mut self, ctx: &mut ws::WebsocketContext<Self>) {
+        if let Some(session) = self.session.take() {
+            let msg = Leave(self.id.to_owned());
+
+            ctx.spawn(
+                async move { session.send(msg).await.unwrap() }
+                    .into_actor(self)
+                    .map(|res, act, ctx| match res {
+                        Some((id, player_info)) => {
+                            use schema::player_sessions::dsl::{
+                                ended_at, info, player_sessions, session_id, user_id,
+                            };
+
+                            let mut db = DB.get();
+
+                            let conn = db.as_mut().unwrap();
+
+                            match update(player_sessions)
+                                .filter(user_id.eq(&act.id).and(session_id.eq(id)))
+                                .set((
+                                    ended_at.eq(Local::now().naive_local()),
+                                    info.eq(&player_info),
+                                ))
+                                .execute(conn)
+                            {
+                                Ok(_) => ctx.notify(ServerMessage::Left {
+                                    user_id: act.id.to_owned(),
+                                    managed_entities: player_info.managed_entities,
+                                }),
+
+                                Err(e) => ctx.notify(ServerError::Database(e)),
+                            };
+                        }
+                        None => {}
+                    }),
+            );
+        }
+    }
+
+    fn join(&mut self, session_id: Uuid, ctx: &mut ws::WebsocketContext<Self>) {
+        use schema::player_sessions::dsl::{player_sessions, user_id};
+        use schema::sessions::dsl::{id, sessions};
+
+        let mut db = DB.get();
+
+        let conn = db.as_mut().unwrap();
+
+        match player_sessions
+            .inner_join(sessions)
+            .filter(id.eq(&session_id).and(user_id.eq(&self.id)))
+            .get_result::<(PlayerSession, Session)>(conn)
+        {
+            Ok((
+                PlayerSession {
+                    info, account_id, ..
+                },
+                session,
+            )) => {
+                let mut guard = SESSIONS.lock().unwrap();
+
+                let session_actor = guard
+                    .entry(session.id.to_owned())
+                    .or_insert(SessionActor::new(session, self.id.to_owned()).start())
+                    .to_owned();
+
+                let msg = session_actor.send(Join {
+                    user_id: self.id.to_owned(),
+                    player_info: info.unwrap_or_default(),
+                    account_id: match account_id {
+                        Some(s) => AccountId::from_str(&s).ok(),
+
+                        None => None,
+                    },
+                });
+
+                ctx.spawn(async move { msg.await.unwrap() }.into_actor(self).map(
+                    move |(state, players), act, ctx| {
+                        act.hb_handle = Some(heartbeat(ctx));
+                        act.session = Some(session_actor);
+
+                        println!("[Server] {:?} has joined {}", &act.id, &session_id);
+
+                        ctx.notify(ServerMessage::Joined {
+                            session_id,
+                            state: state.to_owned(),
+                            players: players.to_owned(),
+                        });
+                    },
+                ));
             }
-        })
+
+            Err(e) => {
+                ctx.notify(ServerError::Database(e));
+            }
+        };
     }
 }
 
@@ -103,80 +173,44 @@ impl Actor for ClientActor {
     type Context = ws::WebsocketContext<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
-        CLIENTS
+        if let Some(existing) = CLIENTS
             .lock()
             .unwrap()
-            .entry(self.id.to_owned())
-            .and_modify(|addr| ctx.stop())
-            .or_insert(ctx.address());
+            .insert(self.id.to_owned(), ctx.address())
+        {
+            existing.do_send(ServerMessage::Disconnected);
+        }
 
-        use schema::player_sessions::dsl::{ended_at, player_sessions, user_id as id};
-        use schema::sessions::dsl::{ended_at as session_ended_at, sessions};
+        use schema::player_sessions::dsl::{ended_at, player_sessions, user_id};
+        use schema::sessions::dsl::{ended_at as session_ended_at, id, sessions};
 
         let mut db = DB.get();
 
         let conn = db.as_mut().unwrap();
 
-        let user_id = self.id.to_owned();
-
         match player_sessions
             .inner_join(sessions)
             .filter(
-                id.eq(&user_id)
+                user_id
+                    .eq(&self.id)
                     .and(session_ended_at.is_not_null())
                     .and(ended_at.is_not_null()),
             )
-            .get_result::<(PlayerSession, Session)>(conn)
+            .select(id)
+            .get_result::<Uuid>(conn)
         {
-            Ok((
-                PlayerSession {
-                    info, session_id, ..
-                },
-                previous_session,
-            )) => {
-                let mut guard = SESSIONS.lock().unwrap();
-
-                let session_actor = guard
-                    .entry(session_id)
-                    .or_insert(SessionActor::new(previous_session, user_id.to_owned()).start())
-                    .to_owned();
-
-                ctx.spawn(
-                    async move {
-                        let res = session_actor
-                            .send(Join {
-                                user_id,
-                                player_info: info,
-                            })
-                            .await
-                            .unwrap();
-
-                        (session_actor, res)
-                    }
-                    .into_actor(self)
-                    .map(move |(actor, (state, players)), act, ctx| {
-                        act.hb_handle = Some(act.heartbeat(ctx));
-                        act.session = Some(actor);
-
-                        println!("[Server] {:?} has rejoined {}", &act.id, &session_id);
-
-                        ctx.notify(ServerMessage::Joined {
-                            session_id,
-                            state,
-                            players,
-                        });
-                    }),
-                );
+            Ok(session_id) => {
+                self.join(session_id, ctx);
             }
 
-            Err(_) => ctx.notify(ServerMessage::Connected),
+            Err(_) => {
+                ctx.notify(ServerMessage::Connected);
+            }
         };
     }
 
     fn stopping(&mut self, ctx: &mut Self::Context) -> actix::Running {
-        if let Some(session_actor) = &self.session {
-            session_actor.do_send(Leave(self.id.to_owned()));
-        }
+        self.leave(ctx);
 
         ctx.notify(ServerMessage::Disconnected);
 
@@ -186,25 +220,6 @@ impl Actor for ClientActor {
     }
 
     fn stopped(&mut self, _ctx: &mut Self::Context) {
-        use schema::user_sessions::dsl::{auth_token, connection_ended_at, user_id, user_sessions};
-
-        match DB.get().as_mut() {
-            Ok(conn) => match update(user_sessions)
-                .filter(
-                    auth_token
-                        .eq(&self.auth)
-                        .and(user_id.eq(&self.id))
-                        .and(connection_ended_at.is_not_null()),
-                )
-                .set(connection_ended_at.eq(Local::now().naive_local()))
-                .execute(conn)
-            {
-                _ => {}
-            },
-
-            _ => {}
-        }
-
         println!("[Server] {:?} has left", &self.id);
     }
 }
@@ -227,6 +242,8 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for ClientActor {
                     self.hb = Instant::now();
                 }
                 ws::Message::Text(text) => {
+                    self.hb = Instant::now();
+
                     match from_str::<ClientMessage>(text.trim()) {
                         Ok(msg) => match msg {
                             ClientMessage::Update(update) => match &self.session {
@@ -235,72 +252,17 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for ClientActor {
                                     update,
                                 }),
 
-                                None => ctx.notify(ServerError::Restricted(
-                                    "Must be connected to a game to send updates".to_string(),
+                                None => ctx.notify(ServerError::new(
+                                    std::io::ErrorKind::PermissionDenied,
+                                    "Must be connected to a game to send updates",
                                 )),
                             },
 
-                            ClientMessage::Create {
-                                game_id,
-                                password,
-                                whitelist,
-                                state,
-                            } => {
-                                ctx.spawn(
-                                    create(
-                                        game_id.to_owned(),
-                                        self.id.to_owned(),
-                                        password,
-                                        whitelist,
-                                        state,
-                                    )
-                                    .into_actor(self)
-                                    .map(move |res, _, ctx| match res {
-                                        Ok(Session { id, game_id, .. }) => {
-                                            ctx.notify(ServerMessage::Created {
-                                                session_id: id,
-                                                game_id,
-                                            });
-                                        }
-
-                                        Err(e) => ctx.notify(e),
-                                    }),
-                                );
+                            ClientMessage::Join { session_id } => {
+                                self.join(session_id, ctx);
                             }
 
-                            ClientMessage::Join {
-                                session_id,
-                                password,
-                            } => {
-                                let user_id = self.id.to_owned();
-
-                                ctx.spawn(
-                                    join(session_id, user_id, password).into_actor(self).map(
-                                        move |res, act, ctx| {
-                                            match res {
-                                                Ok(((state, players), game_actor)) => {
-                                                    act.hb_handle = Some(act.heartbeat(ctx));
-                                                    act.session = Some(game_actor);
-
-                                                    ctx.notify(ServerMessage::Joined {
-                                                        session_id,
-                                                        state,
-                                                        players,
-                                                    })
-                                                }
-
-                                                Err(e) => ctx.notify(e),
-                                            };
-                                        },
-                                    ),
-                                );
-                            }
-
-                            ClientMessage::Leave => {
-                                if let Some(session) = self.session.take() {
-                                    session.do_send(Leave(self.id.to_owned()));
-                                }
-                            }
+                            ClientMessage::Leave => self.leave(ctx),
 
                             ClientMessage::Message { msg, reciptiants } => {
                                 let guard = CLIENTS.lock().unwrap();
@@ -327,32 +289,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for ClientActor {
                                     })
                                 };
                             }
-
-                            ClientMessage::Sessions {
-                                session_id,
-                                game_id,
-                                host_id,
-                            } => {
-                                let user_id = self.id.to_owned();
-
-                                ctx.spawn(
-                                    get_sessions(user_id, session_id, game_id, host_id)
-                                        .into_actor(self)
-                                        .map(move |res, _, ctx| match res {
-                                            Ok(sessions) => {
-                                                ctx.notify(ServerMessage::Sessions(sessions))
-                                            }
-
-                                            Err(e) => ctx.notify(e),
-                                        }),
-                                );
-                            }
                         },
-                        Err(error) => {
-                            ctx.notify(ServerError::UnexpectedResponse(error.to_string()))
-                        }
+                        Err(e) => ctx.notify(ServerError::Serde(e)),
                     }
-                    self.hb = Instant::now();
                 }
                 ws::Message::Binary(_) => {
                     println!("Unexpected binary");
